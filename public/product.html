@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Product Detail | Ponnaloy</title>
+    <meta name="description"
+        content="Detailed product view with purchase controls, related items, and fast cart actions." />
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body>
+    <div class="app-shell">
+        <div class="topbar">
+            <div class="container topbar-inner">
+                <div><strong>Order ready</strong> secure sessions and fast checkout</div>
+                <div class="status-pill">Product details page</div>
+            </div>
+        </div>
+        <header class="site-header">
+            <div class="container header-inner">
+                <a class="brand" href="/">
+                    <span class="brand-mark"><span>P</span></span>
+                    Ponnaloy
+                </a>
+                <nav class="nav" aria-label="Main navigation">
+                    <a href="/">Home</a>
+                    <a class="active" href="/products">Catalog</a>
+                </nav>
+                <div class="header-actions">
+                    <button class="button-ghost" data-auth-toggle>Sign in</button>
+                    <button class="icon-button" data-cart-open aria-label="Open cart">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 6h15l-1.5 8h-11z"></path>
+                            <circle cx="9" cy="20" r="1.5"></circle>
+                            <circle cx="18" cy="20" r="1.5"></circle>
+                            <path d="M5 6l-1-3H1"></path>
+                        </svg>
+                        <span class="badge-dot" data-cart-count>0</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="section">
+            <div class="container detail-grid">
+                <div class="detail-card reveal" data-product-detail></div>
+                <section class="section" style="padding-top: 0;">
+                    <div class="section-header reveal">
+                        <div>
+                            <h2 class="section-title">Related products</h2>
+                            <p class="section-copy">A curated set of items that complement this product.</p>
+                        </div>
+                    </div>
+                    <div class="product-grid" data-related-products></div>
+                </section>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="container footer-card reveal">
+                <small>Premium product experience powered by the same cart, auth, and checkout system as the home
+                    page.</small>
+            </div>
+        </footer>
+    </div>
+
+    <div class="cart-drawer" data-cart-drawer>
+        <div class="cart-drawer-backdrop" data-cart-close></div>
+        <aside class="cart-panel">
+            <div class="cart-header">
+                <div>
+                    <h2 class="panel-title">Your cart</h2>
+                    <p class="section-copy">Review items before placing your order.</p>
+                </div>
+                <button class="icon-button" data-cart-close aria-label="Close cart">✕</button>
+            </div>
+            <div class="cart-items" data-cart-items></div>
+            <div class="cart-footer">
+                <div class="cart-row"><span>Subtotal</span><strong data-cart-subtotal>$0</strong></div>
+                <div class="cart-row"><span>Shipping</span><strong data-cart-shipping>$0</strong></div>
+                <div class="cart-row"><span>Total</span><strong data-cart-total>$0</strong></div>
+                <button class="button" data-start-checkout>Continue to checkout</button>
+                <button class="button-secondary" data-clear-cart>Clear cart</button>
+            </div>
+        </aside>
+    </div>
+
+    <div class="modal" data-auth-modal>
+        <div class="modal-card auth-card">
+            <div class="auth-header">
+                <div>
+                    <h2 class="modal-title">Account access</h2>
+                    <p class="section-copy">Register or log in to place orders and keep your session active.</p>
+                </div>
+                <button class="icon-button" data-auth-close aria-label="Close account modal">✕</button>
+            </div>
+            <div class="auth-tabs">
+                <button class="filter-chip active" data-auth-tab="login">Login</button>
+                <button class="filter-chip" data-auth-tab="register">Register</button>
+            </div>
+            <div class="auth-panel">
+                <form class="checkout-grid" data-login-form>
+                    <input type="email" name="email" placeholder="Email address" required />
+                    <input type="password" name="password" placeholder="Password" required />
+                    <button class="button" type="submit">Sign in</button>
+                </form>
+                <form class="checkout-grid" data-register-form hidden>
+                    <input type="text" name="name" placeholder="Full name" required />
+                    <input type="email" name="email" placeholder="Email address" required />
+                    <input type="password" name="password" placeholder="Create password" required />
+                    <button class="button" type="submit">Create account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" data-toast>
+        <div>
+            <strong data-toast-title>Added</strong>
+            <p data-toast-message>Product added to cart.</p>
+        </div>
+        <span class="spinner" aria-hidden="true"></span>
+    </div>
+
+    <script src="/shared.js"></script>
+    <script src="/product.js"></script>
+</body>
+
+</html>

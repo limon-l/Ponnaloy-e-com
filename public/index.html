@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ponnaloy | Premium E-Commerce Store</title>
+    <meta name="description"
+        content="A premium e-commerce storefront with curated products, cart, checkout, and secure user accounts." />
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body>
+    <div class="app-shell">
+        <div class="topbar">
+            <div class="container topbar-inner">
+                <div><strong>Free delivery</strong> on orders above $150</div>
+                <div class="status-pill">Curated catalog, fast checkout, secure accounts</div>
+            </div>
+        </div>
+
+        <header class="site-header">
+            <div class="container header-inner">
+                <a class="brand" href="/">
+                    <span class="brand-mark"><span>P</span></span>
+                    Ponnaloy
+                </a>
+                <nav class="nav" aria-label="Main navigation">
+                    <a class="active" href="/">Home</a>
+                    <a href="/products">Products</a>
+                    <a href="#experience">Experience</a>
+                    <a href="#checkout">Checkout</a>
+                </nav>
+                <label class="search-bar" aria-label="Search products">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="7"></circle>
+                        <path d="M20 20l-3.6-3.6"></path>
+                    </svg>
+                    <input type="search" placeholder="Search luxury essentials" data-product-search />
+                </label>
+                <div class="header-actions">
+                    <button class="button-ghost" data-auth-toggle>Sign in</button>
+                    <button class="icon-button" data-cart-open aria-label="Open cart">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 6h15l-1.5 8h-11z"></path>
+                            <circle cx="9" cy="20" r="1.5"></circle>
+                            <circle cx="18" cy="20" r="1.5"></circle>
+                            <path d="M5 6l-1-3H1"></path>
+                        </svg>
+                        <span class="badge-dot" data-cart-count>0</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero">
+                <div class="container hero-grid">
+                    <div class="reveal">
+                        <div class="kicker"><span class="pulse"></span> Luxury essentials for modern living</div>
+                        <h1>Elevate every day with a store designed to feel premium.</h1>
+                        <p>
+                            Browse curated products, inspect rich details, save items in a polished cart, and check out
+                            through a secure Express backend powered by SQLite.
+                        </p>
+                        <div class="hero-actions">
+                            <a class="button" href="/products">Shop collection</a>
+                            <a class="button-secondary" href="#experience">See experience</a>
+                        </div>
+                        <div class="hero-stats">
+                            <div class="stat-card">
+                                <strong>24h</strong>
+                                <span>Express order handling</span>
+                            </div>
+                            <div class="stat-card">
+                                <strong>500+</strong>
+                                <span>Catalog products</span>
+                            </div>
+                            <div class="stat-card">
+                                <strong>5.0</strong>
+                                <span>Average customer rating</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-panel reveal">
+                        <div class="feature-card">
+                            <div class="visual">
+                                <span class="feature-badge">Spotlight collection</span>
+                                <img src="https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=1200&q=80"
+                                    alt="Luxury product showcase" />
+                            </div>
+                            <div class="feature-content">
+                                <h3>Artisan-crafted essentials</h3>
+                                <p>From studio-grade headphones to premium home staples, each piece is selected for
+                                    visual impact and everyday utility.</p>
+                                <div class="feature-meta">
+                                    <strong>$119 - $399</strong>
+                                    <a class="icon-chip" href="#products">Explore <svg viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path d="M5 12h14"></path>
+                                            <path d="M13 6l6 6-6 6"></path>
+                                        </svg></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="products">
+                <div class="container">
+                    <div class="section-header reveal">
+                        <div>
+                            <h2 class="section-title">Featured products</h2>
+                            <p class="section-copy">A compact storefront with enough polish to feel alive: product
+                                cards, micro-interactions, cart management, and a direct checkout path.</p>
+                        </div>
+                        <div class="filters">
+                            <button class="filter-chip active" data-category-filter="all">All</button>
+                            <button class="filter-chip" data-category-filter="Audio">Audio</button>
+                            <button class="filter-chip" data-category-filter="Wearables">Wearables</button>
+                            <button class="filter-chip" data-category-filter="Home">Home</button>
+                            <button class="filter-chip" data-category-filter="Work">Work</button>
+                        </div>
+                    </div>
+                    <div class="product-grid" data-product-grid></div>
+                </div>
+            </section>
+
+            <section class="section" id="experience">
+                <div class="container">
+                    <div class="section-header reveal">
+                        <div>
+                            <h2 class="section-title">Designed for conversion</h2>
+                            <p class="section-copy">The interface uses motion, layered backgrounds, and tactile controls
+                                to make the site feel like a premium storefront, not a generic template.</p>
+                        </div>
+                    </div>
+                    <div class="section-grid">
+                        <div class="benefit-card reveal">
+                            <div class="brand-mark"><span>1</span></div>
+                            <h4>Persistent cart</h4>
+                            <p>Your cart stays in local storage while the drawer stays one click away for quick edits,
+                                quantity changes, and order summary checks.</p>
+                        </div>
+                        <div class="benefit-card reveal">
+                            <div class="brand-mark"><span>2</span></div>
+                            <h4>Secure user access</h4>
+                            <p>Register and login using bcrypt-backed credentials and session cookies, with the current
+                                user reflected in the navigation.</p>
+                        </div>
+                        <div class="benefit-card reveal">
+                            <div class="brand-mark"><span>3</span></div>
+                            <h4>Order processing</h4>
+                            <p>Submit a checkout form that creates a real order in the database, updates stock, and
+                                confirms the purchase instantly.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="checkout">
+                <div class="container split-layout">
+                    <div class="checkout-card reveal">
+                        <div class="checkout-header">
+                            <div>
+                                <h2 class="panel-title">Fast checkout</h2>
+                                <p class="section-copy">Create an account or sign in, then submit the checkout form
+                                    directly from the cart drawer.</p>
+                            </div>
+                        </div>
+                        <form class="checkout-grid" data-checkout-form>
+                            <input type="text" name="customerName" placeholder="Full name" required />
+                            <input type="email" name="email" placeholder="Email address" required />
+                            <input type="tel" name="phone" placeholder="Phone number" required />
+                            <textarea name="shippingAddress" placeholder="Shipping address" required></textarea>
+                            <button class="button" type="submit">Place order</button>
+                        </form>
+                    </div>
+                    <div class="summary-card reveal">
+                        <h2 class="panel-title">Why it feels premium</h2>
+                        <div class="checkout-summary">
+                            <div class="summary-row"><span>Motion-rich UI</span><strong>Fade, float, reveal</strong>
+                            </div>
+                            <div class="summary-row"><span>Layered surfaces</span><strong>Glass panels</strong></div>
+                            <div class="summary-row"><span>Trusted workflow</span><strong>Auth + orders</strong></div>
+                            <div class="summary-row"><span>Backend</span><strong>Express + SQLite</strong></div>
+                        </div>
+                        <div class="timeline-card" style="margin-top: 16px;">
+                            <h4>Premium stack</h4>
+                            <p>Front-end in plain HTML, CSS, and JavaScript. Back-end with Express.js, sessions, bcrypt
+                                password hashing, and SQLite persistence for products, users, and orders.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <div class="container footer-card reveal">
+                <div class="footer-grid">
+                    <div>
+                        <a class="brand" href="/">
+                            <span class="brand-mark"><span>P</span></span>
+                            Ponnaloy
+                        </a>
+                        <p class="section-copy" style="margin-top: 14px;">A polished demo storefront that balances
+                            visual richness with a practical shopping flow.</p>
+                        <small>Built with Express, SQLite, and a motion-forward frontend.</small>
+                    </div>
+                    <div>
+                        <strong>Store</strong>
+                        <p class="section-copy">Products<br />Details<br />Cart</p>
+                    </div>
+                    <div>
+                        <strong>Account</strong>
+                        <p class="section-copy">Register<br />Login<br />Orders</p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <div class="cart-drawer" data-cart-drawer>
+        <div class="cart-drawer-backdrop" data-cart-close></div>
+        <aside class="cart-panel">
+            <div class="cart-header">
+                <div>
+                    <h2 class="panel-title">Your cart</h2>
+                    <p class="section-copy">Review items before placing your order.</p>
+                </div>
+                <button class="icon-button" data-cart-close aria-label="Close cart">✕</button>
+            </div>
+            <div class="cart-items" data-cart-items></div>
+            <div class="cart-footer">
+                <div class="cart-row"><span>Subtotal</span><strong data-cart-subtotal>$0</strong></div>
+                <div class="cart-row"><span>Shipping</span><strong data-cart-shipping>$0</strong></div>
+                <div class="cart-row"><span>Total</span><strong data-cart-total>$0</strong></div>
+                <button class="button" data-start-checkout>Continue to checkout</button>
+                <button class="button-secondary" data-clear-cart>Clear cart</button>
+            </div>
+        </aside>
+    </div>
+
+    <div class="modal" data-auth-modal>
+        <div class="modal-card auth-card">
+            <div class="auth-header">
+                <div>
+                    <h2 class="modal-title">Account access</h2>
+                    <p class="section-copy">Register or log in to place orders and keep your session active.</p>
+                </div>
+                <button class="icon-button" data-auth-close aria-label="Close account modal">✕</button>
+            </div>
+            <div class="auth-tabs">
+                <button class="filter-chip active" data-auth-tab="login">Login</button>
+                <button class="filter-chip" data-auth-tab="register">Register</button>
+            </div>
+            <div class="auth-panel">
+                <form class="checkout-grid" data-login-form>
+                    <input type="email" name="email" placeholder="Email address" required />
+                    <input type="password" name="password" placeholder="Password" required />
+                    <button class="button" type="submit">Sign in</button>
+                </form>
+                <form class="checkout-grid" data-register-form hidden>
+                    <input type="text" name="name" placeholder="Full name" required />
+                    <input type="email" name="email" placeholder="Email address" required />
+                    <input type="password" name="password" placeholder="Create password" required />
+                    <button class="button" type="submit">Create account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" data-toast>
+        <div>
+            <strong data-toast-title>Added</strong>
+            <p data-toast-message>Product added to cart.</p>
+        </div>
+        <span class="spinner" aria-hidden="true"></span>
+    </div>
+
+    <script src="/shared.js"></script>
+    <script src="/app.js"></script>
+</body>
+
+</html>
