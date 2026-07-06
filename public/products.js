@@ -19,15 +19,22 @@ function sortProducts(products) {
     case "rating":
       return sorted.sort((left, right) => right.rating - left.rating);
     default:
-      return sorted.sort((left, right) => Number(right.featured) - Number(left.featured) || right.rating - left.rating);
+      return sorted.sort(
+        (left, right) =>
+          Number(right.featured) - Number(left.featured) ||
+          right.rating - left.rating,
+      );
   }
 }
 
 function filterProducts() {
   const query = catalogState.search.trim().toLowerCase();
   const filtered = catalogState.products.filter((product) => {
-    const matchesCategory = catalogState.category === "all" || product.category === catalogState.category;
-    const haystack = `${product.name} ${product.category} ${product.description} ${product.badge}`.toLowerCase();
+    const matchesCategory =
+      catalogState.category === "all" ||
+      product.category === catalogState.category;
+    const haystack =
+      `${product.name} ${product.category} ${product.description} ${product.badge}`.toLowerCase();
     const matchesSearch = !query || haystack.includes(query);
     return matchesCategory && matchesSearch;
   });
@@ -48,7 +55,10 @@ function renderCatalog() {
   }
 
   if (summaryNode) {
-    const activeCategory = catalogState.category === "all" ? "all categories" : catalogState.category;
+    const activeCategory =
+      catalogState.category === "all"
+        ? "all categories"
+        : catalogState.category;
     summaryNode.textContent = `Browsing ${activeCategory} with live search and professional sorting.`;
   }
 
@@ -63,7 +73,9 @@ function renderCatalog() {
     return;
   }
 
-  grid.innerHTML = filtered.map((product) => createProductCard(product)).join("");
+  grid.innerHTML = filtered
+    .map((product) => createProductCard(product))
+    .join("");
   wireRevealAnimations(grid);
 }
 
@@ -85,7 +97,10 @@ function renderCategoryFilters(categories) {
     button.addEventListener("click", () => {
       catalogState.category = button.dataset.catalogFilter;
       document.querySelectorAll("[data-catalog-filter]").forEach((chip) => {
-        chip.classList.toggle("active", chip.dataset.catalogFilter === catalogState.category);
+        chip.classList.toggle(
+          "active",
+          chip.dataset.catalogFilter === catalogState.category,
+        );
       });
       renderCatalog();
     });
@@ -115,18 +130,16 @@ function attachCatalogEvents() {
   });
 
   document.addEventListener("click", (event) => {
-    const authToggle = event.target.closest("[data-auth-toggle]");
-    if (authToggle) {
-      if (window.state?.currentUser) {
-        api("/logout", { method: "POST" })
-          .then(() => {
-            window.state.currentUser = null;
-            renderHeaderAccount?.();
-            showToast("Signed out", "Your session has been cleared.");
-          })
-          .catch((error) => showToast("Logout failed", error.message));
-      } else {
-        document.querySelector("[data-auth-modal]")?.classList.add("open");
+    const addButton = event.target.closest("[data-add-cart]");
+    if (addButton) {
+      const product = catalogState.products.find(
+        (entry) => entry.id === Number(addButton.dataset.addCart),
+      );
+
+      if (product) {
+        addToCart(product, 1);
+        renderCart();
+        showToast("Added to cart", `${product.name} is ready in your cart.`);
       }
     }
   });

@@ -104,9 +104,33 @@ function findTopProducts(products, query, limit = 3) {
   return [...products]
     .map((product) => ({ product, score: scoreProduct(product, query) }))
     .filter((entry) => entry.score > 0)
-    .sort((left, right) => right.score - left.score || right.product.rating - left.product.rating)
+    .sort(
+      (left, right) =>
+        right.score - left.score || right.product.rating - left.product.rating,
+    )
     .slice(0, limit)
     .map((entry) => entry.product);
+}
+
+function findProductMention(message, products) {
+  const normalizedMessage = normalizeText(message);
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const product of products) {
+    const normalizedName = normalizeText(product.name);
+    if (!normalizedName) continue;
+
+    if (
+      normalizedMessage.includes(normalizedName) &&
+      normalizedName.length > bestScore
+    ) {
+      bestMatch = product;
+      bestScore = normalizedName.length;
+    }
+  }
+
+  return bestMatch;
 }
 
 function compareProducts(left, right) {
@@ -126,6 +150,127 @@ function compareProducts(left, right) {
       `${right.name}: ${right.category}, ${right.rating.toFixed(1)} rating, ${right.stock} in stock, ${right.price.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}`,
       `Best overall: ${winner.name}`,
     ],
+  };
+}
+
+function buildStoreFacts(products) {
+  const categories = [...new Set(products.map((product) => product.category))];
+  const topRated = [...products]
+    .sort(
+      (left, right) => right.rating - left.rating || left.price - right.price,
+    )
+    .slice(0, 4);
+  const bestValue = [...products]
+    .sort(
+      (left, right) => left.price - right.price || right.rating - left.rating,
+    )
+    .slice(0, 4);
+
+  return {
+    productCount: products.length,
+    categoryCount: categories.length,
+    categories,
+    topRated,
+    bestValue,
+  };
+}
+
+function buildAssistantReply(message, matches, products) {
+  const compareMode =
+    /\b(compare|versus|vs|difference|better|which is better)\b/.test(message);
+  const helpMode =
+    /\b(help|about|store|site|catalog|checkout|shipping|delivery|return|policy|how do i)\b/.test(
+      message,
+    );
+  const greetingMode = /\b(hi|hello|hey|thanks|thank you)\b/.test(message);
+  const recommendationMode =
+    /\b(recommend|suggest|pick|best|top|good for|for work|for travel|for home)\b/.test(
+      message,
+    );
+  const explicitMention = findProductMention(message, products);
+  const compareTargetMatch = message.match(
+    /\b(?:compare|versus|vs|with)\b[\s\S]*?\b(?:with|to)\s+(.+)$/i,
+  );
+  const explicitCompareTarget = compareTargetMatch
+    ? findProductMention(compareTargetMatch[1], products)
+    : null;
+  const primaryQuery = message
+    .split(/\bcompare\b|\bversus\b|\bvs\b/i)[0]
+    .trim();
+  const primaryMatches = primaryQuery
+    ? findTopProducts(
+        products.filter((product) => product.id !== explicitCompareTarget?.id),
+        primaryQuery,
+        3,
+      )
+    : matches;
+
+  if (compareMode) {
+    const left =
+      primaryMatches[0] || explicitMention || matches[0] || products[0];
+    const right =
+      explicitCompareTarget ||
+      primaryMatches.find((product) => product.id !== left?.id) ||
+      matches.find((product) => product.id !== left?.id) ||
+      products.find((product) => product.id !== left?.id);
+
+    if (left && right) {
+      const comparison = compareProducts(left, right);
+      return {
+        reply: comparison.summary,
+        tone: "comparison",
+        focusCategory: left.category,
+        followUp:
+          "Ask me to compare another pair or tell me the use case you care about most.",
+        comparison,
+      };
+    }
+  }
+
+  if (recommendationMode && matches.length > 0) {
+    const hero = explicitMention || matches[0];
+    const secondary =
+      matches.find((product) => product.id !== hero.id) || matches[1];
+    return {
+      reply: `${hero.name} is my strongest recommendation for this request. It combines a ${hero.rating.toFixed(1)} rating, ${hero.stock} units in stock, and a price of ${hero.price.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}.`,
+      tone: "recommendation",
+      focusCategory: hero.category,
+      followUp: secondary
+        ? `If you want a backup option, ${secondary.name} is the next closest fit.`
+        : "Tell me your budget and use case and I’ll narrow it down.",
+      comparison: null,
+    };
+  }
+
+  if (matches.length > 0) {
+    const [topMatch] = matches;
+    return {
+      reply: `${topMatch.name} is a strong match in ${topMatch.category.toLowerCase()}. It is rated ${topMatch.rating.toFixed(1)} and currently has ${topMatch.stock} units in stock.`,
+      tone: "product",
+      focusCategory: topMatch.category,
+      followUp:
+        "Ask for a comparison, a similar product, or a better option for your budget.",
+      comparison: null,
+    };
+  }
+
+  if (greetingMode || helpMode) {
+    return {
+      reply: `Ponnaloy is built as a premium storefront with ${products.length} seeded products across multiple categories, live search, secure sign-in, cart checkout, and structured product comparison.`,
+      tone: "platform",
+      focusCategory: "Store overview",
+      followUp:
+        "You can ask me for best sellers, compare two products, or request a recommendation by use case.",
+      comparison: null,
+    };
+  }
+
+  return {
+    reply: `I searched the catalog but did not find an exact match. Try a product name, category, or say compare followed by two products.`,
+    tone: "fallback",
+    focusCategory: "Catalog",
+    followUp: "I can also recommend products for work, travel, home, or audio.",
+    comparison: null,
   };
 }
 
@@ -294,42 +439,24 @@ app.post(
     }
 
     const products = await listProducts();
-    const featuredProducts = products.filter((product) => product.featured).slice(0, 5);
-    const compareMode = /\b(compare|versus|vs|difference|better|which is better)\b/.test(message);
-    const helpMode = /\b(help|about|store|site|catalog|checkout|shipping|delivery|return|policy)\b/.test(message);
-    const greetingMode = /\b(hi|hello|hey|thanks|thank you)\b/.test(message);
-    const matches = findTopProducts(products, message, compareMode ? 4 : 3);
-
-    if (compareMode && matches.length >= 2) {
-      const comparison = compareProducts(matches[0], matches[1]);
-      return res.json({
-        reply: comparison.summary,
-        matches: matches.slice(0, 4),
-        comparison,
-      });
-    }
-
-    if (matches.length > 0) {
-      const [topMatch] = matches;
-      return res.json({
-        reply: `${topMatch.name} is a ${topMatch.category.toLowerCase()} standout with a ${topMatch.rating.toFixed(1)} rating and ${topMatch.stock} units in stock. It is priced at ${topMatch.price.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })} and built for shoppers who want premium value.`,
-        matches,
-        comparison: null,
-      });
-    }
-
-    if (greetingMode || helpMode) {
-      return res.json({
-        reply: `Ponnaloy is a premium storefront with ${products.length} curated products, fast cart handling, secure auth, and checkout. I can compare products, explain features, and help you find the right pick.`,
-        matches: featuredProducts,
-        comparison: null,
-      });
-    }
+    const matches = findTopProducts(products, message, 4);
+    const storeFacts = buildStoreFacts(products);
+    const assistant = buildAssistantReply(message, matches, products);
 
     return res.json({
-      reply: `I searched the catalog and did not find an exact match. Try asking for a product name, a category like audio or travel, or say "compare" followed by two products.`,
-      matches: featuredProducts,
-      comparison: null,
+      reply: assistant.reply,
+      tone: assistant.tone,
+      focusCategory: assistant.focusCategory,
+      followUp: assistant.followUp,
+      storeFacts: {
+        productCount: storeFacts.productCount,
+        categoryCount: storeFacts.categoryCount,
+        categories: storeFacts.categories,
+      },
+      highlights: storeFacts.topRated.slice(0, 3),
+      valuePicks: storeFacts.bestValue.slice(0, 3),
+      matches: matches.length > 0 ? matches : storeFacts.topRated.slice(0, 4),
+      comparison: assistant.comparison,
     });
   }),
 );

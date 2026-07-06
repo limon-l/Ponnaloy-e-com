@@ -1,216 +1,231 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ponnaloy | Product Catalog</title>
-    <meta name="description" content="A 500-product premium e-commerce catalog with live search, filtering, sorting, cart, and AI concierge." />
+    <meta name="description"
+        content="A 500-product premium e-commerce catalog with live search, filtering, sorting, cart, and AI concierge." />
     <link rel="stylesheet" href="/styles.css" />
-  </head>
-  <body>
+</head>
+
+<body>
     <div class="app-shell">
-      <div class="topbar">
-        <div class="container topbar-inner">
-          <div><strong>500+ products</strong> with premium positioning and fast browsing</div>
-          <div class="status-pill">Real-time filters, AI concierge, polished checkout flow</div>
+        <div class="topbar">
+            <div class="container topbar-inner">
+                <div><strong>500+ products</strong> with premium positioning and fast browsing</div>
+                <div class="status-pill">Real-time filters, AI concierge, polished checkout flow</div>
+            </div>
         </div>
-      </div>
 
-      <header class="site-header">
-        <div class="container header-inner">
-          <a class="brand" href="/">
-            <span class="brand-mark"><span>P</span></span>
-            Ponnaloy
-          </a>
-          <nav class="nav" aria-label="Main navigation">
-            <a href="/">Home</a>
-            <a class="active" href="/products">Catalog</a>
-            <a href="/product.html?id=1">Details</a>
-          </nav>
-          <div class="header-actions">
-            <button class="button-ghost" data-auth-toggle>Sign in</button>
-            <button class="icon-button" data-cart-open aria-label="Open cart">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 6h15l-1.5 8h-11z"></path>
-                <circle cx="9" cy="20" r="1.5"></circle>
-                <circle cx="18" cy="20" r="1.5"></circle>
-                <path d="M5 6l-1-3H1"></path>
-              </svg>
-              <span class="badge-dot" data-cart-count>0</span>
-            </button>
-          </div>
-        </div>
-      </header>
+        <header class="site-header">
+            <div class="container header-inner">
+                <a class="brand" href="/">
+                    <span class="brand-mark"><span>P</span></span>
+                    Ponnaloy
+                </a>
+                <nav class="nav" aria-label="Main navigation">
+                    <a href="/">Home</a>
+                    <a class="active" href="/products">Catalog</a>
+                    <a href="/product.html?id=1">Details</a>
+                </nav>
+                <div class="header-actions">
+                    <button class="button-ghost" data-auth-toggle>Sign in</button>
+                    <button class="icon-button" data-cart-open aria-label="Open cart">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 6h15l-1.5 8h-11z"></path>
+                            <circle cx="9" cy="20" r="1.5"></circle>
+                            <circle cx="18" cy="20" r="1.5"></circle>
+                            <path d="M5 6l-1-3H1"></path>
+                        </svg>
+                        <span class="badge-dot" data-cart-count>0</span>
+                    </button>
+                </div>
+            </div>
+        </header>
 
-      <main>
-        <section class="catalog-hero">
-          <div class="container catalog-hero-grid">
-            <div class="reveal">
-              <div class="kicker"><span class="pulse"></span> curated at scale</div>
-              <h1>Explore a catalog built to feel like a flagship retail experience.</h1>
-              <p>
-                More than five hundred seeded products with detailed descriptions, photography, live search, category filtering, and sorting. The catalog is designed to let shoppers move fast without losing the premium feel.
-              </p>
-              <div class="hero-actions">
-                <a class="button" href="#catalog">Browse products</a>
-                <button class="button-secondary" type="button" onclick="window.PonnaloyAssistant?.open()">Ask AI concierge</button>
-              </div>
-              <div class="hero-stats">
-                <div class="stat-card">
-                  <strong data-catalog-count>500+ products</strong>
-                  <span>Live inventory</span>
+        <main>
+            <section class="catalog-hero">
+                <div class="container catalog-hero-grid">
+                    <div class="reveal">
+                        <div class="kicker"><span class="pulse"></span> curated at scale</div>
+                        <h1>Explore a catalog built to feel like a flagship retail experience.</h1>
+                        <p>
+                            More than five hundred seeded products with detailed descriptions, photography, live search,
+                            category filtering, and sorting. The catalog is designed to let shoppers move fast without
+                            losing the premium feel.
+                        </p>
+                        <div class="hero-actions">
+                            <a class="button" href="#catalog">Browse products</a>
+                            <button class="button-secondary" type="button"
+                                onclick="window.PonnaloyAssistant?.open()">Ask AI concierge</button>
+                        </div>
+                        <div class="hero-stats">
+                            <div class="stat-card">
+                                <strong data-catalog-count>500+ products</strong>
+                                <span>Live inventory</span>
+                            </div>
+                            <div class="stat-card">
+                                <strong>4.8</strong>
+                                <span>Average rating</span>
+                            </div>
+                            <div class="stat-card">
+                                <strong>24h</strong>
+                                <span>Delivery promise</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="catalog-preview reveal">
+                        <div class="catalog-preview-card">
+                            <div class="catalog-preview-image">
+                                <span class="feature-badge">Premium catalog</span>
+                                <img src="https://images.unsplash.com/photo-1521334884684-d80222895322?auto=format&fit=crop&w=1200&q=80"
+                                    alt="Premium shopping dashboard" />
+                            </div>
+                            <div class="catalog-preview-content">
+                                <h3>Search, compare, and choose confidently.</h3>
+                                <p data-catalog-summary>Browsing all categories with live search and professional
+                                    sorting.</p>
+                                <div class="feature-meta">
+                                    <strong>Designed for speed</strong>
+                                    <span class="icon-chip">Smart filters</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                  <strong>4.8</strong>
-                  <span>Average rating</span>
-                </div>
-                <div class="stat-card">
-                  <strong>24h</strong>
-                  <span>Delivery promise</span>
-                </div>
-              </div>
-            </div>
-            <div class="catalog-preview reveal">
-              <div class="catalog-preview-card">
-                <div class="catalog-preview-image">
-                  <span class="feature-badge">Premium catalog</span>
-                  <img src="https://images.unsplash.com/photo-1521334884684-d80222895322?auto=format&fit=crop&w=1200&q=80" alt="Premium shopping dashboard" />
-                </div>
-                <div class="catalog-preview-content">
-                  <h3>Search, compare, and choose confidently.</h3>
-                  <p data-catalog-summary>Browsing all categories with live search and professional sorting.</p>
-                  <div class="feature-meta">
-                    <strong>Designed for speed</strong>
-                    <span class="icon-chip">Smart filters</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        <section class="section" id="catalog">
-          <div class="container">
-            <div class="catalog-toolbar reveal">
-              <label class="search-bar catalog-search" aria-label="Search catalog">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="7"></circle>
-                  <path d="M20 20l-3.6-3.6"></path>
-                </svg>
-                <input type="search" placeholder="Search 500+ products by name, category, or feature" data-catalog-search />
-              </label>
-              <select class="sort-select" data-catalog-sort>
-                <option value="featured">Featured first</option>
-                <option value="rating">Top rated</option>
-                <option value="price-asc">Price: low to high</option>
-                <option value="price-desc">Price: high to low</option>
-              </select>
-            </div>
-            <div class="filters catalog-filters reveal" data-catalog-filters></div>
-            <div class="product-grid catalog-grid" data-catalog-grid></div>
-          </div>
-        </section>
+            <section class="section" id="catalog">
+                <div class="container">
+                    <div class="catalog-toolbar reveal">
+                        <label class="search-bar catalog-search" aria-label="Search catalog">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="7"></circle>
+                                <path d="M20 20l-3.6-3.6"></path>
+                            </svg>
+                            <input type="search" placeholder="Search 500+ products by name, category, or feature"
+                                data-catalog-search />
+                        </label>
+                        <select class="sort-select" data-catalog-sort>
+                            <option value="featured">Featured first</option>
+                            <option value="rating">Top rated</option>
+                            <option value="price-asc">Price: low to high</option>
+                            <option value="price-desc">Price: high to low</option>
+                        </select>
+                    </div>
+                    <div class="filters catalog-filters reveal" data-catalog-filters></div>
+                    <div class="product-grid catalog-grid" data-catalog-grid></div>
+                </div>
+            </section>
 
-        <section class="section">
-          <div class="container section-grid">
-            <div class="benefit-card reveal">
-              <div class="brand-mark"><span>1</span></div>
-              <h4>Live browse</h4>
-              <p>Every keystroke updates the catalog instantly, so shoppers can jump from broad discovery to a precise shortlist in seconds.</p>
-            </div>
-            <div class="benefit-card reveal">
-              <div class="brand-mark"><span>2</span></div>
-              <h4>AI concierge</h4>
-              <p>Use the floating assistant to compare products, ask about the store, or request guidance for a specific use case.</p>
-            </div>
-            <div class="benefit-card reveal">
-              <div class="brand-mark"><span>3</span></div>
-              <h4>Checkout ready</h4>
-              <p>Any item can be added to the shared cart and sent to the same secure order flow used on the home page.</p>
-            </div>
-          </div>
-        </section>
-      </main>
+            <section class="section">
+                <div class="container section-grid">
+                    <div class="benefit-card reveal">
+                        <div class="brand-mark"><span>1</span></div>
+                        <h4>Live browse</h4>
+                        <p>Every keystroke updates the catalog instantly, so shoppers can jump from broad discovery to a
+                            precise shortlist in seconds.</p>
+                    </div>
+                    <div class="benefit-card reveal">
+                        <div class="brand-mark"><span>2</span></div>
+                        <h4>AI concierge</h4>
+                        <p>Use the floating assistant to compare products, ask about the store, or request guidance for
+                            a specific use case.</p>
+                    </div>
+                    <div class="benefit-card reveal">
+                        <div class="brand-mark"><span>3</span></div>
+                        <h4>Checkout ready</h4>
+                        <p>Any item can be added to the shared cart and sent to the same secure order flow used on the
+                            home page.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
 
-      <footer class="footer">
-        <div class="container footer-card reveal">
-          <div class="footer-grid">
-            <div>
-              <small>Catalog powered by Express, SQLite, live search, and AI-assisted product discovery.</small>
+        <footer class="footer">
+            <div class="container footer-card reveal">
+                <div class="footer-grid">
+                    <div>
+                        <small>Catalog powered by Express, SQLite, live search, and AI-assisted product
+                            discovery.</small>
+                    </div>
+                    <div>
+                        <strong>Browse</strong>
+                        <p class="section-copy">Audio<br />Wearables<br />Home</p>
+                    </div>
+                    <div>
+                        <strong>Support</strong>
+                        <p class="section-copy">Compare<br />Checkout<br />Orders</p>
+                    </div>
+                </div>
             </div>
-            <div>
-              <strong>Browse</strong>
-              <p class="section-copy">Audio<br />Wearables<br />Home</p>
-            </div>
-            <div>
-              <strong>Support</strong>
-              <p class="section-copy">Compare<br />Checkout<br />Orders</p>
-            </div>
-          </div>
-        </div>
-      </footer>
+        </footer>
     </div>
 
     <div class="cart-drawer" data-cart-drawer>
-      <div class="cart-drawer-backdrop" data-cart-close></div>
-      <aside class="cart-panel">
-        <div class="cart-header">
-          <div>
-            <h2 class="panel-title">Your cart</h2>
-            <p class="section-copy">Review items before placing your order.</p>
-          </div>
-          <button class="icon-button" data-cart-close aria-label="Close cart">✕</button>
-        </div>
-        <div class="cart-items" data-cart-items></div>
-        <div class="cart-footer">
-          <div class="cart-row"><span>Subtotal</span><strong data-cart-subtotal>$0</strong></div>
-          <div class="cart-row"><span>Shipping</span><strong data-cart-shipping>$0</strong></div>
-          <div class="cart-row"><span>Total</span><strong data-cart-total>$0</strong></div>
-          <button class="button" data-start-checkout>Continue to checkout</button>
-          <button class="button-secondary" data-clear-cart>Clear cart</button>
-        </div>
-      </aside>
+        <div class="cart-drawer-backdrop" data-cart-close></div>
+        <aside class="cart-panel">
+            <div class="cart-header">
+                <div>
+                    <h2 class="panel-title">Your cart</h2>
+                    <p class="section-copy">Review items before placing your order.</p>
+                </div>
+                <button class="icon-button" data-cart-close aria-label="Close cart">✕</button>
+            </div>
+            <div class="cart-items" data-cart-items></div>
+            <div class="cart-footer">
+                <div class="cart-row"><span>Subtotal</span><strong data-cart-subtotal>$0</strong></div>
+                <div class="cart-row"><span>Shipping</span><strong data-cart-shipping>$0</strong></div>
+                <div class="cart-row"><span>Total</span><strong data-cart-total>$0</strong></div>
+                <button class="button" data-start-checkout>Continue to checkout</button>
+                <button class="button-secondary" data-clear-cart>Clear cart</button>
+            </div>
+        </aside>
     </div>
 
     <div class="modal" data-auth-modal>
-      <div class="modal-card auth-card">
-        <div class="auth-header">
-          <div>
-            <h2 class="modal-title">Account access</h2>
-            <p class="section-copy">Register or log in to place orders and keep your session active.</p>
-          </div>
-          <button class="icon-button" data-auth-close aria-label="Close account modal">✕</button>
+        <div class="modal-card auth-card">
+            <div class="auth-header">
+                <div>
+                    <h2 class="modal-title">Account access</h2>
+                    <p class="section-copy">Register or log in to place orders and keep your session active.</p>
+                </div>
+                <button class="icon-button" data-auth-close aria-label="Close account modal">✕</button>
+            </div>
+            <div class="auth-tabs">
+                <button class="filter-chip active" data-auth-tab="login">Login</button>
+                <button class="filter-chip" data-auth-tab="register">Register</button>
+            </div>
+            <div class="auth-panel">
+                <form class="checkout-grid" data-login-form>
+                    <input type="email" name="email" placeholder="Email address" required />
+                    <input type="password" name="password" placeholder="Password" required />
+                    <button class="button" type="submit">Sign in</button>
+                </form>
+                <form class="checkout-grid" data-register-form hidden>
+                    <input type="text" name="name" placeholder="Full name" required />
+                    <input type="email" name="email" placeholder="Email address" required />
+                    <input type="password" name="password" placeholder="Create password" required />
+                    <button class="button" type="submit">Create account</button>
+                </form>
+            </div>
         </div>
-        <div class="auth-tabs">
-          <button class="filter-chip active" data-auth-tab="login">Login</button>
-          <button class="filter-chip" data-auth-tab="register">Register</button>
-        </div>
-        <div class="auth-panel">
-          <form class="checkout-grid" data-login-form>
-            <input type="email" name="email" placeholder="Email address" required />
-            <input type="password" name="password" placeholder="Password" required />
-            <button class="button" type="submit">Sign in</button>
-          </form>
-          <form class="checkout-grid" data-register-form hidden>
-            <input type="text" name="name" placeholder="Full name" required />
-            <input type="email" name="email" placeholder="Email address" required />
-            <input type="password" name="password" placeholder="Create password" required />
-            <button class="button" type="submit">Create account</button>
-          </form>
-        </div>
-      </div>
     </div>
 
     <div class="toast" data-toast>
-      <div>
-        <strong data-toast-title>Added</strong>
-        <p data-toast-message>Product added to cart.</p>
-      </div>
-      <span class="spinner" aria-hidden="true"></span>
+        <div>
+            <strong data-toast-title>Added</strong>
+            <p data-toast-message>Product added to cart.</p>
+        </div>
+        <span class="spinner" aria-hidden="true"></span>
     </div>
 
     <script src="/shared.js"></script>
+    <script src="/app.js"></script>
     <script src="/assistant.js"></script>
     <script src="/products.js"></script>
-  </body>
+</body>
+
 </html>

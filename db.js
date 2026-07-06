@@ -223,7 +223,13 @@ const catalogBlueprints = [
   {
     category: "Wearables",
     basePrice: 99,
-    families: ["Smartwatch", "Fitness Band", "Travel Pack", "Sunglasses", "Wallet"],
+    families: [
+      "Smartwatch",
+      "Fitness Band",
+      "Travel Pack",
+      "Sunglasses",
+      "Wallet",
+    ],
     imageUrls: [
       "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1523398002811-999ca8dec234?auto=format&fit=crop&w=1200&q=80",
@@ -372,23 +378,31 @@ function buildCatalogProducts(targetCount = 500) {
   let generatedIndex = 0;
 
   while (products.length < targetCount) {
-    const blueprint = catalogBlueprints[generatedIndex % catalogBlueprints.length];
-    const familyIndex = Math.floor(generatedIndex / catalogBlueprints.length) % blueprint.families.length;
-    const variantIndex = Math.floor(
-      generatedIndex /
-        (catalogBlueprints.length * blueprint.families.length),
-    ) % variantNames.length;
+    const blueprint =
+      catalogBlueprints[generatedIndex % catalogBlueprints.length];
+    const familyIndex =
+      Math.floor(generatedIndex / catalogBlueprints.length) %
+      blueprint.families.length;
+    const variantIndex =
+      Math.floor(
+        generatedIndex / (catalogBlueprints.length * blueprint.families.length),
+      ) % variantNames.length;
 
     const family = blueprint.families[familyIndex];
     const variant = variantNames[variantIndex];
     const categoryToken = titleCase(blueprint.category);
     const name = `${variant} ${family}`;
     const slug = `${slugify(blueprint.category)}-${slugify(name)}-${String(products.length + 1).padStart(3, "0")}`;
-    const imageUrl = blueprint.imageUrls[(generatedIndex + familyIndex) % blueprint.imageUrls.length];
-    const basePrice = blueprint.basePrice + (familyIndex * 8) + (variantIndex * 5);
-    const price = Math.round(basePrice + (generatedIndex % 4) * 9 + (familyIndex % 3) * 7);
+    const imageUrl =
+      blueprint.imageUrls[
+        (generatedIndex + familyIndex) % blueprint.imageUrls.length
+      ];
+    const basePrice = blueprint.basePrice + familyIndex * 8 + variantIndex * 5;
+    const price = Math.round(
+      basePrice + (generatedIndex % 4) * 9 + (familyIndex % 3) * 7,
+    );
     const compareAtPrice = Math.round(price * 1.24);
-    const rating = Number((4.4 + ((generatedIndex % 9) * 0.07)).toFixed(1));
+    const rating = Number((4.4 + (generatedIndex % 9) * 0.07).toFixed(1));
     const stock = 8 + ((generatedIndex * 7) % 42);
 
     products.push({
@@ -501,7 +515,7 @@ async function listProducts() {
 
 async function listFeaturedProducts() {
   const rows = await all(
-    "SELECT * FROM products WHERE featured = 1 ORDER BY id ASC LIMIT 4",
+    "SELECT * FROM products WHERE featured = 1 ORDER BY id ASC LIMIT 8",
   );
   return rows.map(toProduct);
 }

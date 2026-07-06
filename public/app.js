@@ -179,7 +179,7 @@ function attachEvents() {
 
   document.addEventListener("click", (event) => {
     const addButton = event.target.closest("[data-add-cart]");
-    if (addButton) {
+    if (addButton && event.target.closest("[data-product-grid]")) {
       const productId = Number(addButton.dataset.addCart);
       const product = state.products.find((item) => item.id === productId);
       if (product) {
