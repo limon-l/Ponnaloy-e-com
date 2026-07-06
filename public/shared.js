@@ -41,85 +41,6 @@ function formatCurrencyPrecise(value) {
   }).format(value);
 }
 
-function getCart() {
-  try {
-    return JSON.parse(localStorage.getItem("ponnaloy-cart") || "[]");
-  } catch (error) {
-    return [];
-  }
-}
-
-function setCart(items) {
-  localStorage.setItem("ponnaloy-cart", JSON.stringify(items));
-  updateCartCount();
-}
-
-function clearCart() {
-  setCart([]);
-}
-
-function addToCart(product, quantity = 1) {
-  const cart = getCart();
-  const existing = cart.find((item) => item.id === product.id);
-  if (existing) {
-    existing.quantity += quantity;
-  } else {
-    cart.push({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      imageUrl: product.imageUrl,
-      category: product.category,
-      quantity,
-      stock: product.stock,
-    });
-  }
-  setCart(cart);
-  return cart;
-}
-
-function updateCartQuantity(productId, quantity) {
-  const cart = getCart()
-    .map((item) => (item.id === productId ? { ...item, quantity } : item))
-    .filter((item) => item.quantity > 0);
-  setCart(cart);
-  return cart;
-}
-
-function removeFromCart(productId) {
-  const cart = getCart().filter((item) => item.id !== productId);
-  setCart(cart);
-  return cart;
-}
-
-function cartItemCount() {
-  return getCart().reduce((count, item) => count + item.quantity, 0);
-}
-
-function updateCartCount() {
-  const count = cartItemCount();
-  document.querySelectorAll("[data-cart-count]").forEach((node) => {
-    node.textContent = String(count);
-  });
-}
-
-function moneySum(items) {
-  return items.reduce((total, item) => total + item.price * item.quantity, 0);
-}
-
-function moneySubtotal(cart) {
-  return moneySum(cart);
-}
-
-function shippingFee(subtotal) {
-  return subtotal > 150 ? 0 : 15;
-}
-
-function orderTotal(cart) {
-  const subtotal = moneySubtotal(cart);
-  return subtotal + shippingFee(subtotal);
-}
-
 function createProductCard(product) {
   return `
     <article class="product-card reveal" data-product-card>
@@ -140,30 +61,49 @@ function createProductCard(product) {
         </div>
         <div class="product-actions">
           <button class="button-secondary" data-add-cart="${product.id}">Add to cart</button>
-          <a class="button-ghost" href="/product.html?id=${product.id}">→</a>
+          <a class="button-ghost" href="/product.html?id=${product.id}">View &rarr;</a>
         </div>
       </div>
     </article>
   `;
 }
 
+const ICONS = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+  error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+};
+
+function toastType(title) {
+  const t = title.toLowerCase();
+  if (t.includes("added") || t.includes("placed") || t.includes("applied") || t.includes("welcome") || t.includes("created") || t.includes("promo")) return "check";
+  if (t.includes("removed") || t.includes("cleared") || t.includes("failed") || t.includes("error") || t.includes("invalid") || t.includes("empty") || t.includes("login")) return "error";
+  return "info";
+}
+
 function toast() {
   const node = document.querySelector("[data-toast]");
+  const icon = node?.querySelector("[data-toast-icon]");
   const title = node?.querySelector("[data-toast-title]");
   const message = node?.querySelector("[data-toast-message]");
-  return { node, title, message };
+  return { node, icon, title, message };
 }
 
 function showToast(titleText, messageText) {
-  const { node, title, message } = toast();
+  const { node, icon, title, message } = toast();
   if (!node || !title || !message) return;
   title.textContent = titleText;
   message.textContent = messageText;
+  if (icon) {
+    const type = toastType(titleText);
+    icon.className = `toast-icon is-${type}`;
+    icon.innerHTML = ICONS[type] || ICONS.info;
+  }
   node.classList.add("open");
   window.clearTimeout(window.__ponnaloyToastTimer);
   window.__ponnaloyToastTimer = window.setTimeout(() => {
     node.classList.remove("open");
-  }, 2600);
+  }, 3000);
 }
 
 function wireRevealAnimations(root = document) {
@@ -196,8 +136,4 @@ function setActiveFilterButtons(activeCategory) {
     const category = button.dataset.categoryFilter;
     button.classList.toggle("active", category === activeCategory);
   });
-}
-
-function currencyToNumber(value) {
-  return Number(String(value).replace(/[^0-9.]/g, ""));
 }

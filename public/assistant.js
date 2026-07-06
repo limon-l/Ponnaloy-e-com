@@ -1,54 +1,4 @@
 (function () {
-  const welcomeMessage =
-    "I can explain the store, compare products, and recommend the best option for your use case.";
-
-  const conversationState = {
-    lastTopic: null,
-  };
-
-  function createAssistantMarkup() {
-    const shell = document.createElement("div");
-    shell.className = "assistant-shell";
-    shell.innerHTML = `
-      <button class="assistant-launcher" type="button" data-assistant-open>
-        <span class="assistant-launcher-dot"></span>
-        AI Concierge
-      </button>
-      <section class="assistant-panel" data-assistant-panel aria-label="AI shopping assistant" aria-hidden="true">
-        <header class="assistant-header">
-          <div>
-            <div class="assistant-eyebrow">Ponnaloy AI</div>
-            <h3>Commerce Concierge</h3>
-            <p>Product-aware, comparison-ready, and built to guide shopping decisions with clarity.</p>
-            <div class="assistant-status-row">
-              <span class="assistant-status-chip"><span class="assistant-status-dot"></span> Live catalog</span>
-              <span class="assistant-status-chip">Comparison mode</span>
-              <span class="assistant-status-chip">Fast replies</span>
-            </div>
-          </div>
-          <button class="assistant-close" type="button" data-assistant-close aria-label="Close assistant">✕</button>
-        </header>
-        <div class="assistant-quick-actions">
-          <button type="button" class="assistant-chip" data-assistant-prompt="Show me the best sellers">Best sellers</button>
-          <button type="button" class="assistant-chip" data-assistant-prompt="Compare Aurora Headphones and Halo Smartwatch">Compare two products</button>
-          <button type="button" class="assistant-chip" data-assistant-prompt="Recommend a premium product for work">Work pick</button>
-          <button type="button" class="assistant-chip" data-assistant-prompt="What makes this store premium?">About the store</button>
-        </div>
-        <div class="assistant-messages" data-assistant-messages></div>
-        <div class="assistant-summary" data-assistant-summary hidden></div>
-        <div class="assistant-comparison" data-assistant-comparison hidden></div>
-        <form class="assistant-form" data-assistant-form>
-          <textarea data-assistant-input rows="3" placeholder="Ask about a product or say compare product A and product B"></textarea>
-          <div class="assistant-form-actions">
-            <span class="assistant-hint">Examples: compare, recommend, best seller, return policy</span>
-            <button class="button" type="submit">Send</button>
-          </div>
-        </form>
-      </section>
-    `;
-    return shell;
-  }
-
   function escapeHtml(value) {
     return String(value)
       .replace(/&/g, "&amp;")
@@ -58,280 +8,262 @@
       .replace(/'/g, "&#39;");
   }
 
+  function time() {
+    return new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  }
+
   function formatPrice(value) {
     return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
+      style: "currency", currency: "USD", maximumFractionDigits: 0,
     }).format(value);
   }
 
-  function formatCompactPrice(value) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(value);
+  function createMarkup() {
+    const shell = document.createElement("div");
+    shell.className = "as-shell";
+    shell.innerHTML = [
+      '<button class="as-launcher" type="button" data-as-open>',
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+      "Assistant",
+      "</button>",
+      '<section class="as-panel" data-as-panel aria-label="Shopping assistant" aria-hidden="true">',
+      '<header class="as-header">',
+      '<div class="as-header-left">',
+      '<span class="as-avatar as-avatar-bot"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>',
+      "<div>",
+      '<h3 class="as-title">Assistant</h3>',
+      '<span class="as-status">Online</span>',
+      "</div>",
+      "</div>",
+      '<button class="as-close" type="button" data-as-close aria-label="Close assistant">',
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+      "</button>",
+      "</header>",
+      '<div class="as-msgs" data-as-msgs></div>',
+      '<div class="as-date-divider" data-as-date>Today</div>',
+      '<div class="as-typing" data-as-typing hidden><span></span><span></span><span></span></div>',
+      '<form class="as-form" data-as-form>',
+      '<div class="as-input-row">',
+      '<input data-as-input type="text" placeholder="Ask about products, comparisons, or the store…" autocomplete="off" />',
+      '<button class="as-send" type="submit" aria-label="Send">',
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+      "</button>",
+      "</div>",
+      "</form>",
+      "</section>",
+    ].join("");
+    return shell;
   }
 
-  function formatToneLabel(tone) {
-    switch (tone) {
-      case "comparison":
-        return "Comparison";
-      case "recommendation":
-        return "Recommendation";
-      case "product":
-        return "Product match";
-      case "platform":
-        return "Store overview";
-      default:
-        return "Assistant";
-    }
+  function renderProductCard(product) {
+    return [
+      '<a class="as-product" href="/product.html?id=' + product.id + '">',
+      '<img src="' + product.imageUrl + '" alt="' + escapeHtml(product.name) + '" loading="lazy" />',
+      '<div class="as-product-body">',
+      "<strong>" + escapeHtml(product.name) + "</strong>",
+      "<span>" + escapeHtml(product.category) + "</span>",
+      "</div>",
+      '<div class="as-product-price">',
+      "<strong>" + formatPrice(product.price) + "</strong>",
+      "<span>" + product.rating.toFixed(1) + " ★</span>",
+      "</div>",
+      "</a>",
+    ].join("");
   }
 
-  function renderProductSuggestion(product) {
-    return `
-      <a class="assistant-product" href="/product.html?id=${product.id}">
-        <img src="${product.imageUrl}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" />
-        <div>
-          <strong>${escapeHtml(product.name)}</strong>
-          <span>${escapeHtml(product.category)}</span>
-        </div>
-        <div class="assistant-product-meta">
-          <strong>${formatPrice(product.price)}</strong>
-          <span>${product.rating.toFixed(1)} ★</span>
-        </div>
-      </a>
-    `;
+  var lastRole = null;
+
+  function groupRole(role) {
+    var connected = role === lastRole;
+    lastRole = role;
+    return connected;
   }
 
-  function appendMessage(messagesNode, role, content) {
-    const row = document.createElement("article");
-    row.className = `assistant-message ${role}`;
-    row.innerHTML = content;
-    messagesNode.appendChild(row);
-    messagesNode.scrollTop = messagesNode.scrollHeight;
-    return row;
-  }
+  function addMsg(container, role, html) {
+    var connected = groupRole(role);
+    var isUser = role === "user";
+    var isProducts = role === "bot products";
 
-  function renderSummary(summaryNode, response) {
-    if (!summaryNode) return;
+    var wrap = document.createElement("div");
+    wrap.className = "as-row " + role + (connected ? " connected" : "") + (isProducts ? " products" : "");
 
-    const storeFacts = response.storeFacts || {};
-    const highlights = response.highlights || [];
-    const valuePicks = response.valuePicks || [];
-
-    summaryNode.hidden = false;
-    summaryNode.innerHTML = `
-      <div class="assistant-summary-header">
-        <span class="assistant-summary-label">${escapeHtml(formatToneLabel(response.tone))}</span>
-        <strong>${escapeHtml(response.followUp || "Ask for a comparison or product recommendation.")}</strong>
-      </div>
-      <div class="assistant-summary-stats">
-        <div><span>Products</span><strong>${escapeHtml(storeFacts.productCount ?? "500+")}</strong></div>
-        <div><span>Categories</span><strong>${escapeHtml(storeFacts.categoryCount ?? "10")}</strong></div>
-        <div><span>Focus</span><strong>${escapeHtml(response.focusCategory || (storeFacts.categories || ["Curated"])[0] || "Curated")}</strong></div>
-      </div>
-      <div class="assistant-summary-block">
-        <span>Highlights</span>
-        <div class="assistant-inline-pills">
-          ${highlights
-            .map(
-              (product) => `
-                <a class="assistant-pill" href="/product.html?id=${product.id}">
-                  ${escapeHtml(product.name)} · ${formatCompactPrice(product.price)}
-                </a>
-              `,
-            )
-            .join("")}
-        </div>
-      </div>
-      <div class="assistant-summary-block">
-        <span>Value picks</span>
-        <div class="assistant-inline-pills secondary">
-          ${valuePicks
-            .map(
-              (product) => `
-                <a class="assistant-pill" href="/product.html?id=${product.id}">
-                  ${escapeHtml(product.name)} · ${product.rating.toFixed(1)}★
-                </a>
-              `,
-            )
-            .join("")}
-        </div>
-      </div>
-    `;
-  }
-
-  function renderStructuredReply(messagesNode, response) {
-    const messageClass =
-      response.tone === "comparison" ? "assistant comparison" : "assistant";
-    const row = appendMessage(
-      messagesNode,
-      messageClass,
-      `
-        <div class="assistant-response-head">
-          <span>${escapeHtml(formatToneLabel(response.tone))}</span>
-          <strong>${escapeHtml(response.reply)}</strong>
-        </div>
-        ${response.followUp ? `<p class="assistant-follow-up">${escapeHtml(response.followUp)}</p>` : ""}
-      `,
-    );
-    return row;
-  }
-
-  async function sendPrompt(panel, prompt, inputNode) {
-    const messagesNode = panel.querySelector("[data-assistant-messages]");
-    const comparisonNode = panel.querySelector("[data-assistant-comparison]");
-    const summaryNode = panel.querySelector("[data-assistant-summary]");
-    const normalizedPrompt = prompt.trim();
-    if (!normalizedPrompt) return;
-
-    conversationState.lastTopic = normalizedPrompt;
-
-    appendMessage(
-      messagesNode,
-      "user",
-      `<p>${escapeHtml(normalizedPrompt)}</p>`,
-    );
-
-    const loadingMessage = appendMessage(
-      messagesNode,
-      "assistant",
-      `<p>Analyzing the catalog and preparing a concise answer...</p>`,
-    );
-
-    try {
-      const response = await api("/chat", {
-        method: "POST",
-        body: JSON.stringify({ message: normalizedPrompt }),
-      });
-
-      loadingMessage.remove();
-      renderStructuredReply(messagesNode, response);
-      renderSummary(summaryNode, response);
-
-      if (response.comparison && Array.isArray(response.comparison.points)) {
-        comparisonNode.hidden = false;
-        comparisonNode.innerHTML = `
-          <strong>Product comparison</strong>
-          <p>${escapeHtml(response.comparison.summary)}</p>
-          <ul>
-            ${response.comparison.points
-              .map((point) => `<li>${escapeHtml(point)}</li>`)
-              .join("")}
-          </ul>
-        `;
-      } else {
-        comparisonNode.hidden = true;
-        comparisonNode.innerHTML = "";
-      }
-
-      if (Array.isArray(response.matches) && response.matches.length > 0) {
-        appendMessage(
-          messagesNode,
-          "assistant products",
-          `
-            <div class="assistant-product-list">
-              ${response.matches.map((product) => renderProductSuggestion(product)).join("")}
-            </div>
-          `,
-        );
-      }
-
-      if (inputNode) {
-        inputNode.value = "";
-      }
-    } catch (error) {
-      loadingMessage.remove();
-      appendMessage(
-        messagesNode,
-        "assistant",
-        `<p>${escapeHtml(error.message || "The assistant could not answer right now.")}</p>`,
-      );
-      if (window.showToast) {
-        showToast(
-          "Assistant error",
-          error.message || "Unable to reach the concierge.",
-        );
-      }
-    }
-  }
-
-  function mountAssistant() {
-    if (document.querySelector("[data-assistant-panel]")) return;
-
-    const shell = createAssistantMarkup();
-    document.body.appendChild(shell);
-
-    const panel = shell.querySelector("[data-assistant-panel]");
-    const messagesNode = shell.querySelector("[data-assistant-messages]");
-    const summaryNode = shell.querySelector("[data-assistant-summary]");
-    const inputNode = shell.querySelector("[data-assistant-input]");
-    const openButton = shell.querySelector("[data-assistant-open]");
-    const closeButton = shell.querySelector("[data-assistant-close]");
-    const form = shell.querySelector("[data-assistant-form]");
-
-    appendMessage(
-      messagesNode,
-      "assistant",
-      `
-        <div class="assistant-response-head">
-          <span>Assistant ready</span>
-          <strong>${escapeHtml(welcomeMessage)}</strong>
-        </div>
-      `,
-    );
-
-    if (summaryNode) {
-      summaryNode.hidden = false;
-      summaryNode.innerHTML = `
-        <div class="assistant-summary-header">
-          <span class="assistant-summary-label">Store knowledge</span>
-          <strong>I know the catalog, the checkout flow, account access, and product comparisons.</strong>
-        </div>
-        <div class="assistant-summary-stats">
-          <div><span>Mode</span><strong>Concierge</strong></div>
-          <div><span>Depth</span><strong>Catalog-aware</strong></div>
-          <div><span>Style</span><strong>Professional</strong></div>
-        </div>
-      `;
+    var avatarHtml = "";
+    if (!connected) {
+      avatarHtml = isUser
+        ? '<span class="as-avatar as-avatar-user">' + escapeHtml((window.__ponnaloyUserName || "U")[0].toUpperCase()) + "</span>"
+        : '<span class="as-avatar as-avatar-bot"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>';
     }
 
-    openButton.addEventListener("click", () => {
-      panel.classList.add("open");
-      panel.setAttribute("aria-hidden", "false");
-      inputNode.focus();
+    var timeHtml = '<span class="as-time">' + time() + "</span>";
+
+    var bubble = '<div class="as-bubble">' + html + timeHtml + "</div>";
+
+    if (isUser) {
+      wrap.innerHTML = avatarHtml + bubble;
+    } else {
+      wrap.innerHTML = avatarHtml + bubble;
+    }
+
+    container.appendChild(wrap);
+
+    var gap = container.querySelector(".as-date-divider");
+    if (gap) container.appendChild(gap);
+
+    requestAnimationFrame(function () {
+      wrap.style.opacity = "1";
+      wrap.style.transform = "translateY(0)";
     });
 
-    closeButton.addEventListener("click", () => {
+    container.scrollTop = container.scrollHeight;
+    return wrap;
+  }
+
+  function addProductMsg(container, products) {
+    lastRole = null;
+    var wrap = document.createElement("div");
+    wrap.className = "as-row bot products";
+
+    var avatarHtml = '<span class="as-avatar as-avatar-bot"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>';
+    var timeHtml = '<span class="as-time">' + time() + "</span>";
+
+    wrap.innerHTML = avatarHtml + '<div class="as-bubble">' + '<div class="as-product-list">' + products.map(renderProductCard).join("") + "</div>" + timeHtml + "</div>";
+
+    container.appendChild(wrap);
+
+    requestAnimationFrame(function () {
+      wrap.style.opacity = "1";
+      wrap.style.transform = "translateY(0)";
+    });
+
+    container.scrollTop = container.scrollHeight;
+    return wrap;
+  }
+
+  function showTyping(typing) {
+    typing.hidden = false;
+    typing.querySelectorAll("span").forEach(function (s) {
+      s.style.animation = "none";
+      void s.offsetHeight;
+      s.style.animation = "";
+    });
+  }
+
+  function hideTyping(typing) {
+    typing.hidden = true;
+  }
+
+  async function send(panel, text, input) {
+    var msg = (text || "").trim();
+    if (!msg) return;
+
+    var msgs = panel.querySelector("[data-as-msgs]");
+    var typing = panel.querySelector("[data-as-typing]");
+
+    addMsg(msgs, "user", "<p>" + escapeHtml(msg) + "</p>");
+
+    showTyping(typing);
+
+    if (input) input.value = "";
+
+    try {
+      var res = await api("/chat", {
+        method: "POST",
+        body: JSON.stringify({ message: msg }),
+      });
+
+      hideTyping(typing);
+
+      var toneLabel = res.tone === "comparison" ? "Comparison" : res.tone === "recommendation" ? "Recommendation" : "Product";
+      var replyParts = [];
+
+      replyParts.push('<div class="as-msg-head"><span class="as-tag">' + escapeHtml(toneLabel) + "</span></div>");
+      replyParts.push("<p>" + escapeHtml(res.reply) + "</p>");
+
+      if (res.followUp) {
+        replyParts.push('<p class="as-follow">' + escapeHtml(res.followUp) + "</p>");
+      }
+
+      if (res.comparison && res.comparison.points) {
+        replyParts.push('<div class="as-compare-card"><strong>Comparison</strong><ul>' + res.comparison.points.map(function (p) { return "<li>" + escapeHtml(p) + "</li>"; }).join("") + "</ul></div>");
+      }
+
+      addMsg(msgs, "bot", replyParts.join(""));
+
+      var highlights = res.highlights || [];
+      var picks = res.valuePicks || [];
+
+      if (highlights.length || picks.length) {
+        lastRole = null;
+        var summaryParts = [];
+        if (highlights.length) {
+          summaryParts.push('<div class="as-summary-group"><span class="as-summary-label">Highlights</span><div class="as-pills">' + highlights.map(function (p) { return '<a class="as-pill" href="/product.html?id=' + p.id + '">' + escapeHtml(p.name) + " · " + formatPrice(p.price) + "</a>"; }).join("") + "</div></div>");
+        }
+        if (picks.length) {
+          summaryParts.push('<div class="as-summary-group"><span class="as-summary-label">Value picks</span><div class="as-pills">' + picks.map(function (p) { return '<a class="as-pill" href="/product.html?id=' + p.id + '">' + escapeHtml(p.name) + " · " + p.rating.toFixed(1) + "★</a>"; }).join("") + "</div></div>");
+        }
+        addMsg(msgs, "bot summary", summaryParts.join(""));
+      }
+
+      if (res.matches && res.matches.length) {
+        lastRole = null;
+        addProductMsg(msgs, res.matches);
+      }
+    } catch (err) {
+      hideTyping(typing);
+      addMsg(msgs, "bot", "<p>" + escapeHtml(err.message || "Unable to process your request.") + "</p>");
+      if (window.showToast) showToast("Assistant error", err.message || "Unable to reach the assistant.");
+    }
+  }
+
+  function mount() {
+    if (document.querySelector("[data-as-panel]")) return;
+
+    var shell = createMarkup();
+    document.body.appendChild(shell);
+
+    var panel = shell.querySelector("[data-as-panel]");
+    var msgs = shell.querySelector("[data-as-msgs]");
+    var input = shell.querySelector("[data-as-input]");
+    var openBtn = shell.querySelector("[data-as-open]");
+    var closeBtn = shell.querySelector("[data-as-close]");
+    var form = shell.querySelector("[data-as-form]");
+
+    addMsg(msgs, "bot", '<div class="as-msg-head"><span class="as-tag">Welcome</span></div><p>I can help you find products, compare options, and answer questions about the store.</p>');
+
+    openBtn.addEventListener("click", function () {
+      panel.classList.add("open");
+      panel.setAttribute("aria-hidden", "false");
+      setTimeout(function () { return input && input.focus(); }, 250);
+    });
+
+    closeBtn.addEventListener("click", function () {
       panel.classList.remove("open");
       panel.setAttribute("aria-hidden", "true");
     });
 
-    shell.querySelectorAll("[data-assistant-prompt]").forEach((button) => {
-      button.addEventListener("click", () => {
+    shell.querySelectorAll("[data-as-prompt]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
         panel.classList.add("open");
         panel.setAttribute("aria-hidden", "false");
-        sendPrompt(panel, button.dataset.assistantPrompt, inputNode);
+        send(panel, btn.dataset.asPrompt, input);
       });
     });
 
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-      sendPrompt(panel, inputNode.value, inputNode);
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      send(panel, input.value, input);
     });
   }
 
-  document.addEventListener("DOMContentLoaded", mountAssistant);
+  document.addEventListener("DOMContentLoaded", mount);
   window.PonnaloyAssistant = {
-    open() {
-      const panel = document.querySelector("[data-assistant-panel]");
-      const inputNode = document.querySelector("[data-assistant-input]");
-      if (!panel || !inputNode) return;
+    open: function () {
+      var panel = document.querySelector("[data-as-panel]");
+      var input = document.querySelector("[data-as-input]");
+      if (!panel) return;
       panel.classList.add("open");
       panel.setAttribute("aria-hidden", "false");
-      inputNode.focus();
+      setTimeout(function () { return input && input.focus(); }, 250);
     },
   };
 })();

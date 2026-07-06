@@ -1,3 +1,17 @@
+function renderStockBadge(stock) {
+  if (stock > 10) {
+    return '<span class="stock-badge in-stock">In Stock</span>';
+  }
+  if (stock > 0) {
+    return `<span class="stock-badge low-stock">Only ${stock} left in stock</span>`;
+  }
+  return '<span class="stock-badge out-of-stock">Out of Stock</span>';
+}
+
+function renderStars(count) {
+  return "★".repeat(Math.round(count));
+}
+
 async function loadProductPage() {
   const params = new URLSearchParams(window.location.search);
   const productId = params.get("id") || "1";
@@ -17,18 +31,25 @@ async function loadProductPage() {
       .slice(0, 3);
 
     detailNode.innerHTML = `
-      <div class="split-layout">
+      <div class="split-layout grid-cols-1 md:grid-cols-[1.1fr_0.9fr]">
         <div class="detail-figure reveal">
           <span class="badge">${product.badge}</span>
           <img src="${product.imageUrl}" alt="${product.name}" />
         </div>
         <div class="detail-grid reveal">
           <div>
-            <a class="icon-chip" href="/">← Back to shop</a>
-            <div class="detail-meta">
+            <a class="icon-chip" href="/">&larr; Back to shop</a>
+            <div class="rating-row">
+              <div class="stars-group">
+                ${renderStars(product.rating)}
+                <span class="rating-value">${product.rating.toFixed(1)}</span>
+              </div>
+              <span class="rating-divider"></span>
+              <span class="rating-count">42 ratings</span>
+            </div>
+            <div class="stock-row">
+              ${renderStockBadge(product.stock)}
               <span class="pill">${product.category}</span>
-              <span class="pill">${product.stock} in stock</span>
-              <span class="pill rating">${"★".repeat(5)} ${product.rating.toFixed(1)}</span>
             </div>
             <h1 class="detail-title">${product.name}</h1>
             <p class="detail-copy">${product.description}</p>
@@ -39,9 +60,13 @@ async function loadProductPage() {
               </div>
             </div>
             <div class="detail-form">
-              <div class="quantity">
-                <label class="section-copy" for="qty">Quantity</label>
-                <input id="qty" name="qty" type="number" min="1" value="1" />
+              <div class="qty-stepper">
+                <label class="qty-label">Quantity:</label>
+                <div class="stepper-wrap">
+                  <button type="button" class="step-btn" data-qty-dec aria-label="Decrease quantity">&minus;</button>
+                  <input type="number" id="qty" value="1" min="1" max="99" readonly />
+                  <button type="button" class="step-btn" data-qty-inc aria-label="Increase quantity">+</button>
+                </div>
               </div>
               <div class="hero-actions" style="margin: 0;">
                 <button class="button" data-detail-add="${product.id}">Add to cart</button>
@@ -68,10 +93,20 @@ async function loadProductPage() {
 
     wireRevealAnimations(document);
 
+    const qtyInput = document.querySelector("#qty");
+    document.querySelector("[data-qty-dec]")?.addEventListener("click", () => {
+      const current = Number(qtyInput?.value || 1);
+      if (current > 1) qtyInput.value = current - 1;
+    });
+    document.querySelector("[data-qty-inc]")?.addEventListener("click", () => {
+      const current = Number(qtyInput?.value || 1);
+      if (current < 99) qtyInput.value = current + 1;
+    });
+
     document
       .querySelector("[data-detail-add]")
       ?.addEventListener("click", () => {
-        const qty = Number(document.querySelector("#qty")?.value || 1);
+        const qty = Number(qtyInput?.value || 1);
         addToCart(product, qty);
         renderCart();
         showToast("Added to cart", `${product.name} is now in your cart.`);

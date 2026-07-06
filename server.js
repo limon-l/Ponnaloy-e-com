@@ -143,12 +143,14 @@ function compareProducts(left, right) {
           ? left
           : right;
 
+  const fmt = (v) => v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
   return {
-    summary: `${left.name} and ${right.name} are both premium picks, but ${winner.name} is the stronger fit based on rating and value.`,
+    summary: `${left.name} has a ${left.rating.toFixed(1)} rating at ${fmt(left.price)}. ${right.name} has a ${right.rating.toFixed(1)} rating at ${fmt(right.price)}. Based on these metrics, ${winner.name} is the stronger option.`,
     points: [
-      `${left.name}: ${left.category}, ${left.rating.toFixed(1)} rating, ${left.stock} in stock, ${left.price.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}`,
-      `${right.name}: ${right.category}, ${right.rating.toFixed(1)} rating, ${right.stock} in stock, ${right.price.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}`,
-      `Best overall: ${winner.name}`,
+      `${left.name} — ${left.category}, ${left.rating.toFixed(1)} stars, ${left.stock} in stock, ${fmt(left.price)}`,
+      `${right.name} — ${right.category}, ${right.rating.toFixed(1)} stars, ${right.stock} in stock, ${fmt(right.price)}`,
+      `Recommended: ${winner.name}`,
     ],
   };
 }
@@ -221,7 +223,7 @@ function buildAssistantReply(message, matches, products) {
         tone: "comparison",
         focusCategory: left.category,
         followUp:
-          "Ask me to compare another pair or tell me the use case you care about most.",
+          "You can compare another pair or ask for a recommendation by use case.",
         comparison,
       };
     }
@@ -231,45 +233,45 @@ function buildAssistantReply(message, matches, products) {
     const hero = explicitMention || matches[0];
     const secondary =
       matches.find((product) => product.id !== hero.id) || matches[1];
+    const fmt = (v) => v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
     return {
-      reply: `${hero.name} is my strongest recommendation for this request. It combines a ${hero.rating.toFixed(1)} rating, ${hero.stock} units in stock, and a price of ${hero.price.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}.`,
+      reply: `${hero.name} is the strongest match for this request. It has a ${hero.rating.toFixed(1)} rating, ${hero.stock} units in stock, and is priced at ${fmt(hero.price)}.`,
       tone: "recommendation",
       focusCategory: hero.category,
       followUp: secondary
-        ? `If you want a backup option, ${secondary.name} is the next closest fit.`
-        : "Tell me your budget and use case and I’ll narrow it down.",
+        ? `An alternative is ${secondary.name} (${secondary.rating.toFixed(1)} stars, ${fmt(secondary.price)}).`
+        : "Specify your budget or use case for a more targeted recommendation.",
       comparison: null,
     };
   }
 
   if (matches.length > 0) {
     const [topMatch] = matches;
+    const fmt = (v) => v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
     return {
-      reply: `${topMatch.name} is a strong match in ${topMatch.category.toLowerCase()}. It is rated ${topMatch.rating.toFixed(1)} and currently has ${topMatch.stock} units in stock.`,
+      reply: `${topMatch.name} is available in ${topMatch.category.toLowerCase()} at ${fmt(topMatch.price)}. It has a ${topMatch.rating.toFixed(1)} rating with ${topMatch.stock} units in stock.`,
       tone: "product",
       focusCategory: topMatch.category,
-      followUp:
-        "Ask for a comparison, a similar product, or a better option for your budget.",
+      followUp: "Ask for a comparison or a similar product at a different price point.",
       comparison: null,
     };
   }
 
   if (greetingMode || helpMode) {
     return {
-      reply: `Ponnaloy is built as a premium storefront with ${products.length} seeded products across multiple categories, live search, secure sign-in, cart checkout, and structured product comparison.`,
+      reply: `Ponnaloy carries ${products.length} products across multiple categories with search, cart checkout, and product comparison tools.`,
       tone: "platform",
       focusCategory: "Store overview",
-      followUp:
-        "You can ask me for best sellers, compare two products, or request a recommendation by use case.",
+      followUp: "You can ask about products, compare items, or request recommendations.",
       comparison: null,
     };
   }
 
   return {
-    reply: `I searched the catalog but did not find an exact match. Try a product name, category, or say compare followed by two products.`,
+    reply: `No products matched your query. Try a specific product name, category, or use "compare" to see differences between two products.`,
     tone: "fallback",
     focusCategory: "Catalog",
-    followUp: "I can also recommend products for work, travel, home, or audio.",
+    followUp: "You can also ask for recommendations by use case — work, travel, home, or audio.",
     comparison: null,
   };
 }

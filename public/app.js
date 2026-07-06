@@ -4,6 +4,8 @@ let state = {
   category: "all",
   search: "",
   currentUser: null,
+  promoApplied: null,
+  paymentMethod: "card",
 };
 
 function renderHeaderAccount() {
@@ -53,57 +55,6 @@ function applyFilters() {
   renderProductGrid(state.filteredProducts);
 }
 
-function renderCart() {
-  const cartItems = document.querySelector("[data-cart-items]");
-  const subtotalNode = document.querySelector("[data-cart-subtotal]");
-  const shippingNode = document.querySelector("[data-cart-shipping]");
-  const totalNode = document.querySelector("[data-cart-total]");
-  if (!cartItems || !subtotalNode || !shippingNode || !totalNode) return;
-
-  const cart = getCart();
-  const subtotal = moneySubtotal(cart);
-  const shipping = shippingFee(subtotal);
-  const total = subtotal + shipping;
-
-  subtotalNode.textContent = formatCurrencyPrecise(subtotal);
-  shippingNode.textContent = formatCurrencyPrecise(shipping);
-  totalNode.textContent = formatCurrencyPrecise(total);
-
-  if (!cart.length) {
-    cartItems.innerHTML = `
-      <div class="empty-card">
-        <h3>Your cart is empty</h3>
-        <p class="section-copy">Add products from the catalog to start building your order.</p>
-      </div>
-    `;
-    return;
-  }
-
-  cartItems.innerHTML = cart
-    .map(
-      (item) => `
-        <article class="cart-item">
-          <img src="${item.imageUrl}" alt="${item.name}" />
-          <div>
-            <h4>${item.name}</h4>
-            <p>${item.category}</p>
-            <div class="cart-row" style="margin-top: 10px;">
-              <strong>${formatCurrencyPrecise(item.price)}</strong>
-              <strong>${formatCurrencyPrecise(item.price * item.quantity)}</strong>
-            </div>
-            <div class="controls">
-              <button class="mini-button" data-qty-minus="${item.id}" aria-label="Decrease quantity">−</button>
-              <span>${item.quantity}</span>
-              <button class="mini-button" data-qty-plus="${item.id}" aria-label="Increase quantity">+</button>
-              <button class="button-ghost" data-remove-item="${item.id}">Remove</button>
-            </div>
-          </div>
-        </article>
-      `,
-    )
-    .join("");
-}
-
 function syncCheckoutForm() {
   const form = document.querySelector("[data-checkout-form]");
   if (!form || !state.currentUser) return;
@@ -115,39 +66,7 @@ function syncCheckoutForm() {
     emailField.value = state.currentUser.email;
 }
 
-function openCart() {
-  const drawer = document.querySelector("[data-cart-drawer]");
-  drawer?.classList.add("open");
-}
-
-function closeCart() {
-  const drawer = document.querySelector("[data-cart-drawer]");
-  drawer?.classList.remove("open");
-}
-
-function openAuthModal(tab = "login") {
-  const modal = document.querySelector("[data-auth-modal]");
-  if (!modal) return;
-  modal.classList.add("open");
-  setAuthTab(tab);
-}
-
-function closeAuthModal() {
-  const modal = document.querySelector("[data-auth-modal]");
-  modal?.classList.remove("open");
-}
-
-function setAuthTab(tab) {
-  const loginForm = document.querySelector("[data-login-form]");
-  const registerForm = document.querySelector("[data-register-form]");
-  document.querySelectorAll("[data-auth-tab]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.authTab === tab);
-  });
-  if (loginForm && registerForm) {
-    loginForm.hidden = tab !== "login";
-    registerForm.hidden = tab !== "register";
-  }
-}
+// openAuthModal, closeAuthModal, setAuthTab — provided by auth.js
 
 async function refreshSession() {
   const response = await api("/me");
@@ -163,6 +82,16 @@ async function loadProducts() {
 }
 
 function attachEvents() {
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      const promoInput = event.target.closest("[data-promo-input]");
+      if (promoInput) {
+        event.preventDefault();
+        applyPromoCode();
+      }
+    }
+  });
+
   const searchInput = document.querySelector("[data-product-search]");
   searchInput?.addEventListener("input", (event) => {
     state.search = event.target.value;
@@ -211,8 +140,7 @@ function attachEvents() {
     const cartClose = event.target.closest("[data-cart-close]");
     if (cartClose) closeCart();
 
-    const tabButton = event.target.closest("[data-auth-tab]");
-    if (tabButton) setAuthTab(tabButton.dataset.authTab);
+    // auth-tab handled by auth.js
 
     const removeItem = event.target.closest("[data-remove-item]");
     if (removeItem) {
@@ -244,70 +172,32 @@ function attachEvents() {
       }
     }
 
-    const startCheckout = event.target.closest("[data-start-checkout]");
-    if (startCheckout) {
-      closeCart();
-      if (!state.currentUser) {
-        openAuthModal("login");
-        showToast(
-          "Login required",
-          "Create an account or sign in to place your order.",
-        );
-      }
-    }
-
     const clearCartButton = event.target.closest("[data-clear-cart]");
     if (clearCartButton) {
       clearCart();
+      state.promoApplied = null;
       renderCart();
       showToast("Cart cleared", "All items were removed from your cart.");
     }
+
+    const placeOrderButton = event.target.closest("[data-place-order]");
+    if (placeOrderButton) {
+      submitOrderFromCart();
+    }
+
+    const promoApplyButton = event.target.closest("[data-promo-apply]");
+    if (promoApplyButton) {
+      applyPromoCode();
+    }
+
+    const paymentRadio = event.target.closest(".payment-method input[type='radio']");
+    if (paymentRadio) {
+      state.paymentMethod = paymentRadio.value;
+      document.querySelectorAll(".payment-method").forEach((el) => {
+        el.classList.toggle("selected", el.querySelector("input")?.checked);
+      });
+    }
   });
-
-  document
-    .querySelector("[data-login-form]")
-    ?.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const formData = new FormData(event.currentTarget);
-      try {
-        await api("/login", {
-          method: "POST",
-          body: JSON.stringify({
-            email: formData.get("email"),
-            password: formData.get("password"),
-          }),
-        });
-        await refreshSession();
-        closeAuthModal();
-        showToast("Welcome back", "You are now signed in.");
-        event.currentTarget.reset();
-      } catch (error) {
-        showToast("Login failed", error.message);
-      }
-    });
-
-  document
-    .querySelector("[data-register-form]")
-    ?.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const formData = new FormData(event.currentTarget);
-      try {
-        await api("/register", {
-          method: "POST",
-          body: JSON.stringify({
-            name: formData.get("name"),
-            email: formData.get("email"),
-            password: formData.get("password"),
-          }),
-        });
-        await refreshSession();
-        closeAuthModal();
-        showToast("Account created", "Your account is ready for checkout.");
-        event.currentTarget.reset();
-      } catch (error) {
-        showToast("Registration failed", error.message);
-      }
-    });
 
   document
     .querySelector("[data-checkout-form]")
@@ -355,17 +245,6 @@ function attachEvents() {
     });
 
   document
-    .querySelector("[data-auth-close]")
-    ?.addEventListener("click", closeAuthModal);
-  document
-    .querySelector("[data-auth-modal]")
-    ?.addEventListener("click", (event) => {
-      if (event.target.matches("[data-auth-modal]")) {
-        closeAuthModal();
-      }
-    });
-
-  document
     .querySelector("[data-cart-drawer]")
     ?.addEventListener("click", (event) => {
       if (event.target.matches("[data-cart-drawer]")) {
@@ -378,7 +257,6 @@ async function boot() {
   updateCartCount();
   renderCart();
   attachEvents();
-  setAuthTab("login");
   setActiveFilterButtons("all");
   wireRevealAnimations();
 
