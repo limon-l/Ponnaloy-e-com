@@ -1,24 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ponnaloy | Product Catalog</title>
-    <meta name="description"
-        content="A 500-product premium e-commerce catalog with live search, filtering, sorting, cart, and AI concierge." />
+    <meta name="description" content="A 500-product premium e-commerce catalog with live search, filtering, sorting, cart, and AI concierge." />
+    <meta name="theme-color" content="#07111f" />
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
 </head>
-
 <body>
-    <div class="app-shell">
+    <div class="floating-shapes" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="app-shell page-transition">
         <div class="topbar">
             <div class="container topbar-inner xs:flex-col xs:text-center sm:flex-row sm:text-left">
                 <div><strong class="text-white">500+ products</strong> with premium positioning and fast browsing</div>
                 <div class="status-pill">Real-time filters, AI concierge, polished checkout flow</div>
             </div>
         </div>
-
         <header class="site-header">
             <div class="container header-inner xs:flex-wrap md:flex-nowrap">
                 <a class="brand" href="/">
@@ -51,45 +50,41 @@
                 </div>
             </div>
         </header>
-
         <main>
-            <section class="catalog-hero">
+            <section class="catalog-hero" data-aos="fade-up">
                 <div class="container catalog-hero-grid xs:grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] xs:gap-4 lg:gap-6">
-                    <div class="reveal xs:text-center lg:text-left">
+                    <div class="xs:text-center lg:text-left">
                         <div class="kicker xs:mx-auto lg:mx-0"><span class="pulse"></span> curated at scale</div>
-                        <h1 class="xs:mx-auto lg:mx-0">Explore a catalog built to feel like a flagship retail experience.</h1>
+                        <h1 class="xs:mx-auto lg:mx-0 glow-text">Explore a catalog built to feel like a flagship retail experience.</h1>
                         <p class="xs:mx-auto lg:mx-0">More than five hundred seeded products with detailed descriptions, photography, live search, category filtering, and sorting. The catalog is designed to let shoppers move fast without losing the premium feel.</p>
                         <div class="hero-actions xs:justify-center lg:justify-start">
                             <a class="button" href="#catalog">Browse products</a>
-        <button class="button-secondary" type="button"
-            onclick="window.PonnaloyAssistant?.open()">Ask Assistant</button>
+                            <button class="button-secondary" type="button" onclick="window.PonnaloyAssistant?.open()">Ask Assistant</button>
                         </div>
                         <div class="hero-stats xs:grid-cols-1 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3">
-                            <div class="stat-card">
+                            <div class="stat-card hover-glow">
                                 <strong data-catalog-count>500+ products</strong>
                                 <span>Live inventory</span>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card hover-glow">
                                 <strong>4.8</strong>
                                 <span>Average rating</span>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card hover-glow">
                                 <strong>24h</strong>
                                 <span>Delivery promise</span>
                             </div>
                         </div>
                     </div>
-                    <div class="catalog-preview reveal">
+                    <div class="catalog-preview" data-aos="fade-left" data-aos-delay="200">
                         <div class="catalog-preview-card">
                             <div class="catalog-preview-image">
                                 <span class="feature-badge">Premium catalog</span>
-                                <img src="https://images.unsplash.com/photo-1521334884684-d80222895322?auto=format&fit=crop&w=1200&q=80"
-                                    alt="Premium shopping dashboard" />
+                                <img src="https://images.unsplash.com/photo-1521334884684-d80222895322?auto=format&fit=crop&w=1200&q=80" alt="Premium shopping dashboard" />
                             </div>
                             <div class="catalog-preview-content">
                                 <h3>Search, compare, and choose confidently.</h3>
-                                <p data-catalog-summary>Browsing all categories with live search and professional
-                                    sorting.</p>
+                                <p data-catalog-summary>Browsing all categories with live search and professional sorting.</p>
                                 <div class="feature-meta">
                                     <strong>Designed for speed</strong>
                                     <span class="icon-chip">Smart filters</span>
@@ -99,17 +94,15 @@
                     </div>
                 </div>
             </section>
-
             <section class="section" id="catalog">
                 <div class="container">
-                    <div class="catalog-toolbar reveal xs:flex-col xs:items-stretch sm:flex-row sm:items-center">
+                    <div class="catalog-toolbar" data-aos="fade-up">
                         <label class="search-bar xs:w-full xs:min-w-0 lg:min-w-[min(520px,100%)]" aria-label="Search catalog">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="7"></circle>
                                 <path d="M20 20l-3.6-3.6"></path>
                             </svg>
-                            <input type="search" placeholder="Search 500+ products by name, category, or feature"
-                                data-catalog-search />
+                            <input type="search" placeholder="Search 500+ products by name, category, or feature" data-catalog-search />
                         </label>
                         <select class="sort-select xs:w-full sm:w-auto" data-catalog-sort>
                             <option value="featured">Featured first</option>
@@ -118,37 +111,37 @@
                             <option value="price-desc">Price: high to low</option>
                         </select>
                     </div>
-                    <div class="filters catalog-filters xs:flex-nowrap xs:overflow-auto lg:flex-wrap lg:overflow-visible reveal" data-catalog-filters></div>
-                    <div class="product-grid xs:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-catalog-grid></div>
+                    <div class="filters catalog-filters" data-catalog-filters data-aos="fade-up"></div>
+                    <div class="product-grid xs:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-catalog-grid>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                    </div>
                 </div>
             </section>
-
-            <section class="section">
+            <section class="section" data-aos="fade-up">
                 <div class="container section-grid xs:grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                    <div class="benefit-card reveal">
+                    <div class="benefit-card" data-aos="fade-up" data-aos-delay="100">
                         <div class="brand-mark"><span>1</span></div>
                         <h4>Live browse</h4>
-                        <p>Every keystroke updates the catalog instantly, so shoppers can jump from broad discovery to a
-                            precise shortlist in seconds.</p>
+                        <p>Every keystroke updates the catalog instantly, so shoppers can jump from broad discovery to a precise shortlist in seconds.</p>
                     </div>
-                    <div class="benefit-card reveal">
+                    <div class="benefit-card" data-aos="fade-up" data-aos-delay="200">
                         <div class="brand-mark"><span>2</span></div>
                         <h4>AI concierge</h4>
-                        <p>Use the floating assistant to compare products, ask about the store, or request guidance for
-                            a specific use case.</p>
+                        <p>Use the floating assistant to compare products, ask about the store, or request guidance for a specific use case.</p>
                     </div>
-                    <div class="benefit-card reveal">
+                    <div class="benefit-card" data-aos="fade-up" data-aos-delay="300">
                         <div class="brand-mark"><span>3</span></div>
                         <h4>Checkout ready</h4>
-                        <p>Any item can be added to the shared cart and sent to the same secure order flow used on the
-                            home page.</p>
+                        <p>Any item can be added to the shared cart and sent to the same secure order flow used on the home page.</p>
                     </div>
                 </div>
             </section>
         </main>
-
         <footer class="footer xs:py-10 lg:py-[60px]">
-            <div class="container footer-card reveal">
+            <div class="container footer-card" data-aos="fade-up">
                 <div class="footer-grid xs:grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.3fr_0.7fr_0.7fr]">
                     <div>
                         <small class="text-white/60">Catalog powered by Express, SQLite, live search, and AI-assisted product discovery.</small>
@@ -165,6 +158,10 @@
             </div>
         </footer>
     </div>
+
+    <button class="back-to-top" data-back-to-top aria-label="Back to top">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 15l-6-6-6 6"></path></svg>
+    </button>
 
     <div class="cart-drawer xs:grid-cols-1 md:grid-cols-[1fr_min(440px,100%)]" data-cart-drawer>
         <div class="cart-drawer-backdrop" data-cart-close></div>
@@ -228,84 +225,8 @@
             </div>
             <div class="auth-slider-viewport">
                 <div class="auth-slider" data-auth-slider>
-                    <form class="auth-form" data-login-form>
-                        <div class="auth-fields">
-                            <div class="input-group">
-                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                                    <polyline points="22,4 12,13 2,4"></polyline>
-                                </svg>
-                                <input type="email" name="email" placeholder="Email address" required class="input-field" />
-                            </div>
-                            <div class="input-group">
-                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg>
-                                <input type="password" name="password" placeholder="Password" required class="input-field" />
-                                <button type="button" class="password-toggle" data-password-toggle aria-label="Toggle password visibility">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                </button>
-                            </div>
-                            <a href="#" class="auth-forgot">Forgot password?</a>
-                        </div>
-                        <button class="button" type="submit"><span class="button-text">Sign In</span></button>
-                        <div class="auth-divider"><span>or continue with</span></div>
-                        <div class="social-btn">
-                            <svg viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                            </svg>
-                            Continue with Google
-                        </div>
-                    </form>
-                    <form class="auth-form" data-register-form>
-                        <div class="auth-fields">
-                            <div class="input-group">
-                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="12" cy="7" r="4"></circle>
-                                </svg>
-                                <input type="text" name="name" placeholder="Full name" required class="input-field" />
-                            </div>
-                            <div class="input-group">
-                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                                    <polyline points="22,4 12,13 2,4"></polyline>
-                                </svg>
-                                <input type="email" name="email" placeholder="Email address" required class="input-field" />
-                            </div>
-                            <div class="input-group">
-                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg>
-                                <input type="password" name="password" placeholder="Create password" required class="input-field" />
-                                <button type="button" class="password-toggle" data-password-toggle aria-label="Toggle password visibility">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        <button class="button" type="submit"><span class="button-text">Create Account</span></button>
-                        <div class="auth-divider"><span>or continue with</span></div>
-                        <div class="social-btn">
-                            <svg viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                            </svg>
-                            Continue with Google
-                        </div>
-                    </form>
+                    <form class="auth-form" data-login-form>...</form>
+                    <form class="auth-form" data-register-form>...</form>
                 </div>
             </div>
         </div>
@@ -319,8 +240,8 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>AOS?.init?.({ duration: 600, once: true, offset: 40 });</script>
     <script src="/shared.js"></script>
     <script src="/cart.js"></script>
     <script src="/app.js"></script>
@@ -328,5 +249,4 @@
     <script src="/assistant.js"></script>
     <script src="/products.js"></script>
 </body>
-
 </html>

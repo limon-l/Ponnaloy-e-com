@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ponnaloy | Premium E-Commerce Store</title>
-    <meta name="description"
-        content="A premium e-commerce storefront with curated products, cart, checkout, and secure user accounts." />
+    <meta name="description" content="A premium e-commerce storefront with curated products, cart, checkout, secure accounts, AI concierge, and immersive shopping experience." />
+    <meta name="theme-color" content="#07111f" />
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
 </head>
-
 <body>
-    <div class="app-shell">
+    <div class="floating-shapes" aria-hidden="true">
+        <span></span><span></span><span></span>
+    </div>
+    <div class="app-shell page-transition">
         <div class="topbar">
             <div class="container topbar-inner xs:flex-col xs:text-center sm:flex-row sm:text-left">
                 <div><strong class="text-white">Free delivery</strong> on orders above $150</div>
@@ -54,32 +56,32 @@
         </header>
 
         <main>
-            <section class="hero xs:pt-8 xs:pb-4 lg:pt-14 lg:pb-6">
+            <section class="hero xs:pt-8 xs:pb-4 lg:pt-14 lg:pb-6" data-aos="fade-up">
                 <div class="container hero-grid xl:grid-cols-[1.1fr_0.9fr] lg:grid-cols-1 md:grid-cols-1 xs:grid-cols-1 xs:gap-6 lg:gap-7 xl:gap-7">
-                    <div class="reveal xs:text-center lg:text-left">
-                        <div class="kicker xs:mx-auto lg:mx-0"><span class="pulse"></span> Luxury essentials for modern living</div>
-                        <h1 class="xs:max-w-[12ch] lg:max-w-[11ch] xs:mx-auto lg:mx-0">Elevate every day with a store designed to feel premium.</h1>
-                        <p class="xs:mx-auto lg:mx-0">Browse curated products, inspect rich details, save items in a polished cart, and check out through a secure Express backend powered by SQLite.</p>
-                        <div class="hero-actions xs:justify-center lg:justify-start">
+                    <div class="xs:text-center lg:text-left">
+                        <div class="kicker xs:mx-auto lg:mx-0" data-aos="fade-right" data-aos-delay="100"><span class="pulse"></span> Luxury essentials for modern living</div>
+                        <h1 class="xs:max-w-[12ch] lg:max-w-[11ch] xs:mx-auto lg:mx-0 glow-text" data-aos="fade-right" data-aos-delay="200">Elevate every day with a store designed to feel premium.</h1>
+                        <p class="xs:mx-auto lg:mx-0" data-aos="fade-right" data-aos-delay="300">Browse curated products, inspect rich details, save items in a polished cart, and check out through a secure Express backend powered by SQLite.</p>
+                        <div class="hero-actions xs:justify-center lg:justify-start" data-aos="fade-right" data-aos-delay="400">
                             <a class="button" href="/products">Shop collection</a>
                             <a class="button-secondary" href="#experience">See experience</a>
                         </div>
-                        <div class="hero-stats xs:grid-cols-1 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3">
-                            <div class="stat-card">
+                        <div class="hero-stats xs:grid-cols-1 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3" data-aos="fade-up" data-aos-delay="500">
+                            <div class="stat-card hover-glow">
                                 <strong>24h</strong>
                                 <span>Express order handling</span>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card hover-glow">
                                 <strong>500+</strong>
                                 <span>Catalog products</span>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card hover-glow">
                                 <strong>5.0</strong>
                                 <span>Average customer rating</span>
                             </div>
                         </div>
                     </div>
-                    <div class="hero-panel reveal">
+                    <div class="hero-panel" data-aos="fade-left" data-aos-delay="200">
                         <div class="feature-card">
                             <div class="visual">
                                 <span class="feature-badge">Spotlight collection</span>
@@ -88,15 +90,10 @@
                             </div>
                             <div class="feature-content">
                                 <h3>Artisan-crafted essentials</h3>
-                                <p>From studio-grade headphones to premium home staples, each piece is selected for
-                                    visual impact and everyday utility.</p>
+                                <p>From studio-grade headphones to premium home staples, each piece is selected for visual impact and everyday utility.</p>
                                 <div class="feature-meta">
                                     <strong>$119 - $399</strong>
-                                    <a class="icon-chip" href="#products">Explore <svg viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="2">
-                                            <path d="M5 12h14"></path>
-                                            <path d="M13 6l6 6-6 6"></path>
-                                        </svg></a>
+                                    <a class="icon-chip" href="#products">Explore <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></a>
                                 </div>
                             </div>
                         </div>
@@ -106,11 +103,10 @@
 
             <section class="section" id="products">
                 <div class="container">
-                    <div class="section-header xs:flex-col xs:items-start md:flex-row md:items-end">
+                    <div class="section-header xs:flex-col xs:items-start md:flex-row md:items-end" data-aos="fade-up">
                         <div>
                             <h2 class="section-title">Featured products</h2>
-                            <p class="section-copy">A compact storefront with enough polish to feel alive: product
-                                cards, micro-interactions, cart management, and a direct checkout path.</p>
+                            <p class="section-copy">A compact storefront with enough polish to feel alive: product cards, micro-interactions, cart management, and a direct checkout path.</p>
                         </div>
                         <div class="filters xs:flex-nowrap xs:overflow-auto md:flex-wrap md:overflow-visible">
                             <button class="filter-chip active" data-category-filter="all">All</button>
@@ -120,50 +116,104 @@
                             <button class="filter-chip" data-category-filter="Work">Work</button>
                         </div>
                     </div>
-                    <div class="product-grid xs:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-product-grid></div>
+                    <div class="product-grid xs:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-product-grid>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                    </div>
                 </div>
             </section>
 
-            <section class="section" id="experience">
+            <section class="section" data-aos="fade-up">
+                <div class="container">
+                    <div class="divider-gradient"></div>
+                    <div class="section-header xs:flex-col xs:items-start md:flex-row md:items-end" style="margin-top: 28px;">
+                        <div>
+                            <h2 class="section-title">What our customers say</h2>
+                            <p class="section-copy">Real feedback from people who love the Ponnaloy experience.</p>
+                        </div>
+                    </div>
+                    <div class="testimonials-track" data-testimonials>
+                        <div class="testimonial-card">
+                            <img class="avatar" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=80" alt="Sarah" loading="lazy" />
+                            <blockquote>"The Aurora Headphones are incredible. The sound quality is unmatched, and delivery was faster than expected."</blockquote>
+                            <cite><strong>Sarah K.</strong>Verified Buyer</cite>
+                        </div>
+                        <div class="testimonial-card">
+                            <img class="avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&q=80" alt="Marcus" loading="lazy" />
+                            <blockquote>"I've bought three items so far. The quality, the packaging, the speed — everything feels premium."</blockquote>
+                            <cite><strong>Marcus J.</strong>Repeat Customer</cite>
+                        </div>
+                        <div class="testimonial-card">
+                            <img class="avatar" src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&q=80" alt="Elena" loading="lazy" />
+                            <blockquote>"The AI assistant helped me pick the perfect smartwatch. It felt like having a personal shopper."</blockquote>
+                            <cite><strong>Elena R.</strong>First-time Buyer</cite>
+                        </div>
+                        <div class="testimonial-card">
+                            <img class="avatar" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&q=80" alt="David" loading="lazy" />
+                            <blockquote>"Secure checkout, fast shipping, and the Drift Chair changed my work-from-home setup completely."</blockquote>
+                            <cite><strong>David L.</strong>Verified Buyer</cite>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="experience" data-aos="fade-up">
                 <div class="container">
                     <div class="section-header xs:flex-col xs:items-start md:flex-row md:items-end">
                         <div>
                             <h2 class="section-title">Designed for conversion</h2>
-                            <p class="section-copy">The interface uses motion, layered backgrounds, and tactile controls
-                                to make the site feel like a premium storefront, not a generic template.</p>
+                            <p class="section-copy">The interface uses motion, layered backgrounds, and tactile controls to make the site feel like a premium storefront, not a generic template.</p>
                         </div>
                     </div>
                     <div class="section-grid xs:grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-                        <div class="benefit-card reveal">
+                        <div class="benefit-card" data-aos="fade-up" data-aos-delay="100">
                             <div class="brand-mark"><span>1</span></div>
                             <h4>Persistent cart</h4>
-                            <p>Your cart stays in local storage while the drawer stays one click away for quick edits,
-                                quantity changes, and order summary checks.</p>
+                            <p>Your cart stays in local storage while the drawer stays one click away for quick edits, quantity changes, and order summary checks.</p>
                         </div>
-                        <div class="benefit-card reveal">
+                        <div class="benefit-card" data-aos="fade-up" data-aos-delay="200">
                             <div class="brand-mark"><span>2</span></div>
                             <h4>Secure user access</h4>
-                            <p>Register and login using bcrypt-backed credentials and session cookies, with the current
-                                user reflected in the navigation.</p>
+                            <p>Register and login using bcrypt-backed credentials and session cookies, with the current user reflected in the navigation.</p>
                         </div>
-                        <div class="benefit-card reveal">
+                        <div class="benefit-card" data-aos="fade-up" data-aos-delay="300">
                             <div class="brand-mark"><span>3</span></div>
                             <h4>Order processing</h4>
-                            <p>Submit a checkout form that creates a real order in the database, updates stock, and
-                                confirms the purchase instantly.</p>
+                            <p>Submit a checkout form that creates a real order in the database, updates stock, and confirms the purchase instantly.</p>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="section" id="checkout">
+            <section class="section" data-aos="fade-up">
+                <div class="container brand-story">
+                    <div class="brand-story-visual">
+                        <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80" alt="Ponnaloy brand story" loading="lazy" />
+                    </div>
+                    <div class="brand-story-content">
+                        <h2>Our story</h2>
+                        <p>Ponnaloy was born from a simple idea: online shopping should feel as good as unboxing something special. Every pixel, every interaction, every product page is crafted to bring that feeling to life.</p>
+                        <p>We combine modern design with practical engineering — Express + SQLite on the backend, polished vanilla JS on the frontend — to deliver a store that's both beautiful and functional.</p>
+                        <div class="pill-group" style="margin-top: 16px;">
+                            <span class="pill">Express</span>
+                            <span class="pill">SQLite</span>
+                            <span class="pill">Tailwind CSS</span>
+                            <span class="pill">GSAP</span>
+                            <span class="pill">OpenAI</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="checkout" data-aos="fade-up">
                 <div class="container split-layout grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
-                    <div class="checkout-card reveal">
+                    <div class="checkout-card">
                         <div class="checkout-header">
                             <div>
                                 <h2 class="panel-title">Fast checkout</h2>
-                                <p class="section-copy">Create an account or sign in, then submit the checkout form
-                                    directly from the cart drawer.</p>
+                                <p class="section-copy">Create an account or sign in, then submit the checkout form directly from the cart drawer.</p>
                             </div>
                         </div>
                         <form class="checkout-grid" data-checkout-form>
@@ -174,7 +224,7 @@
                             <button class="button" type="submit">Place order</button>
                         </form>
                     </div>
-                    <div class="summary-card reveal">
+                    <div class="summary-card">
                         <h2 class="panel-title">Checkout confidence</h2>
                         <div class="checkout-summary">
                             <div class="summary-row"><span>Storefront</span><strong>Curated catalog</strong></div>
@@ -184,24 +234,36 @@
                         </div>
                         <div class="timeline-card xs:mt-4 lg:mt-0">
                             <h4>Designed for conversion</h4>
-                            <p>Browse the catalog, ask the concierge for guidance, and place orders through a clean
-                                checkout path without leaving the storefront.</p>
+                            <p>Browse the catalog, ask the concierge for guidance, and place orders through a clean checkout path without leaving the storefront.</p>
                         </div>
                     </div>
                 </div>
             </section>
+
+            <section class="section" data-aos="fade-up">
+                <div class="container newsletter-card">
+                    <h2>Stay in the loop</h2>
+                    <p>Get early access to new drops, exclusive offers, and curated picks delivered to your inbox.</p>
+                    <form class="newsletter-form" data-newsletter-form>
+                        <input type="email" placeholder="Enter your email" required />
+                        <button class="button" type="submit">Subscribe</button>
+                    </form>
+                    <p style="margin-top: 12px; font-size: 0.8rem; color: rgba(255,255,255,0.3);">No spam. Unsubscribe anytime.</p>
+                </div>
+            </section>
         </main>
 
+        <div data-recently-viewed style="display: none;"></div>
+
         <footer class="footer xs:py-10 lg:py-[60px]">
-            <div class="container footer-card reveal">
+            <div class="container footer-card" data-aos="fade-up">
                 <div class="footer-grid xs:grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.3fr_0.7fr_0.7fr]">
                     <div>
                         <a class="brand" href="/">
                             <span class="brand-mark"><span>P</span></span>
                             Ponnaloy
                         </a>
-                        <p class="section-copy xs:mt-3 lg:mt-[14px]">A polished demo storefront that balances
-                            visual richness with a practical shopping flow.</p>
+                        <p class="section-copy xs:mt-3 lg:mt-[14px]">A polished demo storefront that balances visual richness with a practical shopping flow.</p>
                         <small class="text-white/60">Catalog-first shopping experience with product detail, chat, and checkout.</small>
                     </div>
                     <div>
@@ -216,6 +278,10 @@
             </div>
         </footer>
     </div>
+
+    <button class="back-to-top" data-back-to-top aria-label="Back to top">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 15l-6-6-6 6"></path></svg>
+    </button>
 
     <div class="cart-drawer xs:grid-cols-1 md:grid-cols-[1fr_min(440px,100%)]" data-cart-drawer>
         <div class="cart-drawer-backdrop" data-cart-close></div>
@@ -362,6 +428,10 @@
         </div>
     </div>
 
+    <div class="quick-view-backdrop" data-quick-view>
+        <div class="quick-view-card" data-quick-view-card></div>
+    </div>
+
     <div class="toast" data-toast>
         <span class="toast-icon" data-toast-icon aria-hidden="true"></span>
         <div class="toast-body">
@@ -370,13 +440,12 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>AOS?.init?.({ duration: 600, once: true, offset: 40 });</script>
     <script src="/shared.js"></script>
     <script src="/cart.js"></script>
     <script src="/app.js"></script>
     <script src="/auth.js"></script>
     <script src="/assistant.js"></script>
 </body>
-
 </html>

@@ -1,9 +1,5 @@
 function getCart() {
-  try {
-    return JSON.parse(localStorage.getItem("ponnaloy-cart") || "[]");
-  } catch (error) {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem("ponnaloy-cart") || "[]"); } catch (error) { return []; }
 }
 
 function setCart(items) {
@@ -11,9 +7,7 @@ function setCart(items) {
   updateCartCount();
 }
 
-function clearCart() {
-  setCart([]);
-}
+function clearCart() { setCart([]); }
 
 function addToCart(product, quantity = 1) {
   const cart = getCart();
@@ -21,24 +15,14 @@ function addToCart(product, quantity = 1) {
   if (existing) {
     existing.quantity += quantity;
   } else {
-    cart.push({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      imageUrl: product.imageUrl,
-      category: product.category,
-      quantity,
-      stock: product.stock,
-    });
+    cart.push({ id: product.id, name: product.name, price: product.price, imageUrl: product.imageUrl, category: product.category, quantity, stock: product.stock });
   }
   setCart(cart);
   return cart;
 }
 
 function updateCartQuantity(productId, quantity) {
-  const cart = getCart()
-    .map((item) => (item.id === productId ? { ...item, quantity } : item))
-    .filter((item) => item.quantity > 0);
+  const cart = getCart().map((item) => (item.id === productId ? { ...item, quantity } : item)).filter((item) => item.quantity > 0);
   setCart(cart);
   return cart;
 }
@@ -55,27 +39,13 @@ function cartItemCount() {
 
 function updateCartCount() {
   const count = cartItemCount();
-  document.querySelectorAll("[data-cart-count]").forEach((node) => {
-    node.textContent = String(count);
-  });
+  document.querySelectorAll("[data-cart-count]").forEach((node) => { node.textContent = String(count); });
 }
 
-function moneySum(items) {
-  return items.reduce((total, item) => total + item.price * item.quantity, 0);
-}
-
-function moneySubtotal(cart) {
-  return moneySum(cart);
-}
-
-function shippingFee(subtotal) {
-  return subtotal > 150 ? 0 : 15;
-}
-
-function orderTotal(cart) {
-  const subtotal = moneySubtotal(cart);
-  return subtotal + shippingFee(subtotal);
-}
+function moneySum(items) { return items.reduce((total, item) => total + item.price * item.quantity, 0); }
+function moneySubtotal(cart) { return moneySum(cart); }
+function shippingFee(subtotal) { return subtotal > 150 ? 0 : 15; }
+function orderTotal(cart) { const subtotal = moneySubtotal(cart); return subtotal + shippingFee(subtotal); }
 
 const PROMO_CODES = {
   WELCOME10: { type: "percent", value: 10, label: "10% off" },
@@ -85,15 +55,11 @@ const PROMO_CODES = {
 
 function calcDiscount(subtotal) {
   if (!state.promoApplied) return 0;
-  if (state.promoApplied.type === "percent") {
-    return subtotal * (state.promoApplied.value / 100);
-  }
+  if (state.promoApplied.type === "percent") return subtotal * (state.promoApplied.value / 100);
   return 0;
 }
 
-function calcTax(amount) {
-  return amount * 0.08;
-}
+function calcTax(amount) { return amount * 0.08; }
 
 function renderCart() {
   const cartItems = document.querySelector("[data-cart-items]");
@@ -120,21 +86,14 @@ function renderCart() {
 
   if (discountRow && discountNode) {
     discountRow.hidden = !state.promoApplied;
-    if (state.promoApplied) {
-      discountNode.textContent = `-${formatCurrencyPrecise(discount)}`;
-    }
+    if (state.promoApplied) discountNode.textContent = `-${formatCurrencyPrecise(discount)}`;
   }
 
   const placeBtn = document.querySelector("[data-place-order]");
   const clearBtn = document.querySelector("[data-clear-cart]");
 
   if (!cart.length) {
-    cartItems.innerHTML = `
-      <div class="empty-card">
-        <h3>Your cart is empty</h3>
-        <p class="section-copy">Add products from the catalog to start building your order.</p>
-      </div>
-    `;
+    cartItems.innerHTML = `<div class="empty-card"><h3>Your cart is empty</h3><p class="section-copy">Add products from the catalog to start building your order.</p></div>`;
     if (placeBtn) placeBtn.disabled = true;
     if (clearBtn) clearBtn.disabled = true;
     return;
@@ -143,29 +102,25 @@ function renderCart() {
   if (placeBtn) placeBtn.disabled = false;
   if (clearBtn) clearBtn.disabled = false;
 
-  cartItems.innerHTML = cart
-    .map(
-      (item) => `
-        <article class="cart-item">
-          <img src="${item.imageUrl}" alt="${item.name}" />
-          <div>
-            <h4>${item.name}</h4>
-            <p>${item.category}</p>
-            <div class="cart-row" style="margin-top: 10px;">
-              <strong>${formatCurrencyPrecise(item.price)}</strong>
-              <strong>${formatCurrencyPrecise(item.price * item.quantity)}</strong>
-            </div>
-            <div class="controls">
-              <button class="mini-button" data-qty-minus="${item.id}" aria-label="Decrease quantity">−</button>
-              <span>${item.quantity}</span>
-              <button class="mini-button" data-qty-plus="${item.id}" aria-label="Increase quantity">+</button>
-              <button class="button-ghost" data-remove-item="${item.id}">Remove</button>
-            </div>
-          </div>
-        </article>
-      `,
-    )
-    .join("");
+  cartItems.innerHTML = cart.map((item) => `
+    <article class="cart-item">
+      <img src="${item.imageUrl}" alt="${item.name}" />
+      <div>
+        <h4>${item.name}</h4>
+        <p>${item.category}</p>
+        <div class="cart-row" style="margin-top: 10px;">
+          <strong>${formatCurrencyPrecise(item.price)}</strong>
+          <strong>${formatCurrencyPrecise(item.price * item.quantity)}</strong>
+        </div>
+        <div class="controls">
+          <button class="mini-button" data-qty-minus="${item.id}" aria-label="Decrease quantity">−</button>
+          <span>${item.quantity}</span>
+          <button class="mini-button" data-qty-plus="${item.id}" aria-label="Increase quantity">+</button>
+          <button class="button-ghost" data-remove-item="${item.id}">Remove</button>
+        </div>
+      </div>
+    </article>
+  `).join("");
 }
 
 function applyPromoCode() {
@@ -195,15 +150,8 @@ function applyPromoCode() {
 
 async function submitOrderFromCart() {
   const cart = getCart();
-  if (!cart.length) {
-    showToast("Cart is empty", "Add at least one product before placing your order.");
-    return;
-  }
-  if (!state.currentUser) {
-    openAuthModal("login");
-    showToast("Login required", "Sign in to place your order.");
-    return;
-  }
+  if (!cart.length) { showToast("Cart is empty", "Add at least one product before placing your order."); return; }
+  if (!state.currentUser) { openAuthModal("login"); showToast("Login required", "Sign in to place your order."); return; }
 
   try {
     const response = await api("/orders", {
@@ -220,10 +168,9 @@ async function submitOrderFromCart() {
     state.promoApplied = null;
     renderCart();
     closeCart();
+    fireConfetti();
     showToast("Order placed", `Order #${response.order.id} confirmed. Thank you!`);
-  } catch (error) {
-    showToast("Order failed", error.message);
-  }
+  } catch (error) { showToast("Order failed", error.message); }
 }
 
 function openCart() {

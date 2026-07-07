@@ -246,5 +246,5 @@ function animatePageEntrance() {
 document.addEventListener("DOMContentLoaded", () => {
   wireAuthIndicator();
   attachAuthEvents();
-  animatePageEntrance();
+  if (document.querySelector(".hero")) animatePageEntrance();
 });

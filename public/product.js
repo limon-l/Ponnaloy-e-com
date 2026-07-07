@@ -1,16 +1,10 @@
 function renderStockBadge(stock) {
-  if (stock > 10) {
-    return '<span class="stock-badge in-stock">In Stock</span>';
-  }
-  if (stock > 0) {
-    return `<span class="stock-badge low-stock">Only ${stock} left in stock</span>`;
-  }
+  if (stock > 10) return '<span class="stock-badge in-stock">In Stock</span>';
+  if (stock > 0) return `<span class="stock-badge low-stock">Only ${stock} left in stock</span>`;
   return '<span class="stock-badge out-of-stock">Out of Stock</span>';
 }
 
-function renderStars(count) {
-  return "★".repeat(Math.round(count));
-}
+function renderStars(count) { return "★".repeat(Math.round(count)); }
 
 async function loadProductPage() {
   const params = new URLSearchParams(window.location.search);
@@ -23,20 +17,17 @@ async function loadProductPage() {
     const response = await api(`/products/${productId}`);
     const product = response.product;
     const catalog = await api("/products");
-    const related = catalog.products
-      .filter(
-        (entry) =>
-          entry.category === product.category && entry.id !== product.id,
-      )
-      .slice(0, 3);
+    const related = catalog.products.filter((entry) => entry.category === product.category && entry.id !== product.id).slice(0, 4);
+
+    addRecentlyViewed(product);
 
     detailNode.innerHTML = `
       <div class="split-layout grid-cols-1 md:grid-cols-[1.1fr_0.9fr]">
-        <div class="detail-figure reveal">
+        <div class="detail-figure">
           <span class="badge">${product.badge}</span>
-          <img src="${product.imageUrl}" alt="${product.name}" />
+          <img src="${product.imageUrl}" alt="${product.name}" data-detail-image />
         </div>
-        <div class="detail-grid reveal">
+        <div class="detail-grid">
           <div>
             <a class="icon-chip" href="/">&larr; Back to shop</a>
             <div class="rating-row">
@@ -84,14 +75,13 @@ async function loadProductPage() {
 
     relatedNode.innerHTML = related.length
       ? related.map((item) => createProductCard(item)).join("")
-      : `
-        <div class="empty-card reveal" style="grid-column: 1 / -1;">
-          <h3>No related items</h3>
-          <p class="section-copy">This product is already the standout in its category.</p>
-        </div>
-      `;
+      : `<div class="empty-card reveal" style="grid-column: 1 / -1;"><h3>No related items</h3><p class="section-copy">This product is already the standout in its category.</p></div>`;
 
     wireRevealAnimations(document);
+    renderRecentlyViewed();
+
+    const detailImg = document.querySelector("[data-detail-image]");
+    initImageZoom(detailImg);
 
     const qtyInput = document.querySelector("#qty");
     document.querySelector("[data-qty-dec]")?.addEventListener("click", () => {
@@ -103,34 +93,21 @@ async function loadProductPage() {
       if (current < 99) qtyInput.value = current + 1;
     });
 
-    document
-      .querySelector("[data-detail-add]")
-      ?.addEventListener("click", () => {
-        const qty = Number(qtyInput?.value || 1);
-        addToCart(product, qty);
-        renderCart();
-        showToast("Added to cart", `${product.name} is now in your cart.`);
-      });
+    document.querySelector("[data-detail-add]")?.addEventListener("click", () => {
+      const qty = Number(qtyInput?.value || 1);
+      addToCart(product, qty);
+      renderCart();
+      showToast("Added to cart", `${product.name} is now in your cart.`);
+    });
 
     document.querySelectorAll("[data-add-cart]").forEach((button) => {
       button.addEventListener("click", () => {
-        const item = catalog.products.find(
-          (entry) => entry.id === Number(button.dataset.addCart),
-        );
-        if (item) {
-          addToCart(item, 1);
-          renderCart();
-          showToast("Added to cart", `${item.name} is now in your cart.`);
-        }
+        const item = catalog.products.find((entry) => entry.id === Number(button.dataset.addCart));
+        if (item) { addToCart(item, 1); renderCart(); showToast("Added to cart", `${item.name} is now in your cart.`); }
       });
     });
   } catch (error) {
-    detailNode.innerHTML = `
-      <div class="empty-card">
-        <h3>Unable to load product</h3>
-        <p class="section-copy">${error.message}</p>
-      </div>
-    `;
+    detailNode.innerHTML = `<div class="empty-card"><h3>Unable to load product</h3><p class="section-copy">${error.message}</p></div>`;
   }
 }
 
