@@ -24,15 +24,17 @@
     shell.innerHTML = [
       '<button class="as-launcher" type="button" data-as-open>',
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
-      "Assistant",
+      "Chat",
       "</button>",
       '<section class="as-panel" data-as-panel aria-label="Shopping assistant" aria-hidden="true">',
       '<header class="as-header">',
-      '<div class="as-header-left">',
-      '<span class="as-avatar as-avatar-bot"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>',
+      '<div class="as-header-left as-header-profile">',
+      '<span class="as-avatar as-avatar-bot as-avatar-profile">',
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>',
+      "</span>",
       "<div>",
-      '<h3 class="as-title">Assistant</h3>',
-      '<span class="as-status">Online</span>',
+      '<h3 class="as-title">Chat with us!</h3>',
+      '<span class="as-subtitle">We typically reply in few minutes.</span>',
       "</div>",
       "</div>",
       '<button class="as-close" type="button" data-as-close aria-label="Close assistant">',
@@ -228,7 +230,7 @@
     var closeBtn = shell.querySelector("[data-as-close]");
     var form = shell.querySelector("[data-as-form]");
 
-    addMsg(msgs, "bot", '<div class="as-msg-head"><span class="as-tag">Welcome</span></div><p>I can help you find products, compare options, and answer questions about the store.</p>');
+    addMsg(msgs, "bot", '<div class="as-msg-head"><span class="as-tag">Welcome</span></div><p>Welcome sir, I\'m Marvin 🤖&#x1f590; a bot. How can i help you today?</p>');
 
     openBtn.addEventListener("click", function () {
       panel.classList.add("open");

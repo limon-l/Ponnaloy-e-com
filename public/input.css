@@ -151,15 +151,19 @@
   }
 
   .button-ghost {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium border-0;
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium;
+    border: 1px solid transparent;
     background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.75);
-    transition: background 180ms ease, color 180ms ease;
+    color: hsla(0, 0%, 100%, 0.75);
+    transition: transform 150ms ease, box-shadow 150ms ease, background 180ms ease, border-color 180ms ease, color 180ms ease;
   }
 
   .button-ghost:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(126, 244, 210, 0.25);
     color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
   }
 
   .icon-button {
@@ -204,6 +208,20 @@
   .button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  .button-secondary {
+    @apply py-3 px-5 rounded-xl text-sm font-bold border-0 cursor-pointer inline-flex items-center justify-center gap-2;
+    background: rgba(255, 255, 255, 0.06);
+    color: #eef4ff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease;
+  }
+  .button-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(126, 244, 210, 0.35);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
   }
 
   .input-field {
@@ -559,7 +577,7 @@
   }
 
   .product-actions .button-ghost {
-    @apply min-h-[44px] px-4;
+    @apply min-h-[44px] px-4 flex-1;
     white-space: nowrap;
   }
 
@@ -1052,9 +1070,28 @@
     @apply flex items-center gap-2.5;
   }
 
+  .as-header-profile {
+    gap: 10px;
+  }
+
   .as-title {
     @apply text-sm font-bold m-0;
     letter-spacing: -0.01em;
+  }
+
+  .as-subtitle {
+    @apply text-[11px] block;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 1px;
+  }
+
+  .as-avatar-profile {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7ef4d2, #8f9bff);
+    color: #06101d;
   }
 
   .as-status {

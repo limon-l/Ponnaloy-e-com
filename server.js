@@ -4,6 +4,7 @@ const session = require("express-session");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const SQLiteStoreFactory = require("connect-sqlite3");
+const OpenAI = require("openai");
 const {
   initDatabase,
   listProducts,
@@ -43,6 +44,10 @@ app.use(
     },
   }),
 );
+
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -434,32 +439,128 @@ app.post(
 app.post(
   "/api/chat",
   asyncHandler(async (req, res) => {
-    const message = normalizeText(req.body?.message);
+    const rawMessage = (req.body?.message || "").trim();
 
-    if (!message) {
+    if (!rawMessage) {
       return res.status(400).json({ message: "A message is required." });
     }
 
     const products = await listProducts();
-    const matches = findTopProducts(products, message, 4);
+    const normalizedMessage = normalizeText(rawMessage);
+    const matches = findTopProducts(products, normalizedMessage, 6);
     const storeFacts = buildStoreFacts(products);
-    const assistant = buildAssistantReply(message, matches, products);
+    const mention = findProductMention(rawMessage, products);
 
-    return res.json({
-      reply: assistant.reply,
-      tone: assistant.tone,
-      focusCategory: assistant.focusCategory,
-      followUp: assistant.followUp,
-      storeFacts: {
-        productCount: storeFacts.productCount,
-        categoryCount: storeFacts.categoryCount,
-        categories: storeFacts.categories,
-      },
-      highlights: storeFacts.topRated.slice(0, 3),
-      valuePicks: storeFacts.bestValue.slice(0, 3),
-      matches: matches.length > 0 ? matches : storeFacts.topRated.slice(0, 4),
-      comparison: assistant.comparison,
-    });
+    if (!openai) {
+      const assistant = buildAssistantReply(normalizedMessage, matches, products);
+      return res.json({
+        reply: assistant.reply,
+        tone: assistant.tone,
+        focusCategory: assistant.focusCategory,
+        followUp: assistant.followUp,
+        storeFacts: {
+          productCount: storeFacts.productCount,
+          categoryCount: storeFacts.categoryCount,
+          categories: storeFacts.categories,
+        },
+        highlights: storeFacts.topRated.slice(0, 3),
+        valuePicks: storeFacts.bestValue.slice(0, 3),
+        matches: matches.length > 0 ? matches : storeFacts.topRated.slice(0, 4),
+        comparison: assistant.comparison,
+      });
+    }
+
+    if (!req.session.chatHistory) {
+      req.session.chatHistory = [];
+    }
+
+    req.session.chatHistory.push({ role: "user", content: rawMessage });
+    if (req.session.chatHistory.length > 20) {
+      req.session.chatHistory = req.session.chatHistory.slice(-20);
+    }
+
+    const topProducts = matches.length >= 3
+      ? matches
+      : [...matches, ...storeFacts.topRated.filter((p) => !matches.find((m) => m.id === p.id))].slice(0, 6);
+
+    const productCatalog = topProducts
+      .map(
+        (p) =>
+          `- ${p.name} (id:${p.id}) | category: ${p.category} | price: $${p.price} | rating: ${p.rating}/5 | stock: ${p.stock} | badge: ${p.badge || "none"} | features: ${p.shortDescription}`,
+      )
+      .join("\n");
+
+    const categoriesList = storeFacts.categories.join(", ");
+
+    const systemPrompt = `You are Marvin, a friendly and knowledgeable shopping assistant for Ponnaloy, an e-commerce store.
+
+Store overview:
+- ${storeFacts.productCount} products across categories: ${categoriesList}
+- Current user message: "${rawMessage}"
+
+Relevant products in the catalog:
+${productCatalog}
+
+Guidelines:
+- Be conversational, warm, and helpful. Use natural language.
+- If the user greets you, greet them back warmly as Marvin.
+- When recommending products, mention specific product names and key details (price, rating).
+- If the user asks about a product, category, or use case, suggest the most relevant products from the list above.
+- If asked to compare, explain the differences between products clearly.
+- Keep replies concise (2-4 sentences usually), but thorough enough to be helpful.
+- Never mention that you are an AI or language model. You are Marvin, the store's shopping assistant.
+- If you cannot find a matching product, suggest browsing by category or ask what they're looking for.
+- Always end with a brief follow-up question to keep the conversation going.`;
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...req.session.chatHistory,
+        ],
+        max_tokens: 400,
+        temperature: 0.7,
+      });
+
+      const reply = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that.";
+
+      req.session.chatHistory.push({ role: "assistant", content: reply });
+      if (req.session.chatHistory.length > 20) {
+        req.session.chatHistory = req.session.chatHistory.slice(-20);
+      }
+
+      const tone = mention
+        ? "product"
+        : /\b(compare|versus|vs|difference)\b/i.test(rawMessage)
+          ? "comparison"
+          : /\b(recommend|suggest|best|top|good for)\b/i.test(rawMessage)
+            ? "recommendation"
+            : /\b(hi|hello|hey|thanks)\b/i.test(rawMessage)
+              ? "greeting"
+              : "product";
+
+      const followUp = "Is there anything else you'd like to know?";
+
+      return res.json({
+        reply,
+        tone,
+        focusCategory: mention?.category || (matches[0]?.category ?? "General"),
+        followUp,
+        storeFacts: {
+          productCount: storeFacts.productCount,
+          categoryCount: storeFacts.categoryCount,
+          categories: storeFacts.categories,
+        },
+        highlights: storeFacts.topRated.slice(0, 3),
+        valuePicks: storeFacts.bestValue.slice(0, 3),
+        matches: matches.length > 0 ? matches : storeFacts.topRated.slice(0, 4),
+        comparison: null,
+      });
+    } catch (error) {
+      console.error("OpenAI chat error:", error);
+      return res.status(500).json({ message: "The assistant is unavailable right now. Please try again." });
+    }
   }),
 );
 
