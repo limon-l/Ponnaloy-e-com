@@ -8,6 +8,8 @@ function openAuthModal(tab) {
   document.querySelector("[data-login-form]")?.reset();
   document.querySelector("[data-register-form]")?.reset();
 
+  document.querySelectorAll(".input-field.error").forEach((el) => el.classList.remove("error"));
+
   gsap.killTweensOf([modal, card]);
 
   gsap.set(modal, { display: "grid", opacity: 0, visibility: "visible", pointerEvents: "auto" });
@@ -85,20 +87,42 @@ function wireAuthIndicator() {
   });
 }
 
+function wirePasswordToggles() {
+  document.querySelectorAll("[data-password-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = btn.closest(".input-group").querySelector("input");
+      const isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
+      btn.innerHTML = isPassword
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+    });
+  });
+}
+
 function submitAuthForm(event, type) {
   event.preventDefault();
   const form = event.currentTarget;
   const button = form.querySelector("button[type=submit]");
+  const buttonText = button.querySelector(".button-text");
   if (button.disabled) return;
 
-  const originalHTML = button.innerHTML;
+  const originalText = buttonText ? buttonText.textContent : button.textContent;
   const btnWidth = button.offsetWidth;
 
   button.disabled = true;
   gsap.set(button, { minWidth: btnWidth });
-
   gsap.to(button, { scale: 0.97, duration: 0.15, ease: "power2.out" });
-  button.innerHTML = '<span class="spinner"></span>';
+
+  if (buttonText) {
+    buttonText.style.display = "none";
+  } else {
+    button.textContent = "";
+  }
+  const spinner = document.createElement("span");
+  spinner.className = "spinner";
+  button.appendChild(spinner);
+  gsap.fromTo(spinner, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.2 });
 
   const formData = new FormData(form);
   let body;
@@ -119,17 +143,18 @@ function submitAuthForm(event, type) {
 
   api(endpoint, { method: "POST", body })
     .then(async () => {
-      const check =
-        '<svg class="auth-check" viewBox="0 0 24 24" fill="none" stroke="#7ef4d2" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-      button.innerHTML = check;
+      const check = document.createElement("span");
+      check.className = "auth-check";
+      check.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#7ef4d2" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      spinner.remove();
+      button.appendChild(check);
       gsap.fromTo(
-        button.querySelector(".auth-check"),
+        check,
         { scale: 0, rotation: -45 },
         { scale: 1, rotation: 0, duration: 0.35, ease: "back.out(2)" },
       );
 
       await refreshSession();
-
       await new Promise((r) => setTimeout(r, 600));
 
       closeAuthModal();
@@ -142,11 +167,14 @@ function submitAuthForm(event, type) {
       );
     })
     .catch((error) => {
+      spinner.remove();
+      if (buttonText) buttonText.style.display = "";
       gsap.fromTo(
         form,
         { x: 0 },
         { x: [-6, 6, -4, 4, -2, 2, 0], duration: 0.45, ease: "power2.out" },
       );
+      form.querySelectorAll(".input-field").forEach((el) => el.classList.add("error"));
       showToast(
         type === "login" ? "Login failed" : "Registration failed",
         error.message,
@@ -154,8 +182,10 @@ function submitAuthForm(event, type) {
     })
     .finally(() => {
       button.disabled = false;
-      button.innerHTML = originalHTML;
       gsap.set(button, { scale: 1, minWidth: "" });
+      const existingSpinner = button.querySelector(".spinner");
+      if (existingSpinner) existingSpinner.remove();
+      if (buttonText) buttonText.style.display = "";
     });
 }
 
@@ -186,6 +216,8 @@ function attachAuthEvents() {
   document
     .querySelector("[data-register-form]")
     ?.addEventListener("submit", (e) => submitAuthForm(e, "register"));
+
+  wirePasswordToggles();
 }
 
 function animatePageEntrance() {

@@ -107,6 +107,208 @@
     transform: translateY(-1px);
   }
 
+  .nav {
+    @apply flex items-center gap-1;
+  }
+
+  .nav a {
+    @apply px-3 py-2 rounded-full text-sm font-medium transition-colors duration-150;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .nav a:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .nav a.active {
+    color: #fff;
+    background: rgba(126, 244, 210, 0.12);
+  }
+
+  .search-bar {
+    @apply inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-full;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: border-color 180ms ease;
+  }
+
+  .search-bar:focus-within {
+    border-color: rgba(126, 244, 210, 0.3);
+  }
+
+  .search-bar svg {
+    @apply w-4 h-4 flex-shrink-0;
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .search-bar input {
+    @apply flex-1 bg-transparent border-0 outline-none text-white text-sm min-w-0;
+  }
+
+  .search-bar input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .button-ghost {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium border-0;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.75);
+    transition: background 180ms ease, color 180ms ease;
+  }
+
+  .button-ghost:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
+  .icon-button {
+    @apply relative inline-flex items-center justify-center w-11 h-11 rounded-full border-0;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.75);
+    transition: background 180ms ease, color 180ms ease;
+  }
+
+  .icon-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
+  .icon-button svg {
+    @apply w-5 h-5;
+  }
+
+  .badge-dot {
+    @apply absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold;
+    background: #7ef4d2;
+    color: #06101d;
+    padding: 0 4px;
+  }
+
+  .button {
+    @apply py-3 px-5 rounded-xl text-sm font-bold border-0 cursor-pointer inline-flex items-center justify-center gap-2;
+    background: linear-gradient(135deg, #7ef4d2, #5ce8c0);
+    color: #06101d;
+    transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+  }
+
+  .button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(126, 244, 210, 0.25);
+  }
+
+  .button:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl text-sm outline-none transition-all duration-150;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #eef4ff;
+  }
+
+  .input-field:focus {
+    border-color: rgba(126, 244, 210, 0.35);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 0 3px rgba(126, 244, 210, 0.06);
+  }
+
+  .input-field::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+  }
+
+  .input-field.error {
+    border-color: rgba(255, 107, 122, 0.5);
+    box-shadow: 0 0 0 3px rgba(255, 107, 122, 0.06);
+  }
+
+  .input-group {
+    @apply relative;
+  }
+
+  .input-group .input-icon {
+    @apply absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none;
+    color: rgba(255, 255, 255, 0.25);
+    transition: color 150ms ease;
+  }
+
+  .input-group:focus-within .input-icon {
+    color: rgba(126, 244, 210, 0.55);
+  }
+
+  .input-group .input-field {
+    @apply pl-10;
+  }
+
+  .password-toggle {
+    @apply absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-0 bg-transparent cursor-pointer p-0 flex items-center justify-center;
+    color: rgba(255, 255, 255, 0.25);
+    transition: color 150ms ease;
+  }
+
+  .password-toggle:hover {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .password-toggle svg {
+    @apply w-4 h-4;
+  }
+
+  .spinner {
+    @apply block w-5 h-5 rounded-full border-2;
+    border-color: rgba(6, 16, 29, 0.15);
+    border-top-color: #06101d;
+    animation: spin 0.6s linear infinite;
+  }
+
+  .auth-divider {
+    @apply flex items-center gap-3;
+  }
+
+  .auth-divider::before,
+  .auth-divider::after {
+    content: '';
+    @apply flex-1 h-px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .auth-divider span {
+    @apply text-xs font-medium whitespace-nowrap;
+    color: rgba(255, 255, 255, 0.25);
+  }
+
+  .social-btn {
+    @apply w-full inline-flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl text-sm font-medium cursor-pointer border transition-all duration-150;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .social-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #fff;
+  }
+
+  .social-btn svg {
+    @apply w-4 h-4 flex-shrink-0;
+  }
+
+  .auth-forgot {
+    @apply text-xs block mt-1.5 text-right transition-colors duration-150;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .auth-forgot:hover {
+    color: rgba(126, 244, 210, 0.6);
+  }
+
   .kicker {
     @apply inline-flex gap-2.5 items-center px-3.5 py-2 rounded-full text-sm tracking-wide;
     background: rgba(255, 255, 255, 0.06);
@@ -185,6 +387,10 @@
 
   .filters {
     @apply flex gap-2.5 flex-wrap items-center;
+  }
+
+  .catalog-filters {
+    @apply mb-4;
   }
 
   .feature-card {
@@ -537,27 +743,6 @@
     pointer-events: none;
   }
 
-  .auth-slider-viewport {
-    overflow: hidden;
-    border-radius: 16px;
-  }
-
-  .auth-slider {
-    display: flex;
-    width: 200%;
-    transition: none;
-  }
-
-  .auth-form {
-    @apply grid gap-5;
-    width: 50%;
-    flex-shrink: 0;
-  }
-
-  .auth-fields {
-    @apply grid gap-3;
-  }
-
   .auth-check {
     @apply block w-5 h-5 mx-auto;
   }
@@ -649,10 +834,31 @@
   }
 
   .auth-card {
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-    backdrop-filter: none;
+    background: rgba(7, 17, 31, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(126, 244, 210, 0.04);
+    backdrop-filter: blur(20px);
+  }
+
+  .auth-slider-viewport {
+    overflow: hidden;
+    border-radius: 16px;
+  }
+
+  .auth-slider {
+    display: flex;
+    width: 200%;
+    transition: none;
+  }
+
+  .auth-form {
+    @apply grid gap-4;
+    width: 50%;
+    flex-shrink: 0;
+  }
+
+  .auth-fields {
+    @apply grid gap-3;
   }
 
   .checkout-header {
@@ -760,6 +966,28 @@
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  }
+
+  .sort-select {
+    @apply px-3.5 py-2.5 rounded-full text-sm font-medium border-0;
+    background: rgba(255, 255, 255, 0.06);
+    color: #eef4ff;
+    cursor: pointer;
+    transition: background 180ms ease, border-color 180ms ease;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23eef4ff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+  .sort-select:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .sort-select:focus {
+    outline: none;
+    border-color: rgba(126, 244, 210, 0.3);
   }
 
   .status-pill {
