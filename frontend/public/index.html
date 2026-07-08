@@ -56,17 +56,17 @@
         </header>
 
         <main>
-            <section class="hero xs:pt-8 xs:pb-4 lg:pt-14 lg:pb-6" data-aos="fade-up">
-                <div class="container hero-grid xl:grid-cols-[1.1fr_0.9fr] lg:grid-cols-1 md:grid-cols-1 xs:grid-cols-1 xs:gap-6 lg:gap-7 xl:gap-7">
+            <section class="hero xs:pt-10 xs:pb-4 lg:pt-16 lg:pb-6" data-aos="fade-up">
+                <div class="container hero-grid xs:gap-5 md:gap-6 xl:gap-7">
                     <div class="xs:text-center lg:text-left">
                         <div class="kicker xs:mx-auto lg:mx-0" data-aos="fade-right" data-aos-delay="100"><span class="pulse"></span> Luxury essentials for modern living</div>
-                        <h1 class="xs:max-w-[12ch] lg:max-w-[11ch] xs:mx-auto lg:mx-0 glow-text" data-aos="fade-right" data-aos-delay="200">Elevate every day with a store designed to feel premium.</h1>
-                        <p class="xs:mx-auto lg:mx-0" data-aos="fade-right" data-aos-delay="300">Browse curated products, inspect rich details, save items in a polished cart, and check out through a secure Express backend powered by SQLite.</p>
+                        <h1 class="xs:mx-auto lg:mx-0 glow-text xs:max-w-[14ch] lg:max-w-[13ch]" data-aos="fade-right" data-aos-delay="200">Elevate every day with premium essentials.</h1>
+                        <p class="xs:mx-auto lg:mx-0 xs:max-w-[50ch]" data-aos="fade-right" data-aos-delay="300">Browse curated products, inspect rich details, save items in a polished cart, and check out through a secure Express backend powered by SQLite.</p>
                         <div class="hero-actions xs:justify-center lg:justify-start" data-aos="fade-right" data-aos-delay="400">
                             <a class="button" href="/products">Shop collection</a>
                             <a class="button-secondary" href="#experience">See experience</a>
                         </div>
-                        <div class="hero-stats xs:grid-cols-1 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3" data-aos="fade-up" data-aos-delay="500">
+                        <div class="hero-stats xs:grid-cols-1 sm:grid-cols-3" data-aos="fade-up" data-aos-delay="500">
                             <div class="stat-card hover-glow">
                                 <strong>24h</strong>
                                 <span>Express order handling</span>
@@ -86,7 +86,7 @@
                             <div class="visual">
                                 <span class="feature-badge">Spotlight collection</span>
                                 <img src="https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=1200&q=80"
-                                    alt="Luxury product showcase" />
+                                    alt="Luxury product showcase" loading="lazy" />
                             </div>
                             <div class="feature-content">
                                 <h3>Artisan-crafted essentials</h3>
@@ -299,6 +299,12 @@
                     <input class="promo-input" type="text" placeholder="Promo code (e.g. WELCOME10)" data-promo-input />
                     <button class="promo-button" data-promo-apply>Apply</button>
                 </div>
+                <div class="cart-field">
+                    <input class="cart-input" type="text" placeholder="Shipping address" data-shipping-address required />
+                </div>
+                <div class="cart-field">
+                    <input class="cart-input" type="tel" placeholder="Phone number" data-phone required />
+                </div>
                 <div class="cart-row"><span>Subtotal</span><strong data-cart-subtotal>$0</strong></div>
                 <div class="cart-row"><span>Shipping</span><strong data-cart-shipping>$0</strong></div>
                 <div class="cart-row discount-row" data-discount-row hidden><span>Discount</span><strong data-cart-discount>-$0</strong></div>
@@ -442,10 +448,11 @@
 
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>AOS?.init?.({ duration: 600, once: true, offset: 40 });</script>
-    <script src="/shared.js"></script>
-    <script src="/cart.js"></script>
-    <script src="/app.js"></script>
-    <script src="/auth.js"></script>
-    <script src="/assistant.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="/js/shared.js"></script>
+    <script src="/js/cart.js"></script>
+    <script src="/js/app.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/assistant.js"></script>
 </body>
 </html>

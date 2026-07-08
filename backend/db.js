@@ -3,7 +3,7 @@ const path = require("path");
 const sqlite3 = require("sqlite3").verbose();
 const bcrypt = require("bcryptjs");
 
-const dataDir = path.join(__dirname, "data");
+const dataDir = path.join(__dirname, "..", "data");
 const dbPath = path.join(dataDir, "store.db");
 
 if (!fs.existsSync(dataDir)) {
@@ -154,7 +154,7 @@ const heroSeedProducts = [
     price: 399,
     compareAtPrice: 499,
     imageUrl:
-      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&w=1200&q=80",
     badge: "Ergonomic",
     rating: 4.8,
     stock: 8,

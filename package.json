@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build:css": "tailwindcss -i ./public/input.css -o ./public/styles.css --minify",
-    "watch:css": "tailwindcss -i ./public/input.css -o ./public/styles.css --watch"
+    "build:css": "tailwindcss -i ./frontend/public/input.css -o ./frontend/public/styles.css --minify",
+    "watch:css": "tailwindcss -i ./frontend/public/input.css -o ./frontend/public/styles.css --watch"
   },
   "keywords": [
     "e-commerce",
@@ -20,17 +20,14 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
-    "connect-flash": "^0.1.1",
     "connect-sqlite3": "^0.9.16",
     "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.2",
     "express-session": "^1.18.1",
-    "gsap": "^3.15.0",
     "helmet": "^8.1.0",
-    "lucide": "^1.23.0",
     "morgan": "^1.10.0",
-    "motion": "^12.42.2",
     "openai": "^6.45.0",
     "sqlite3": "^5.1.7"
   },

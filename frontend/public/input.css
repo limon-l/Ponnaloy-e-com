@@ -288,10 +288,26 @@
     border-radius: var(--radius-lg);
   }
 
-  .stat-card strong { @apply block text-2xl mb-1; }
-  .stat-card span { @apply text-muted text-sm; }
+  .stat-card { @apply relative overflow-hidden; }
+  .stat-card::after {
+    content: '';
+    @apply absolute inset-0 rounded-[inherit] pointer-events-none;
+    background: linear-gradient(135deg, rgba(126, 244, 210, 0.06), transparent 50%);
+    opacity: 0;
+    transition: opacity 300ms ease;
+  }
+  .stat-card:hover::after { opacity: 1; }
+  .stat-card strong { @apply block text-2xl mb-1 relative z-[1]; }
+  .stat-card span { @apply text-muted text-sm block relative z-[1]; }
 
   .hero { @apply py-14 pb-6; }
+  .hero h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(2.6rem, 6vw, 4.2rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    @apply my-4;
+  }
 
   .hero-panel { position: relative; isolation: isolate; }
 
@@ -759,6 +775,16 @@
   .payment-method input[type="radio"] { @apply w-4 h-4 accent-[#7ef4d2]; }
   .payment-method .payment-label { @apply flex-1 text-sm font-medium; }
 
+  .cart-field { @apply flex; }
+
+  .cart-input {
+    @apply flex-1 rounded-xl px-3.5 py-2.5 outline-none text-white text-sm;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .cart-input:focus { border-color: rgba(126, 244, 210, 0.3); }
+
   .promo-row { @apply flex gap-2.5; }
 
   .promo-input {
@@ -1069,12 +1095,34 @@
     .catalog-toolbar { flex-direction: column; align-items: stretch; }
   }
 
-  .hero-grid { display: grid; gap: 28px; align-items: center; }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 28px;
+    align-items: center;
+  }
+
+  @media (min-width: 1024px) {
+    .hero-grid {
+      grid-template-columns: 1.1fr 0.9fr;
+    }
+  }
   .product-grid { display: grid; gap: 18px; }
   .section-grid { display: grid; gap: 18px; }
   .split-layout { display: grid; gap: 20px; align-items: start; }
   .footer-grid { display: grid; gap: 14px; }
-  .catalog-hero-grid { display: grid; gap: 24px; align-items: center; }
+  .catalog-hero-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    align-items: center;
+  }
+
+  @media (min-width: 1024px) {
+    .catalog-hero-grid {
+      grid-template-columns: 1.05fr 0.95fr;
+    }
+  }
   .catalog-grid { display: grid; }
 }
 

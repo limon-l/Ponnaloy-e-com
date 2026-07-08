@@ -1,6 +1,5 @@
 node_modules/
-package-lock.json
-data/*.db
-data/*.db-journal
-
-node_modules
+data/
+.env
+*.db
+.DS_Store

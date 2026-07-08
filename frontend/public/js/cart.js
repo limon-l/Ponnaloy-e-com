@@ -154,12 +154,19 @@ async function submitOrderFromCart() {
   if (!state.currentUser) { openAuthModal("login"); showToast("Login required", "Sign in to place your order."); return; }
 
   try {
+    const shippingAddress = document.querySelector("[data-shipping-address]")?.value?.trim();
+    const phone = document.querySelector("[data-phone]")?.value?.trim();
+    if (!shippingAddress) { showToast("Missing address", "Enter a shipping address."); return; }
+    if (!phone) { showToast("Missing phone", "Enter a phone number."); return; }
+
     const response = await api("/orders", {
       method: "POST",
       body: JSON.stringify({
         items: cart.map((item) => ({ id: item.id, quantity: item.quantity })),
         customerName: state.currentUser.name || "",
         email: state.currentUser.email || "",
+        shippingAddress,
+        phone,
         paymentMethod: state.paymentMethod,
         promoCode: state.promoApplied?.code || null,
       }),

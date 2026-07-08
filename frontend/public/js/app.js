@@ -67,6 +67,8 @@ async function loadProducts() {
 }
 
 function attachEvents() {
+  if (window.__ponnaloyEventsAttached) return;
+  window.__ponnaloyEventsAttached = true;
   document.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       const promoInput = event.target.closest("[data-promo-input]");
@@ -103,8 +105,8 @@ function attachEvents() {
     const wishlistBtn = event.target.closest("[data-wishlist-toggle]");
     if (wishlistBtn) {
       const id = Number(wishlistBtn.dataset.wishlistToggle);
-      toggleWishlist(id);
-      showToast(getWishlist().includes(id) ? "Added to wishlist" : "Removed from wishlist", "");
+      const nowIn = toggleWishlist(id);
+      showToast(nowIn.includes(id) ? "Added to wishlist" : "Removed from wishlist", nowIn.includes(id) ? "Saved to your wishlist." : "Removed from your wishlist.");
     }
 
     const authToggle = event.target.closest("[data-auth-toggle]");

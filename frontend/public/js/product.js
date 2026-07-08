@@ -36,7 +36,6 @@ async function loadProductPage() {
                 <span class="rating-value">${product.rating.toFixed(1)}</span>
               </div>
               <span class="rating-divider"></span>
-              <span class="rating-count">42 ratings</span>
             </div>
             <div class="stock-row">
               ${renderStockBadge(product.stock)}
@@ -116,4 +115,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderCart();
   attachEvents();
   await loadProductPage();
+
+  const searchInput = document.querySelector("[data-catalog-search]");
+  searchInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && searchInput.value.trim()) {
+      window.location.href = `/products?q=${encodeURIComponent(searchInput.value.trim())}`;
+    }
+  });
 });
