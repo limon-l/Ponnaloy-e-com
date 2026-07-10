@@ -27,6 +27,8 @@
                 <nav class="nav xs:order-4 xs:w-full xs:ml-0 xs:overflow-auto lg:order-none lg:w-auto lg:ml-3" aria-label="Main navigation">
                     <a href="/">Home</a>
                     <a class="active" href="/products">Catalog</a>
+                    <a href="/dashboard">Dashboard</a>
+                    <a href="/orders">Orders</a>
                 </nav>
                 <label class="search-bar xs:order-3 xs:min-w-full md:order-none md:min-w-[min(360px,44vw)]" aria-label="Search products">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -61,10 +63,55 @@
                     </div>
                     <div class="product-grid xs:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-related-products></div>
                 </section>
+                <section class="section" id="reviews" data-aos="fade-up">
+                    <div class="container">
+                        <div class="section-header xs:flex-col xs:items-start md:flex-row md:items-end">
+                            <div>
+                                <h2 class="section-title">Customer Reviews</h2>
+                                <p class="section-copy" data-review-summary>Loading reviews...</p>
+                            </div>
+                            <button class="button-secondary" data-write-review>Write a Review</button>
+                        </div>
+                        <div class="review-stats xs:grid-cols-1 md:grid-cols-[200px_1fr]" data-aos="fade-up">
+                            <div class="review-avg" data-review-avg>
+                                <strong class="review-avg-number">0</strong>
+                                <div class="review-avg-stars" data-review-avg-stars></div>
+                                <span class="review-avg-count" data-review-count>0 reviews</span>
+                            </div>
+                            <div class="review-distribution" data-review-distribution></div>
+                        </div>
+                        <div class="review-form-container" data-review-form-container hidden>
+                            <div class="review-form-card">
+                                <div class="review-form-header">
+                                    <h3>Write Your Review</h3>
+                                    <button class="icon-button" data-close-review-form aria-label="Close">&#10005;</button>
+                                </div>
+                                <div class="review-rating-input" data-review-rating-input>
+                                    <span>Rating:</span>
+                                    <div class="review-stars-input">
+                                        <button type="button" data-rating="1">&#9733;</button>
+                                        <button type="button" data-rating="2">&#9733;</button>
+                                        <button type="button" data-rating="3">&#9733;</button>
+                                        <button type="button" data-rating="4">&#9733;</button>
+                                        <button type="button" data-rating="5">&#9733;</button>
+                                    </div>
+                                </div>
+                                <input type="text" class="input-field" placeholder="Review title (optional)" data-review-title />
+                                <textarea class="input-field" placeholder="Share your experience with this product..." data-review-comment rows="4"></textarea>
+                                <button class="button" data-submit-review>Submit Review</button>
+                            </div>
+                        </div>
+                        <div class="reviews-list" data-reviews-list></div>
+                    </div>
+                </section>
             </div>
         </main>
         <footer class="footer xs:py-10 lg:py-[60px]">
             <div class="container footer-card" data-aos="fade-up">
+                <div class="footer-links">
+                    <a href="/dashboard">Dashboard</a>
+                    <a href="/orders">Orders</a>
+                </div>
                 <small class="text-white/60">Premium product experience powered by the same cart, auth, and checkout system as the home page.</small>
             </div>
         </footer>

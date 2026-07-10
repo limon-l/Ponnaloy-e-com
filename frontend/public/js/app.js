@@ -198,6 +198,21 @@ function attachEvents() {
   });
 }
 
+async function loadDeals() {
+    const grid = document.querySelector('[data-deals-grid]');
+    if (!grid) return;
+    try {
+        const response = await api('/products?deals=true');
+        removeSkeletons(grid);
+        if (response.products.length) {
+            grid.innerHTML = response.products.slice(0, 6).map(p => createProductCard(p)).join('');
+            wireRevealAnimations(grid);
+        }
+    } catch (err) {
+        removeSkeletons(grid);
+    }
+}
+
 async function boot() {
   updateCartCount();
   renderCart();
@@ -207,6 +222,7 @@ async function boot() {
 
   try {
     await Promise.all([refreshSession(), loadProducts()]);
+    loadDeals();
   } catch (error) {
     showToast("Startup error", error.message);
   }

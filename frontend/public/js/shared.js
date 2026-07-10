@@ -243,9 +243,173 @@ function initImageZoom(img) {
   });
 }
 
+/* ── Parallax Scroll ── */
+function wireParallaxElements() {
+  const elements = document.querySelectorAll("[data-parallax]");
+  if (!elements.length || !("IntersectionObserver" in window)) return;
+
+  let ticking = false;
+
+  function update() {
+    const scrollY = window.scrollY;
+    elements.forEach((el) => {
+      const speed = parseFloat(el.dataset.parallax) || 0.3;
+      const rect = el.getBoundingClientRect();
+      const visible = rect.top < window.innerHeight && rect.bottom > 0;
+      if (!visible) return;
+      const offset = (scrollY - el.offsetTop + window.innerHeight) * speed;
+      el.style.transform = `translateY(${offset * 0.15}px)`;
+    });
+    ticking = false;
+  }
+
+  window.addEventListener("scroll", () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
+  }, { passive: true });
+}
+
+/* ── Animated Counters ── */
+function animateCounters() {
+  const counters = document.querySelectorAll("[data-count-to]");
+  if (!counters.length) return;
+
+  const observer = new IntersectionObserver((entries, instance) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      instance.unobserve(el);
+      const target = parseInt(el.dataset.countTo, 10);
+      if (isNaN(target)) return;
+      const duration = parseInt(el.dataset.countDuration, 10) || 1500;
+      const start = performance.now();
+
+      function tick(now) {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.floor(eased * target).toLocaleString();
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+
+      requestAnimationFrame(tick);
+    });
+  }, { threshold: 0.3 });
+
+  counters.forEach((c) => observer.observe(c));
+}
+
+/* ── User Menu Dropdown ── */
+function initUserMenu() {
+  const signInBtn = document.querySelector("[data-sign-in]");
+  if (!signInBtn) return;
+
+  api("/auth/me").then((user) => {
+    if (!user) return;
+
+    signInBtn.textContent = user.name.split(" ")[0];
+    signInBtn.removeAttribute("href");
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "user-dropdown";
+    dropdown.style.cssText = "display:none;position:absolute;top:100%;right:0;margin-top:8px;background:var(--bg-card,#1a1f2e);border:1px solid var(--border,#2a3040);border-radius:12px;min-width:220px;z-index:100;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,0.35);";
+
+    dropdown.innerHTML = `
+      <div style="padding:16px;border-bottom:1px solid var(--border,#2a3040);">
+        <div style="font-weight:600;color:var(--text,#f0f0f0);font-size:0.95rem;">${user.name}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted,#8892a4);margin-top:2px;word-break:break-all;">${user.email}</div>
+      </div>
+      <nav style="padding:8px 0;">
+        <a href="/dashboard" style="display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--text,#f0f0f0);text-decoration:none;font-size:0.9rem;transition:background 150ms;">Dashboard</a>
+        <a href="/orders" style="display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--text,#f0f0f0);text-decoration:none;font-size:0.9rem;transition:background 150ms;">Orders</a>
+        ${user.isAdmin ? '<a href="/admin" style="display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--text,#f0f0f0);text-decoration:none;font-size:0.9rem;transition:background 150ms;">Admin</a>' : ""}
+        <button data-sign-out style="display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--error,#ff6b7a);background:none;border:none;cursor:pointer;width:100%;font-size:0.9rem;font-family:inherit;text-align:left;transition:background 150ms;">Sign out</button>
+      </nav>
+    `;
+
+    dropdown.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("mouseenter", () => { link.style.background = "var(--surface,#22283a)"; });
+      link.addEventListener("mouseleave", () => { link.style.background = "transparent"; });
+    });
+
+    const signOutBtn = dropdown.querySelector("[data-sign-out]");
+    if (signOutBtn) {
+      signOutBtn.addEventListener("mouseenter", () => { signOutBtn.style.background = "rgba(255,107,122,0.1)"; });
+      signOutBtn.addEventListener("mouseleave", () => { signOutBtn.style.background = "transparent"; });
+      signOutBtn.addEventListener("click", async () => {
+        try { await api("/auth/signout", { method: "POST" }); } catch (e) { /* continue */ }
+        window.location.href = "/";
+      });
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "relative";
+    signInBtn.parentNode.insertBefore(wrapper, signInBtn);
+    wrapper.appendChild(signInBtn);
+    wrapper.appendChild(dropdown);
+
+    wrapper.addEventListener("mouseenter", () => { dropdown.style.display = "block"; });
+    wrapper.addEventListener("mouseleave", () => { dropdown.style.display = "none"; });
+  }).catch(() => { /* not logged in — leave button as-is */ });
+}
+
+/* ── Format Date ── */
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+/* ── Relative Time ── */
+function timeAgo(dateStr) {
+  if (!dateStr) return "";
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes !== 1 ? "s" : ""} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} day${days !== 1 ? "s" : ""} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months !== 1 ? "s" : ""} ago`;
+  const years = Math.floor(months / 12);
+  return `${years} year${years !== 1 ? "s" : ""} ago`;
+}
+
+/* ── Status Badge ── */
+function statusBadge(status) {
+  if (!status) return "";
+  const colors = {
+    pending: "#ffb86c",
+    processing: "#8f9bff",
+    shipped: "#7ef4d2",
+    delivered: "#4ade80",
+    cancelled: "#ff6b7a",
+    refunded: "#ff6b7a",
+    active: "#4ade80",
+    inactive: "#8892a4",
+    paid: "#4ade80",
+    unpaid: "#ffb86c",
+    failed: "#ff6b7a",
+  };
+  const color = colors[status.toLowerCase()] || "#8892a4";
+  return `<span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.78rem;font-weight:600;text-transform:capitalize;color:${color};background:${color}18;border:1px solid ${color}30;">${status}</span>`;
+}
+
+/* ── Debounce ── */
+function debounce(fn, delay = 300) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 /* ── Boot shared features ── */
 document.addEventListener("DOMContentLoaded", () => {
   initBackToTop();
   initNewsletter();
   renderRecentlyViewed();
+  wireParallaxElements();
+  animateCounters();
+  initUserMenu();
 });

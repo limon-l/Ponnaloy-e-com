@@ -30,6 +30,8 @@
                 <nav class="nav xs:order-4 xs:w-full xs:ml-0 xs:overflow-auto lg:order-none lg:w-auto lg:ml-3" aria-label="Main navigation">
                     <a class="active" href="/">Home</a>
                     <a href="/products">Products</a>
+                    <a href="/dashboard">Dashboard</a>
+                    <a href="/orders">Orders</a>
                     <a href="#experience">Experience</a>
                     <a href="#checkout">Checkout</a>
                 </nav>
@@ -52,6 +54,7 @@
                         <span class="badge-dot" data-cart-count>0</span>
                     </button>
                 </div>
+                <div class="user-menu" data-user-menu></div>
             </div>
         </header>
 
@@ -101,6 +104,33 @@
                 </div>
             </section>
 
+            <section class="section xs:pt-0" data-aos="fade-up">
+                <div class="container">
+                    <div class="analytics-grid xs:grid-cols-2 md:grid-cols-4">
+                        <div class="stat-card-lg hover-glow" data-aos="fade-up" data-aos-delay="100">
+                            <div class="stat-icon">📦</div>
+                            <strong data-count-to="500">0</strong>
+                            <span>Products</span>
+                        </div>
+                        <div class="stat-card-lg hover-glow" data-aos="fade-up" data-aos-delay="200">
+                            <div class="stat-icon">👥</div>
+                            <strong data-count-to="10000">0</strong>
+                            <span>Happy Customers</span>
+                        </div>
+                        <div class="stat-card-lg hover-glow" data-aos="fade-up" data-aos-delay="300">
+                            <div class="stat-icon">⭐</div>
+                            <strong data-count-to="4.9">0</strong>
+                            <span>Average Rating</span>
+                        </div>
+                        <div class="stat-card-lg hover-glow" data-aos="fade-up" data-aos-delay="400">
+                            <div class="stat-icon">🚚</div>
+                            <strong data-count-to="24">0</strong>
+                            <span>Hour Delivery</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section class="section" id="products">
                 <div class="container">
                     <div class="section-header xs:flex-col xs:items-start md:flex-row md:items-end" data-aos="fade-up">
@@ -121,6 +151,41 @@
                         <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
                         <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
                         <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" data-aos="fade-up" data-recently-viewed>
+                <!-- This will be populated by recently viewed products -->
+            </section>
+
+            <section class="section" data-aos="fade-up">
+                <div class="container">
+                    <div class="section-header xs:flex-col xs:items-start md:flex-row md:items-end">
+                        <div>
+                            <h2 class="section-title">Trusted by leading brands</h2>
+                            <p class="section-copy">We partner with the world's most innovative companies to bring you premium products.</p>
+                        </div>
+                    </div>
+                    <div class="marquee-track" data-aos="fade-up" data-aos-delay="100">
+                        <div class="marquee-content">
+                            <span class="brand-logo-text">Sony</span>
+                            <span class="brand-logo-text">Apple</span>
+                            <span class="brand-logo-text">Samsung</span>
+                            <span class="brand-logo-text">Nike</span>
+                            <span class="brand-logo-text">Bose</span>
+                            <span class="brand-logo-text">Dyson</span>
+                            <span class="brand-logo-text">LG</span>
+                            <span class="brand-logo-text">Philips</span>
+                            <span class="brand-logo-text">Sony</span>
+                            <span class="brand-logo-text">Apple</span>
+                            <span class="brand-logo-text">Samsung</span>
+                            <span class="brand-logo-text">Nike</span>
+                            <span class="brand-logo-text">Bose</span>
+                            <span class="brand-logo-text">Dyson</span>
+                            <span class="brand-logo-text">LG</span>
+                            <span class="brand-logo-text">Philips</span>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -241,6 +306,23 @@
             </section>
 
             <section class="section" data-aos="fade-up">
+                <div class="container">
+                    <div class="section-header xs:flex-col xs:items-start md:flex-row md:items-end">
+                        <div>
+                            <h2 class="section-title glow-text">Deals of the day</h2>
+                            <p class="section-copy">Limited-time offers on premium products. Don't miss out on these exclusive discounts.</p>
+                        </div>
+                        <a class="button-secondary" href="/products">View all deals &rarr;</a>
+                    </div>
+                    <div class="product-grid xs:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" data-deals-grid>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" data-aos="fade-up">
                 <div class="container newsletter-card">
                     <h2>Stay in the loop</h2>
                     <p>Get early access to new drops, exclusive offers, and curated picks delivered to your inbox.</p>
@@ -268,11 +350,11 @@
                     </div>
                     <div>
                         <strong>Store</strong>
-                        <p class="section-copy">Products<br />Details<br />Cart</p>
+                        <p class="section-copy">Products<br />Details<br />Cart<br /><a href="/dashboard">Dashboard</a></p>
                     </div>
                     <div>
                         <strong>Account</strong>
-                        <p class="section-copy">Register<br />Login<br />Orders</p>
+                        <p class="section-copy">Register<br />Login<br /><a href="/orders">Orders</a><br /><a href="/admin">Admin</a></p>
                     </div>
                 </div>
             </div>
