@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ponnaloy | Admin Dashboard</title>
+    <meta name="description" content="Admin panel for managing products, orders, and users across the Ponnaloy storefront." />
+    <meta name="theme-color" content="#07111f" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+    <style>
+        :root {
+            --admin-bg: #0a1628;
+            --admin-card: #0f1d35;
+            --admin-hover: #142642;
+            --admin-border: rgba(126, 244, 210, 0.1);
+            --admin-header-height: 64px;
+            --admin-sidebar-width: 240px;
+        }
+        .admin-layout { display: flex; min-height: calc(100vh - var(--admin-header-height)); background: var(--admin-bg); }
+        .admin-sidebar { width: var(--admin-sidebar-width); background: var(--admin-card); border-right: 1px solid var(--admin-border); padding: 24px 0; flex-shrink: 0; }
+        .admin-sidebar .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 24px; color: rgba(255,255,255,0.5); font-family: Manrope, sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.25s ease; border-left: 3px solid transparent; }
+        .admin-sidebar .nav-item:hover { color: #fff; background: rgba(126,244,210,0.04); }
+        .admin-sidebar .nav-item.active { color: #7ef4d2; border-left-color: #7ef4d2; background: rgba(126,244,210,0.06); }
+        .admin-sidebar .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+        .admin-content { flex: 1; padding: 32px; overflow-x: hidden; min-width: 0; }
+        .admin-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; }
+        .admin-header-row h1 { font-family: "Space Grotesk", sans-serif; font-size: 1.75rem; font-weight: 600; color: #fff; letter-spacing: -0.02em; }
+        .admin-header-row p { color: rgba(255,255,255,0.4); font-size: 0.9rem; margin-top: 4px; }
+        .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .admin-stat-card { background: var(--admin-card); border: 1px solid var(--admin-border); border-radius: 12px; padding: 20px 24px; transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .admin-stat-card:hover { border-color: rgba(126,244,210,0.25); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+        .admin-stat-card .stat-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.35); font-weight: 500; margin-bottom: 8px; }
+        .admin-stat-card .stat-value { font-family: "Space Grotesk", sans-serif; font-size: 2rem; font-weight: 700; color: #fff; line-height: 1.1; }
+        .admin-stat-card .stat-change { font-size: 0.8rem; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+        .admin-stat-card .stat-change.up { color: #7ef4d2; }
+        .admin-stat-card .stat-change.down { color: #ff6b6b; }
+        .admin-stat-card .stat-icon { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: rgba(126,244,210,0.08); color: #7ef4d2; }
+        .admin-stat-card .stat-icon svg { width: 22px; height: 22px; }
+        .admin-tabs { display: flex; gap: 4px; margin-bottom: 24px; background: var(--admin-card); border-radius: 10px; padding: 4px; border: 1px solid var(--admin-border); overflow-x: auto; }
+        .admin-tab { padding: 10px 20px; font-family: Manrope, sans-serif; font-size: 0.85rem; font-weight: 500; color: rgba(255,255,255,0.45); border-radius: 8px; cursor: pointer; transition: all 0.25s ease; border: none; background: transparent; white-space: nowrap; }
+        .admin-tab:hover { color: #fff; background: rgba(255,255,255,0.04); }
+        .admin-tab.active { color: #07111f; background: #7ef4d2; font-weight: 600; }
+        .admin-tab-content { display: none; }
+        .admin-tab-content.active { display: block; }
+        .admin-table-wrap { background: var(--admin-card); border: 1px solid var(--admin-border); border-radius: 12px; overflow: hidden; }
+        .admin-table { width: 100%; border-collapse: collapse; }
+        .admin-table thead { background: rgba(126,244,210,0.03); }
+        .admin-table th { padding: 14px 18px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.35); font-weight: 600; border-bottom: 1px solid var(--admin-border); }
+        .admin-table td { padding: 14px 18px; font-size: 0.88rem; color: rgba(255,255,255,0.75); border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .admin-table tbody tr { transition: background 0.2s ease; }
+        .admin-table tbody tr:hover { background: rgba(126,244,210,0.03); }
+        .admin-table tbody tr:last-child td { border-bottom: none; }
+        .admin-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .admin-badge.delivered { background: rgba(126,244,210,0.12); color: #7ef4d2; }
+        .admin-badge.pending { background: rgba(255,193,7,0.12); color: #ffc107; }
+        .admin-badge.processing { background: rgba(13,202,240,0.12); color: #0dcaf0; }
+        .admin-badge.shipped { background: rgba(13,110,253,0.12); color: #0d6efd; }
+        .admin-badge.cancelled { background: rgba(220,53,69,0.12); color: #dc3545; }
+        .admin-badge.admin { background: rgba(126,244,210,0.12); color: #7ef4d2; }
+        .admin-badge.user { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+        .admin-actions { display: flex; gap: 6px; }
+        .admin-actions button { padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 500; border: none; cursor: pointer; transition: all 0.2s ease; font-family: Manrope, sans-serif; }
+        .admin-action-edit { background: rgba(126,244,210,0.1); color: #7ef4d2; }
+        .admin-action-edit:hover { background: rgba(126,244,210,0.2); }
+        .admin-action-delete { background: rgba(220,53,69,0.1); color: #dc3545; }
+        .admin-action-delete:hover { background: rgba(220,53,69,0.2); }
+        .admin-action-view { background: rgba(13,202,240,0.1); color: #0dcaf0; }
+        .admin-action-view:hover { background: rgba(13,202,240,0.2); }
+        .admin-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+        .admin-toolbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .admin-toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .admin-search { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.04); border: 1px solid var(--admin-border); border-radius: 8px; padding: 0 12px; min-width: 220px; }
+        .admin-search svg { width: 16px; height: 16px; color: rgba(255,255,255,0.25); flex-shrink: 0; }
+        .admin-search input { background: none; border: none; padding: 10px 0; font-size: 0.85rem; color: #fff; outline: none; width: 100%; font-family: Manrope, sans-serif; }
+        .admin-search input::placeholder { color: rgba(255,255,255,0.25); }
+        .admin-select { background: rgba(255,255,255,0.04); border: 1px solid var(--admin-border); border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; color: rgba(255,255,255,0.7); outline: none; font-family: Manrope, sans-serif; cursor: pointer; }
+        .admin-select option { background: var(--admin-card); color: #fff; }
+        .admin-btn { padding: 8px 18px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; border: none; cursor: pointer; transition: all 0.25s ease; font-family: Manrope, sans-serif; display: inline-flex; align-items: center; gap: 6px; }
+        .admin-btn-primary { background: #7ef4d2; color: #07111f; }
+        .admin-btn-primary:hover { background: #6de4c2; box-shadow: 0 4px 20px rgba(126,244,210,0.2); }
+        .admin-btn-secondary { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); border: 1px solid var(--admin-border); }
+        .admin-btn-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .admin-btn-danger { background: rgba(220,53,69,0.12); color: #dc3545; }
+        .admin-btn-danger:hover { background: rgba(220,53,69,0.2); }
+        .admin-empty { text-align: center; padding: 60px 20px; color: rgba(255,255,255,0.3); }
+        .admin-empty svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.3; }
+        .admin-empty p { font-size: 0.9rem; }
+        .admin-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 1000; display: none; align-items: center; justify-content: center; }
+        .admin-modal-overlay.open { display: flex; }
+        .admin-modal { background: var(--admin-card); border: 1px solid var(--admin-border); border-radius: 16px; padding: 32px; max-width: 520px; width: 90%; max-height: 85vh; overflow-y: auto; }
+        .admin-modal h2 { font-family: "Space Grotesk", sans-serif; font-size: 1.25rem; color: #fff; margin-bottom: 4px; }
+        .admin-modal p { color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-bottom: 20px; }
+        .admin-modal .admin-actions { margin-top: 20px; justify-content: flex-end; }
+        .admin-modal .input-field { width: 100%; margin-bottom: 12px; }
+        .admin-img-thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: rgba(255,255,255,0.04); }
+        .admin-product-info { display: flex; align-items: center; gap: 10px; }
+        .admin-product-info div { display: flex; flex-direction: column; }
+        .admin-product-info strong { font-size: 0.88rem; color: #fff; font-weight: 500; }
+        .admin-product-info span { font-size: 0.75rem; color: rgba(255,255,255,0.35); }
+        .admin-user-info { display: flex; align-items: center; gap: 10px; }
+        .admin-user-avatar { width: 32px; height: 32px; border-radius: 50%; background: rgba(126,244,210,0.1); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #7ef4d2; font-weight: 600; flex-shrink: 0; }
+        .admin-user-info div { display: flex; flex-direction: column; }
+        .admin-user-info strong { font-size: 0.88rem; color: #fff; font-weight: 500; }
+        .admin-user-info span { font-size: 0.75rem; color: rgba(255,255,255,0.35); }
+        .admin-status-select { padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 500; background: rgba(255,255,255,0.04); border: 1px solid var(--admin-border); color: rgba(255,255,255,0.7); outline: none; cursor: pointer; font-family: Manrope, sans-serif; }
+        .admin-status-select option { background: var(--admin-card); color: #fff; }
+        .admin-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .admin-summary-item { background: rgba(126,244,210,0.03); border: 1px solid var(--admin-border); border-radius: 8px; padding: 16px; text-align: center; }
+        .admin-summary-item strong { display: block; font-family: "Space Grotesk", sans-serif; font-size: 1.5rem; color: #7ef4d2; }
+        .admin-summary-item span { font-size: 0.78rem; color: rgba(255,255,255,0.4); }
+        @media (max-width: 768px) {
+            .admin-sidebar { display: none; }
+            .admin-content { padding: 20px; }
+            .admin-stats { grid-template-columns: repeat(2, 1fr); }
+            .admin-summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .admin-table-wrap { overflow-x: auto; }
+            .admin-table { min-width: 640px; }
+            .admin-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-shapes" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="app-shell page-transition">
+        <div class="topbar">
+            <div class="container topbar-inner xs:flex-col xs:text-center sm:flex-row sm:text-left">
+                <div><strong class="text-white">Admin dashboard</strong> manage products, orders, and users</div>
+                <div class="status-pill">Full control over the Ponnaloy storefront</div>
+            </div>
+        </div>
+        <header class="site-header">
+            <div class="container header-inner xs:flex-wrap md:flex-nowrap">
+                <a class="brand" href="/">
+                    <span class="brand-mark"><span>P</span></span>
+                    Ponnaloy
+                </a>
+                <nav class="nav xs:order-4 xs:w-full xs:ml-0 xs:overflow-auto lg:order-none lg:w-auto lg:ml-3" aria-label="Main navigation">
+                    <a href="/">Home</a>
+                    <a href="/products">Catalog</a>
+                    <a class="active" href="/admin">Admin</a>
+                </nav>
+                <label class="search-bar xs:order-3 xs:min-w-full md:order-none md:min-w-[min(360px,44vw)]" aria-label="Search admin">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="7"></circle>
+                        <path d="M20 20l-3.6-3.6"></path>
+                    </svg>
+                    <input type="search" placeholder="Search admin panel" data-admin-search />
+                </label>
+                <div class="header-actions xs:ml-0 md:ml-auto">
+                    <button class="button-ghost" data-auth-toggle>Sign in</button>
+                    <button class="icon-button" data-cart-open aria-label="Open cart">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 6h15l-1.5 8h-11z"></path>
+                            <circle cx="9" cy="20" r="1.5"></circle>
+                            <circle cx="18" cy="20" r="1.5"></circle>
+                            <path d="M5 6l-1-3H1"></path>
+                        </svg>
+                        <span class="badge-dot" data-cart-count>0</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+        <main>
+            <div class="admin-layout">
+                <aside class="admin-sidebar" data-admin-sidebar>
+                    <div class="nav-item active" data-admin-tab-btn="overview">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        Overview
+                    </div>
+                    <div class="nav-item" data-admin-tab-btn="products">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        Products
+                    </div>
+                    <div class="nav-item" data-admin-tab-btn="orders">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+                        Orders
+                    </div>
+                    <div class="nav-item" data-admin-tab-btn="users">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                        Users
+                    </div>
+                </aside>
+                <div class="admin-content">
+                    <div class="admin-header-row" data-aos="fade-up">
+                        <div>
+                            <h1>Admin dashboard</h1>
+                            <p>Monitor and manage the entire storefront from one place.</p>
+                        </div>
+                        <div class="admin-toolbar-right">
+                            <button class="admin-btn admin-btn-secondary" data-admin-refresh>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="admin-stats" data-aos="fade-up" data-aos-delay="50">
+                        <div class="admin-stat-card hover-glow">
+                            <div class="stat-label">Total Products</div>
+                            <div class="stat-value" data-admin-stat-products>500+</div>
+                            <div class="stat-change up">&#9650; 12 this week</div>
+                            <div class="stat-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                            </div>
+                        </div>
+                        <div class="admin-stat-card hover-glow">
+                            <div class="stat-label">Total Users</div>
+                            <div class="stat-value" data-admin-stat-users>128</div>
+                            <div class="stat-change up">&#9650; 8 this week</div>
+                            <div class="stat-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                            </div>
+                        </div>
+                        <div class="admin-stat-card hover-glow">
+                            <div class="stat-label">Total Orders</div>
+                            <div class="stat-value" data-admin-stat-orders>342</div>
+                            <div class="stat-change up">&#9650; 18 this week</div>
+                            <div class="stat-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+                            </div>
+                        </div>
+                        <div class="admin-stat-card hover-glow">
+                            <div class="stat-label">Total Revenue</div>
+                            <div class="stat-value" data-admin-stat-revenue>$48.2k</div>
+                            <div class="stat-change up">&#9650; $3.4k this week</div>
+                            <div class="stat-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-tabs" data-admin-tabs data-aos="fade-up" data-aos-delay="100">
+                        <button class="admin-tab active" data-admin-tab="overview">Overview</button>
+                        <button class="admin-tab" data-admin-tab="products">Products</button>
+                        <button class="admin-tab" data-admin-tab="orders">Orders</button>
+                        <button class="admin-tab" data-admin-tab="users">Users</button>
+                    </div>
+
+                    <div class="admin-tab-content active" data-admin-tab-panel="overview">
+                        <div class="admin-summary-grid" data-aos="fade-up">
+                            <div class="admin-summary-item"><strong data-admin-summary-products>500</strong><span>Products in catalog</span></div>
+                            <div class="admin-summary-item"><strong data-admin-summary-users>128</strong><span>Registered users</span></div>
+                            <div class="admin-summary-item"><strong data-admin-summary-orders>342</strong><span>Orders placed</span></div>
+                            <div class="admin-summary-item"><strong data-admin-summary-revenue>$48.2k</strong><span>Total revenue</span></div>
+                        </div>
+                        <div class="admin-table-wrap" data-aos="fade-up" data-aos-delay="100">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Recent Activity</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody data-admin-activity>
+                                    <tr><td>New order #1042</td><td>Order</td><td><span class="admin-badge processing">Processing</span></td><td>2 min ago</td></tr>
+                                    <tr><td>User registered: jane@example.com</td><td>User</td><td><span class="admin-badge user">Active</span></td><td>15 min ago</td></tr>
+                                    <tr><td>Product added: "Drift Chair Pro"</td><td>Product</td><td><span class="admin-badge delivered">Published</span></td><td>1 hr ago</td></tr>
+                                    <tr><td>Order #1039 marked as delivered</td><td>Order</td><td><span class="admin-badge delivered">Delivered</span></td><td>3 hr ago</td></tr>
+                                    <tr><td>Order #1037 cancelled</td><td>Order</td><td><span class="admin-badge cancelled">Cancelled</span></td><td>5 hr ago</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="admin-tab-content" data-admin-tab-panel="products">
+                        <div class="admin-toolbar">
+                            <div class="admin-toolbar-left">
+                                <label class="admin-search">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+                                    <input type="search" placeholder="Search products..." data-admin-products-search />
+                                </label>
+                                <select class="admin-select" data-admin-products-category>
+                                    <option value="all">All categories</option>
+                                    <option value="Audio">Audio</option>
+                                    <option value="Wearables">Wearables</option>
+                                    <option value="Home">Home</option>
+                                    <option value="Work">Work</option>
+                                </select>
+                            </div>
+                            <div class="admin-toolbar-right">
+                                <button class="admin-btn admin-btn-primary" data-admin-add-product>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    Add Product
+                                </button>
+                            </div>
+                        </div>
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Category</th>
+                                        <th>Price</th>
+                                        <th>Stock</th>
+                                        <th>Rating</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody data-admin-products-table>
+                                    <tr>
+                                        <td><div class="admin-product-info"><img class="admin-img-thumb" src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=80&q=80" alt="" loading="lazy" /><div><strong>Aurora Headphones</strong><span>Premium wireless audio</span></div></div></td>
+                                        <td>Audio</td>
+                                        <td>$249</td>
+                                        <td>42</td>
+                                        <td>4.8</td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button><button class="admin-action-edit">Edit</button><button class="admin-action-delete">Delete</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><div class="admin-product-info"><img class="admin-img-thumb" src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80&q=80" alt="" loading="lazy" /><div><strong>Pulse Smartwatch</strong><span>Fitness & health tracker</span></div></div></td>
+                                        <td>Wearables</td>
+                                        <td>$399</td>
+                                        <td>28</td>
+                                        <td>4.6</td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button><button class="admin-action-edit">Edit</button><button class="admin-action-delete">Delete</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><div class="admin-product-info"><img class="admin-img-thumb" src="https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=80&q=80" alt="" loading="lazy" /><div><strong>Drift Chair</strong><span>Ergonomic office seating</span></div></div></td>
+                                        <td>Work</td>
+                                        <td>$599</td>
+                                        <td>15</td>
+                                        <td>4.9</td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button><button class="admin-action-edit">Edit</button><button class="admin-action-delete">Delete</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><div class="admin-product-info"><img class="admin-img-thumb" src="https://images.unsplash.com/photo-1546868871-af0de0ae72a4?w=80&q=80" alt="" loading="lazy" /><div><strong>Lumen Desk Lamp</strong><span>Adjustable LED lighting</span></div></div></td>
+                                        <td>Home</td>
+                                        <td>$119</td>
+                                        <td>67</td>
+                                        <td>4.5</td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button><button class="admin-action-edit">Edit</button><button class="admin-action-delete">Delete</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><div class="admin-product-info"><img class="admin-img-thumb" src="https://images.unsplash.com/photo-1583394838336-acd977736f90?w=80&q=80" alt="" loading="lazy" /><div><strong>Echo Buds</strong><span>Noise-cancelling earbuds</span></div></div></td>
+                                        <td>Audio</td>
+                                        <td>$179</td>
+                                        <td>53</td>
+                                        <td>4.7</td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button><button class="admin-action-edit">Edit</button><button class="admin-action-delete">Delete</button></div></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="admin-tab-content" data-admin-tab-panel="orders">
+                        <div class="admin-toolbar">
+                            <div class="admin-toolbar-left">
+                                <label class="admin-search">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+                                    <input type="search" placeholder="Search orders..." data-admin-orders-search />
+                                </label>
+                                <select class="admin-select" data-admin-orders-status>
+                                    <option value="all">All statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="processing">Processing</option>
+                                    <option value="shipped">Shipped</option>
+                                    <option value="delivered">Delivered</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Customer</th>
+                                        <th>Items</th>
+                                        <th>Total</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody data-admin-orders-table>
+                                    <tr>
+                                        <td><strong style="color:#7ef4d2;">#1042</strong></td>
+                                        <td><div class="admin-user-info"><div class="admin-user-avatar">S</div><div><strong>Sarah K.</strong><span>sarah@example.com</span></div></div></td>
+                                        <td>3</td>
+                                        <td>$527</td>
+                                        <td><select class="admin-status-select" data-order-status><option value="pending">Pending</option><option value="processing" selected>Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></td>
+                                        <td>Today</td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong style="color:#7ef4d2;">#1041</strong></td>
+                                        <td><div class="admin-user-info"><div class="admin-user-avatar">M</div><div><strong>Marcus J.</strong><span>marcus@example.com</span></div></div></td>
+                                        <td>1</td>
+                                        <td>$249</td>
+                                        <td><select class="admin-status-select" data-order-status><option value="pending">Pending</option><option value="processing">Processing</option><option value="shipped" selected>Shipped</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></td>
+                                        <td>Yesterday</td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong style="color:#7ef4d2;">#1040</strong></td>
+                                        <td><div class="admin-user-info"><div class="admin-user-avatar">E</div><div><strong>Elena R.</strong><span>elena@example.com</span></div></div></td>
+                                        <td>2</td>
+                                        <td>$518</td>
+                                        <td><select class="admin-status-select" data-order-status><option value="pending">Pending</option><option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered" selected>Delivered</option><option value="cancelled">Cancelled</option></select></td>
+                                        <td>2 days ago</td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong style="color:#7ef4d2;">#1039</strong></td>
+                                        <td><div class="admin-user-info"><div class="admin-user-avatar">D</div><div><strong>David L.</strong><span>david@example.com</span></div></div></td>
+                                        <td>1</td>
+                                        <td>$599</td>
+                                        <td><select class="admin-status-select" data-order-status><option value="pending">Pending</option><option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered" selected>Delivered</option><option value="cancelled">Cancelled</option></select></td>
+                                        <td>3 days ago</td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong style="color:#7ef4d2;">#1037</strong></td>
+                                        <td><div class="admin-user-info"><div class="admin-user-avatar">J</div><div><strong>Jane D.</strong><span>jane@example.com</span></div></div></td>
+                                        <td>2</td>
+                                        <td>$398</td>
+                                        <td><select class="admin-status-select" data-order-status><option value="pending">Pending</option><option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="cancelled" selected>Cancelled</option></select></td>
+                                        <td>5 days ago</td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button></div></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="admin-tab-content" data-admin-tab-panel="users">
+                        <div class="admin-toolbar">
+                            <div class="admin-toolbar-left">
+                                <label class="admin-search">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+                                    <input type="search" placeholder="Search users..." data-admin-users-search />
+                                </label>
+                                <select class="admin-select" data-admin-users-role>
+                                    <option value="all">All roles</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="user">User</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Role</th>
+                                        <th>Orders</th>
+                                        <th>Joined</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody data-admin-users-table>
+                                    <tr>
+                                        <td><div class="admin-user-info"><div class="admin-user-avatar">S</div><div><strong>Sarah K.</strong><span>sarah@example.com</span></div></div></td>
+                                        <td><span class="admin-badge admin">Admin</span></td>
+                                        <td>14</td>
+                                        <td>Jan 2025</td>
+                                        <td><span class="admin-badge delivered">Active</span></td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button><button class="admin-action-edit">Edit</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><div class="admin-user-info"><div class="admin-user-avatar">M</div><div><strong>Marcus J.</strong><span>marcus@example.com</span></div></div></td>
+                                        <td><span class="admin-badge user">User</span></td>
+                                        <td>8</td>
+                                        <td>Feb 2025</td>
+                                        <td><span class="admin-badge delivered">Active</span></td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button><button class="admin-action-edit">Edit</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><div class="admin-user-info"><div class="admin-user-avatar">E</div><div><strong>Elena R.</strong><span>elena@example.com</span></div></div></td>
+                                        <td><span class="admin-badge user">User</span></td>
+                                        <td>3</td>
+                                        <td>Mar 2025</td>
+                                        <td><span class="admin-badge delivered">Active</span></td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button><button class="admin-action-edit">Edit</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><div class="admin-user-info"><div class="admin-user-avatar">D</div><div><strong>David L.</strong><span>david@example.com</span></div></div></td>
+                                        <td><span class="admin-badge user">User</span></td>
+                                        <td>5</td>
+                                        <td>Mar 2025</td>
+                                        <td><span class="admin-badge delivered">Active</span></td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button><button class="admin-action-edit">Edit</button></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td><div class="admin-user-info"><div class="admin-user-avatar">J</div><div><strong>Jane D.</strong><span>jane@example.com</span></div></div></td>
+                                        <td><span class="admin-badge user">User</span></td>
+                                        <td>2</td>
+                                        <td>Apr 2025</td>
+                                        <td><span class="admin-badge user">Inactive</span></td>
+                                        <td><div class="admin-actions"><button class="admin-action-view">View</button><button class="admin-action-edit">Edit</button></div></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="footer xs:py-10 lg:py-[60px]">
+            <div class="container footer-card" data-aos="fade-up">
+                <div class="footer-grid xs:grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.3fr_0.7fr_0.7fr]">
+                    <div>
+                        <small class="text-white/60">Admin panel &mdash; manage store products, orders, and user accounts.</small>
+                    </div>
+                    <div>
+                        <strong>Management</strong>
+                        <p class="section-copy">Products<br />Orders<br />Users</p>
+                    </div>
+                    <div>
+                        <strong>Store</strong>
+                        <p class="section-copy">Catalog<br />Cart<br />Checkout</p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <button class="back-to-top" data-back-to-top aria-label="Back to top">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 15l-6-6-6 6"></path></svg>
+    </button>
+
+    <div class="cart-drawer xs:grid-cols-1 md:grid-cols-[1fr_min(440px,100%)]" data-cart-drawer>
+        <div class="cart-drawer-backdrop" data-cart-close></div>
+        <aside class="cart-panel xs:border-l-0 xs:border-t md:border-l md:border-t-0">
+            <div class="cart-header">
+                <div>
+                    <h2 class="panel-title">Your cart</h2>
+                    <p class="section-copy">Review items before placing your order.</p>
+                </div>
+                <button class="icon-button" data-cart-close aria-label="Close cart">&#10005;</button>
+            </div>
+            <div class="cart-items" data-cart-items></div>
+            <div class="cart-footer">
+                <div class="promo-row">
+                    <input class="promo-input" type="text" placeholder="Promo code (e.g. WELCOME10)" data-promo-input />
+                    <button class="promo-button" data-promo-apply>Apply</button>
+                </div>
+                <div class="cart-field">
+                    <input class="cart-input" type="text" placeholder="Shipping address" data-shipping-address required />
+                </div>
+                <div class="cart-field">
+                    <input class="cart-input" type="tel" placeholder="Phone number" data-phone required />
+                </div>
+                <div class="cart-row"><span>Subtotal</span><strong data-cart-subtotal>$0</strong></div>
+                <div class="cart-row"><span>Shipping</span><strong data-cart-shipping>$0</strong></div>
+                <div class="cart-row discount-row" data-discount-row hidden><span>Discount</span><strong data-cart-discount>-$0</strong></div>
+                <div class="cart-row"><span>Tax (8%)</span><strong data-cart-tax>$0</strong></div>
+                <div class="cart-row"><span>Total</span><strong data-cart-total>$0</strong></div>
+                <div class="payment-methods" data-payment-methods>
+                    <label class="payment-method selected">
+                        <input type="radio" name="payment" value="card" checked />
+                        <span class="payment-label">Credit / Debit Card</span>
+                    </label>
+                    <label class="payment-method">
+                        <input type="radio" name="payment" value="paypal" />
+                        <span class="payment-label">PayPal</span>
+                    </label>
+                    <label class="payment-method">
+                        <input type="radio" name="payment" value="cod" />
+                        <span class="payment-label">Cash on Delivery</span>
+                    </label>
+                </div>
+                <button class="button" data-place-order disabled>Place order</button>
+                <button class="button-secondary" data-clear-cart disabled>Clear cart</button>
+            </div>
+        </aside>
+    </div>
+
+    <div class="modal" data-auth-modal>
+        <div class="modal-card auth-card">
+            <div class="auth-header">
+                <div>
+                    <h2 class="modal-title">Welcome</h2>
+                    <p class="section-copy">Sign in to your account or create a new one.</p>
+                </div>
+                <button class="icon-button" data-auth-close aria-label="Close account modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="auth-toggle">
+                <button class="auth-toggle-btn active" data-auth-tab="login">Sign In</button>
+                <button class="auth-toggle-btn" data-auth-tab="register">Sign Up</button>
+                <div class="auth-toggle-bg" data-auth-indicator></div>
+            </div>
+            <div class="auth-slider-viewport">
+                <div class="auth-slider" data-auth-slider>
+                    <form class="auth-form" data-login-form>
+                        <div class="auth-fields">
+                            <div class="input-group">
+                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                    <polyline points="22,4 12,13 2,4"></polyline>
+                                </svg>
+                                <input type="email" name="email" placeholder="Email address" required class="input-field" />
+                            </div>
+                            <div class="input-group">
+                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                                <input type="password" name="password" placeholder="Password" required class="input-field" />
+                                <button type="button" class="password-toggle" data-password-toggle aria-label="Toggle password visibility">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
+                            </div>
+                            <a href="#" class="auth-forgot">Forgot password?</a>
+                        </div>
+                        <button class="button" type="submit"><span class="button-text">Sign In</span></button>
+                        <div class="auth-divider"><span>or continue with</span></div>
+                        <div class="social-btn">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                            Continue with Google
+                        </div>
+                    </form>
+                    <form class="auth-form" data-register-form>
+                        <div class="auth-fields">
+                            <div class="input-group">
+                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <input type="text" name="name" placeholder="Full name" required class="input-field" />
+                            </div>
+                            <div class="input-group">
+                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                    <polyline points="22,4 12,13 2,4"></polyline>
+                                </svg>
+                                <input type="email" name="email" placeholder="Email address" required class="input-field" />
+                            </div>
+                            <div class="input-group">
+                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                                <input type="password" name="password" placeholder="Create password" required class="input-field" />
+                                <button type="button" class="password-toggle" data-password-toggle aria-label="Toggle password visibility">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="button" type="submit"><span class="button-text">Create Account</span></button>
+                        <div class="auth-divider"><span>or continue with</span></div>
+                        <div class="social-btn">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                            Continue with Google
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="quick-view-backdrop" data-quick-view>
+        <div class="quick-view-card" data-quick-view-card></div>
+    </div>
+
+    <div class="toast" data-toast>
+        <span class="toast-icon" data-toast-icon aria-hidden="true"></span>
+        <div class="toast-body">
+            <strong data-toast-title>Added</strong>
+            <p data-toast-message>Product added to cart.</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>AOS?.init?.({ duration: 600, once: true, offset: 40 });</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="/js/shared.js"></script>
+    <script src="/js/cart.js"></script>
+    <script src="/js/app.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/assistant.js"></script>
+    <script src="/js/admin.js"></script>
+</body>
+</html>

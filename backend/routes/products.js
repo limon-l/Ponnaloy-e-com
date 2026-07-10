@@ -1,16 +1,20 @@
 const { Router } = require("express");
 const asyncHandler = require("../middleware/asyncHandler");
-const { listProducts, getProductById, getProductBySlug, listFeaturedProducts, searchProducts } = require("../db");
+const { listProducts, getProductById, getProductBySlug, listFeaturedProducts, listTrendingProducts, listDealProducts, searchProducts } = require("../db");
 
 const router = Router();
 
 router.get("/", asyncHandler(async (req, res) => {
-  const { q, featured, category } = req.query;
+  const { q, featured, trending, deals, category } = req.query;
   let products;
   if (q) {
     products = await searchProducts(q);
   } else if (featured === "true") {
     products = await listFeaturedProducts();
+  } else if (trending === "true") {
+    products = await listTrendingProducts();
+  } else if (deals === "true") {
+    products = await listDealProducts();
   } else {
     products = await listProducts();
   }

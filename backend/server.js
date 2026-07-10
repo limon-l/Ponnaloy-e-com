@@ -9,7 +9,7 @@ const cookieParser = require("cookie-parser");
 const SQLiteStoreFactory = require("connect-sqlite3");
 
 const env = require("./config/env");
-const { initDatabase } = require("./db");
+const { initDatabase, subscribeNewsletter } = require("./db");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -61,6 +61,11 @@ app.use("/api", require("./routes/auth"));
 app.use("/api/products", require("./routes/products"));
 app.use("/api/orders", require("./routes/orders"));
 app.use("/api/chat", require("./routes/chat"));
+app.use("/api/reviews", require("./routes/reviews"));
+app.use("/api/wishlist", require("./routes/wishlist"));
+app.use("/api/addresses", require("./routes/addresses"));
+app.use("/api/user", require("./routes/user"));
+app.use("/api/admin", require("./routes/admin"));
 
 /* ── Newsletter ── */
 const asyncHandler = require("./middleware/asyncHandler");
@@ -69,18 +74,37 @@ app.post("/api/newsletter", asyncHandler(async (req, res) => {
   if (!email) return res.status(400).json({ message: "Email is required." });
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailPattern.test(email)) return res.status(400).json({ message: "Invalid email format." });
+  await subscribeNewsletter(email);
   res.json({ message: "Thank you for subscribing!", email });
 }));
 
 /* ── Serve HTML pages ── */
+const publicDir = path.join(__dirname, "..", "frontend", "public");
+
 app.get("/products", asyncHandler(async (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "frontend", "public", "products.html"));
+  res.sendFile(path.join(publicDir, "products.html"));
+}));
+
+app.get("/product.html", asyncHandler(async (req, res) => {
+  res.sendFile(path.join(publicDir, "product.html"));
+}));
+
+app.get("/dashboard", asyncHandler(async (req, res) => {
+  res.sendFile(path.join(publicDir, "dashboard.html"));
+}));
+
+app.get("/orders", asyncHandler(async (req, res) => {
+  res.sendFile(path.join(publicDir, "orders.html"));
+}));
+
+app.get("/admin", asyncHandler(async (req, res) => {
+  res.sendFile(path.join(publicDir, "admin.html"));
 }));
 
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api")) return res.status(404).json({ message: "Route not found." });
   if (path.extname(req.path)) return res.status(404).send("Not found");
-  res.sendFile(path.join(__dirname, "..", "frontend", "public", "index.html"));
+  res.sendFile(path.join(publicDir, "index.html"));
 });
 
 /* ── Error handler ── */
