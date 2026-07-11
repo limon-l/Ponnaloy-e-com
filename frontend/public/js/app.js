@@ -54,7 +54,7 @@ function syncCheckoutForm() {
 }
 
 async function refreshSession() {
-  const response = await api("/me");
+  const response = await api("/auth/me");
   state.currentUser = response.user;
   renderHeaderAccount();
   syncCheckoutForm();
@@ -112,7 +112,7 @@ function attachEvents() {
     const authToggle = event.target.closest("[data-auth-toggle]");
     if (authToggle) {
       if (state.currentUser) {
-        api("/logout", { method: "POST" }).then(async () => {
+        api("/auth/signout", { method: "POST" }).then(async () => {
           state.currentUser = null;
           renderHeaderAccount();
           syncCheckoutForm();
@@ -202,7 +202,7 @@ async function loadDeals() {
     const grid = document.querySelector('[data-deals-grid]');
     if (!grid) return;
     try {
-        const response = await api('/products?deals=true');
+        const response = await api('/products/deals');
         removeSkeletons(grid);
         if (response.products.length) {
             grid.innerHTML = response.products.slice(0, 6).map(p => createProductCard(p)).join('');

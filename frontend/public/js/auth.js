@@ -139,7 +139,7 @@ function submitAuthForm(event, type) {
     });
   }
 
-  const endpoint = type === "login" ? "/login" : "/register";
+  const endpoint = type === "login" ? "/auth/login" : "/auth/register";
 
   api(endpoint, { method: "POST", body })
     .then(async () => {

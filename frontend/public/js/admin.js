@@ -523,7 +523,7 @@ function renderUsersTable() {
         </div>
       </td>
       <td><span class="admin-badge ${u.is_admin ? "admin" : "user"}">${u.is_admin ? "Admin" : "User"}</span></td>
-      <td>${u.orderCount ?? "—"}</td>
+      <td>${u.order_count ?? "—"}</td>
       <td>${formatDate(u.created_at)}</td>
       <td><span class="admin-badge delivered">Active</span></td>
       <td>

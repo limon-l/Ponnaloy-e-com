@@ -4,23 +4,13 @@ const { listProducts, getProductById, getProductBySlug, listFeaturedProducts, li
 
 const router = Router();
 
-router.get("/", asyncHandler(async (req, res) => {
-  const { q, featured, trending, deals, category } = req.query;
-  let products;
-  if (q) {
-    products = await searchProducts(q);
-  } else if (featured === "true") {
-    products = await listFeaturedProducts();
-  } else if (trending === "true") {
-    products = await listTrendingProducts();
-  } else if (deals === "true") {
-    products = await listDealProducts();
-  } else {
-    products = await listProducts();
-  }
-  if (category) {
-    products = products.filter((p) => p.category.toLowerCase() === category.toLowerCase());
-  }
+router.get("/trending", asyncHandler(async (req, res) => {
+  const products = await listTrendingProducts();
+  res.json({ products, total: products.length });
+}));
+
+router.get("/deals", asyncHandler(async (req, res) => {
+  const products = await listDealProducts();
   res.json({ products, total: products.length });
 }));
 
@@ -28,6 +18,22 @@ router.get("/categories", asyncHandler(async (req, res) => {
   const products = await listProducts();
   const categories = [...new Set(products.map((p) => p.category))].sort();
   res.json({ categories });
+}));
+
+router.get("/", asyncHandler(async (req, res) => {
+  const { q, featured, category } = req.query;
+  let products;
+  if (q) {
+    products = await searchProducts(q);
+  } else if (featured === "true") {
+    products = await listFeaturedProducts();
+  } else {
+    products = await listProducts();
+  }
+  if (category) {
+    products = products.filter((p) => p.category.toLowerCase() === category.toLowerCase());
+  }
+  res.json({ products, total: products.length });
 }));
 
 router.get("/:identifier", asyncHandler(async (req, res) => {

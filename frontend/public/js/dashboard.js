@@ -8,12 +8,14 @@ let dashboardState = {
 
 function showDashboardSection(tab) {
   dashboardState.activeTab = tab;
-  document.querySelectorAll("[data-dashboard-section]").forEach((section) => {
-    section.classList.toggle("active", section.dataset.dashboardSection === tab);
+  document.querySelectorAll("[data-tab-panel]").forEach((panel) => {
+    const isActive = panel.dataset.tabPanel === tab;
+    panel.classList.toggle("active", isActive);
+    if (isActive) panel.removeAttribute("hidden");
+    else panel.setAttribute("hidden", "");
   });
-  document.querySelectorAll("[data-dashboard-tab]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.dashboardTab === tab);
-    btn.setAttribute("aria-selected", btn.dataset.dashboardTab === tab ? "true" : "false");
+  document.querySelectorAll("[data-tab]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === tab);
   });
   history.replaceState(null, "", `#${tab}`);
 }
@@ -34,6 +36,10 @@ function renderProfile() {
   if (nameInput) nameInput.value = user.name || "";
   if (emailInput) emailInput.value = user.email || "";
   if (phoneInput) phoneInput.value = user.phone || "";
+}
+
+function setText(selector, value) {
+  document.querySelectorAll(selector).forEach((node) => { node.textContent = value; });
 }
 
 function getStatusBadge(status) {
@@ -84,7 +90,8 @@ async function renderWishlist() {
   }
   try {
     const response = await api("/wishlist");
-    const products = response.products || response.items || response;
+    const items = response.wishlist || response.products || response.items || response;
+    const products = items.map(item => item.product || item);
     if (!products.length) {
       container.innerHTML = `<div class="empty-card"><h3>Your wishlist is empty</h3><p class="section-copy">Browse products and save your favorites here.</p></div>`;
       return;
@@ -96,25 +103,25 @@ async function renderWishlist() {
 }
 
 function renderAddresses() {
-  const container = document.querySelector("[data-addresses-list]");
+  const container = document.querySelector("[data-addresses-grid]");
   if (!container) return;
   if (!dashboardState.addresses.length) {
-    container.innerHTML = `<div class="empty-card"><h3>No saved addresses</h3><p class="section-copy">Add a shipping address for faster checkout.</p></div>`;
+    container.innerHTML = `<div class="empty-state" data-addresses-empty><div class="brand-mark"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></span></div><h4>No saved addresses</h4><p>Add a shipping address to speed up your checkout.</p><button class="button" data-add-address>Add your first address</button></div>`;
     return;
   }
   container.innerHTML = dashboardState.addresses.map((addr) => `
-    <article class="address-card${addr.isDefault ? " is-default" : ""}" data-address-id="${addr.id}">
-      ${addr.isDefault ? `<span class="address-default-badge">Default</span>` : ""}
+    <article class="address-card${addr.is_default ? " is-default" : ""}" data-address-id="${addr.id}">
+      ${addr.is_default ? `<span class="address-default-badge">Default</span>` : ""}
       <div class="address-card-body">
         <strong>${addr.label || "Address"}</strong>
-        <p>${addr.street}</p>
-        <p>${addr.city}, ${addr.state} ${addr.zip}</p>
-        <p>${addr.country}</p>
+        <p>${addr.address_line1 || ""}</p>
+        <p>${addr.city || ""}, ${addr.state || ""} ${addr.zip_code || ""}</p>
+        <p>${addr.full_name || ""}</p>
       </div>
       <div class="address-card-actions">
         <button class="button-ghost" data-address-edit="${addr.id}">Edit</button>
         <button class="button-ghost" data-address-delete="${addr.id}">Delete</button>
-        ${!addr.isDefault ? `<button class="button-ghost" data-address-default="${addr.id}">Set as default</button>` : ""}
+        ${!addr.is_default ? `<button class="button-ghost" data-address-default="${addr.id}">Set as default</button>` : ""}
       </div>
     </article>
   `).join("");
@@ -127,11 +134,11 @@ function openAddressModal(address = null) {
   const form = modal.querySelector("[data-address-form]");
   if (form) {
     form.querySelector('[name="label"]').value = address ? address.label || "" : "";
-    form.querySelector('[name="street"]').value = address ? address.street || "" : "";
+    form.querySelector('[name="street"]').value = address ? address.address_line1 || "" : "";
     form.querySelector('[name="city"]').value = address ? address.city || "" : "";
     form.querySelector('[name="state"]').value = address ? address.state || "" : "";
-    form.querySelector('[name="zip"]').value = address ? address.zip || "" : "";
-    form.querySelector('[name="country"]').value = address ? address.country || "" : "";
+    form.querySelector('[name="zip"]').value = address ? address.zip_code || "" : "";
+    form.querySelector('[name="country"]').value = address ? address.full_name || "" : "";
   }
   modal.classList.add("open");
 }
@@ -148,19 +155,19 @@ function closeAddressModal() {
 async function saveAddress(formData) {
   const body = {
     label: formData.get("label"),
-    street: formData.get("street"),
+    fullName: formData.get("country") || state.currentUser?.name || "",
+    addressLine1: formData.get("street"),
     city: formData.get("city"),
     state: formData.get("state"),
-    zip: formData.get("zip"),
-    country: formData.get("country"),
+    zipCode: formData.get("zip"),
   };
   try {
     if (dashboardState.editingAddressId) {
       await api(`/addresses/${dashboardState.editingAddressId}`, { method: "PUT", body: JSON.stringify(body) });
       showToast("Address updated", "Your address has been updated.");
     } else {
-      const response = await api("/addresses", { method: "POST", body: JSON.stringify(body) });
       if (dashboardState.addresses.length === 0) body.isDefault = true;
+      const response = await api("/addresses", { method: "POST", body: JSON.stringify(body) });
       showToast("Address added", "Your new address has been saved.");
     }
     closeAddressModal();
@@ -229,9 +236,17 @@ async function loadTabContent(tab) {
 
 function attachDashboardEvents() {
   document.addEventListener("click", (event) => {
-    const tabBtn = event.target.closest("[data-dashboard-tab]");
+    const tabBtn = event.target.closest("[data-tab]");
     if (tabBtn) {
-      const tab = tabBtn.dataset.dashboardTab;
+      const tab = tabBtn.dataset.tab;
+      showDashboardSection(tab);
+      loadTabContent(tab);
+      return;
+    }
+
+    const tabTrigger = event.target.closest("[data-dashboard-tab-trigger]");
+    if (tabTrigger) {
+      const tab = tabTrigger.dataset.dashboardTabTrigger;
       showDashboardSection(tab);
       loadTabContent(tab);
       return;
@@ -338,6 +353,39 @@ function attachDashboardEvents() {
   });
 }
 
+async function loadDashboardStats() {
+  try {
+    const [ordersRes, wishlistRes, addressesRes] = await Promise.all([
+      api("/orders").catch(() => ({ orders: [] })),
+      api("/wishlist").catch(() => ({ wishlist: [] })),
+      api("/addresses").catch(() => ({ addresses: [] })),
+    ]);
+    const orders = ordersRes.orders || [];
+    const wishlist = wishlistRes.wishlist || [];
+    const addresses = addressesRes.addresses || [];
+    const totalSpent = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+    setText("[data-stat-orders]", orders.length);
+    setText("[data-stat-wishlist]", wishlist.length);
+    setText("[data-stat-addresses]", addresses.length);
+    setText("[data-stat-spent]", formatCurrency(totalSpent));
+
+    setText("[data-summary-status]", state.currentUser.isAdmin ? "Admin" : "Active member");
+    setText("[data-summary-joined]", state.currentUser.createdAt ? new Date(state.currentUser.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "—");
+    setText("[data-summary-orders]", orders.length);
+    setText("[data-summary-spent]", formatCurrency(totalSpent));
+    setText("[data-summary-wishlist]", wishlist.length);
+    setText("[data-summary-addresses]", addresses.length);
+
+    const profileDisplayName = document.querySelector("[data-profile-display-name]");
+    const profileDisplayEmail = document.querySelector("[data-profile-display-email]");
+    const profileDisplayPhone = document.querySelector("[data-profile-display-phone]");
+    if (profileDisplayName) profileDisplayName.textContent = state.currentUser.name || "—";
+    if (profileDisplayEmail) profileDisplayEmail.textContent = state.currentUser.email || "—";
+    if (profileDisplayPhone) profileDisplayPhone.textContent = state.currentUser.phone || "—";
+  } catch (e) { /* stats are non-critical */ }
+}
+
 async function bootDashboard() {
   try {
     await refreshSession();
@@ -352,9 +400,10 @@ async function bootDashboard() {
   dashboardState.user = state.currentUser;
   const adminLink = document.querySelector("[data-admin-link]");
   if (adminLink) {
-    adminLink.style.display = dashboardState.user.isAdmin ? "" : "none";
+    adminLink.hidden = !dashboardState.user.isAdmin;
   }
   renderProfile();
+  loadDashboardStats();
   attachDashboardEvents();
   const hash = location.hash.replace("#", "") || "profile";
   showDashboardSection(hash);

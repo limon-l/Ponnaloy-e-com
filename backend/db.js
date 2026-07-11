@@ -648,10 +648,11 @@ async function createUser({ name, email, password }) {
   return getUserById(result.id);
 }
 
-async function updateUserProfile(userId, { name, phone, avatarUrl }) {
+async function updateUserProfile(userId, { name, email, phone, avatarUrl }) {
   const fields = [];
   const params = [];
   if (name !== undefined) { fields.push("name = ?"); params.push(name.trim()); }
+  if (email !== undefined) { fields.push("email = ?"); params.push(email.trim().toLowerCase()); }
   if (phone !== undefined) { fields.push("phone = ?"); params.push(phone.trim()); }
   if (avatarUrl !== undefined) { fields.push("avatar_url = ?"); params.push(avatarUrl.trim()); }
   if (!fields.length) return getUserById(userId);
@@ -1054,8 +1055,10 @@ async function adminListAllOrders() {
       total: Number(order.total),
       status: order.status,
       paymentMethod: order.payment_method || "card",
+      promoCode: order.promo_code || null,
       createdAt: order.created_at,
       items: items.map((i) => ({
+        productId: i.product_id,
         productName: i.product_name,
         unitPrice: Number(i.unit_price),
         quantity: i.quantity,
@@ -1131,7 +1134,9 @@ async function adminDeleteProduct(productId) {
 
 async function adminListAllUsers() {
   return all(
-    "SELECT id, name, email, phone, avatar_url, is_admin, created_at FROM users ORDER BY id DESC"
+    `SELECT u.id, u.name, u.email, u.phone, u.avatar_url, u.is_admin, u.created_at,
+            (SELECT COUNT(*) FROM orders WHERE user_id = u.id) AS order_count
+     FROM users u ORDER BY u.id DESC`
   );
 }
 

@@ -1,7 +1,7 @@
 const { Router } = require("express");
 const asyncHandler = require("../middleware/asyncHandler");
 const requireAuth = require("../middleware/requireAuth");
-const { getUserById, updateUserProfile, updateUserPassword } = require("../db");
+const { getUserById, findUserByEmail, updateUserProfile, updateUserPassword } = require("../db");
 const { sanitizeUser } = require("../utils/sanitize");
 
 const router = Router();
@@ -13,8 +13,14 @@ router.get("/profile", requireAuth, asyncHandler(async (req, res) => {
 }));
 
 router.put("/profile", requireAuth, asyncHandler(async (req, res) => {
-  const { name, phone, avatarUrl } = req.body;
-  const user = await updateUserProfile(req.session.userId, { name, phone, avatarUrl });
+  const { name, email, phone, avatarUrl } = req.body;
+  if (email) {
+    const existing = await findUserByEmail(email);
+    if (existing && existing.id !== req.session.userId) {
+      return res.status(409).json({ message: "That email is already in use." });
+    }
+  }
+  const user = await updateUserProfile(req.session.userId, { name, email, phone, avatarUrl });
   res.json({ user: sanitizeUser(user) });
 }));
 

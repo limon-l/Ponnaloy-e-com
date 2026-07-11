@@ -57,7 +57,7 @@ app.use(express.static(path.join(__dirname, "..", "frontend", "public"), {
 
 /* ── API routes ── */
 app.use("/api/health", require("./routes/health"));
-app.use("/api", require("./routes/auth"));
+app.use("/api/auth", require("./routes/auth"));
 app.use("/api/products", require("./routes/products"));
 app.use("/api/orders", require("./routes/orders"));
 app.use("/api/chat", require("./routes/chat"));

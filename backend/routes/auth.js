@@ -45,4 +45,12 @@ router.post("/logout", asyncHandler(async (req, res) => {
   });
 }));
 
+router.post("/signout", asyncHandler(async (req, res) => {
+  req.session.destroy((error) => {
+    if (error) return res.status(500).json({ message: "Unable to log out right now." });
+    res.clearCookie("connect.sid");
+    return res.json({ message: "Logged out successfully." });
+  });
+}));
+
 module.exports = router;

@@ -522,6 +522,39 @@
         <div class="quick-view-card" data-quick-view-card></div>
     </div>
 
+    <div class="modal" data-address-modal>
+        <div class="modal-card">
+            <div class="auth-header">
+                <div>
+                    <h2 class="modal-title">Add Address</h2>
+                    <p class="section-copy">Enter your shipping address details.</p>
+                </div>
+                <button class="icon-button" data-address-modal-close aria-label="Close address modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form class="checkout-grid" data-address-form style="padding: 0 24px 24px;">
+                <input type="text" name="label" placeholder="Label (e.g. Home, Office)" class="input-field" value="Home" />
+                <input type="text" name="street" placeholder="Street address" required class="input-field" />
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <input type="text" name="city" placeholder="City" class="input-field" />
+                    <input type="text" name="state" placeholder="State / Province" class="input-field" />
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <input type="text" name="zip" placeholder="ZIP / Postal code" class="input-field" />
+                    <input type="text" name="country" placeholder="Full name" class="input-field" />
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="button-secondary" data-address-modal-close>Cancel</button>
+                    <button type="submit" class="button">Save address</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="toast" data-toast>
         <span class="toast-icon" data-toast-icon aria-hidden="true"></span>
         <div class="toast-body">
