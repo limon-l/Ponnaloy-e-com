@@ -56,7 +56,7 @@ function getStatusBadge(status) {
   return `<span class="order-badge ${cls}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
 }
 
-function renderOrders() {
+function renderDashboardOrders() {
   const container = document.querySelector("[data-orders-list]");
   if (!container) return;
   if (!dashboardState.orders.length) {
@@ -200,7 +200,7 @@ async function setDefaultAddress(id) {
   }
 }
 
-async function loadOrders() {
+async function loadDashboardOrders() {
   try {
     const response = await api("/orders");
     dashboardState.orders = response.orders || response;
@@ -221,8 +221,8 @@ async function loadAddresses() {
 async function loadTabContent(tab) {
   switch (tab) {
     case "orders":
-      await loadOrders();
-      renderOrders();
+      await loadDashboardOrders();
+      renderDashboardOrders();
       break;
     case "wishlist":
       await renderWishlist();
@@ -390,11 +390,27 @@ async function bootDashboard() {
   try {
     await refreshSession();
   } catch (error) {
-    window.location.href = "/";
-    return;
+    /* continue — show login prompt */
   }
   if (!state.currentUser) {
-    window.location.href = "/";
+    const main = document.querySelector("main");
+    if (main) {
+      main.innerHTML = `
+        <section class="section xs:pt-10 lg:pt-16">
+          <div class="container" style="max-width: 560px; margin: 0 auto; text-align: center;">
+            <div class="brand-mark" style="margin: 0 auto 20px;">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>
+            </div>
+            <h1 class="glow-text" style="font-size: 1.6rem; margin-bottom: 12px;">Sign in to your dashboard</h1>
+            <p class="section-copy">Manage your profile, track orders, curate your wishlist, and keep your addresses up to date.</p>
+            <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+              <button class="button" onclick="openAuthModal('login')">Sign in</button>
+              <button class="button-secondary" onclick="openAuthModal('register')">Create account</button>
+            </div>
+          </div>
+        </section>
+      `;
+    }
     return;
   }
   dashboardState.user = state.currentUser;

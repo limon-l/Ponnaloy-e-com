@@ -1,9 +1,9 @@
-const API_BASE = "/api";
+const API_BASE = window.PONNALOY_API_URL || "/api";
 
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    credentials: "same-origin",
+    credentials: "include",
     ...options,
   });
   let payload = null;
@@ -299,14 +299,14 @@ function animateCounters() {
 
 /* ── User Menu Dropdown ── */
 function initUserMenu() {
-  const signInBtn = document.querySelector("[data-sign-in]");
-  if (!signInBtn) return;
+  const authBtn = document.querySelector("[data-auth-toggle]");
+  if (!authBtn) return;
 
   api("/auth/me").then((user) => {
     if (!user) return;
 
-    signInBtn.textContent = user.name.split(" ")[0];
-    signInBtn.removeAttribute("href");
+    authBtn.textContent = user.name.split(" ")[0];
+    authBtn.title = `Signed in as ${user.name}`;
 
     const dropdown = document.createElement("div");
     dropdown.className = "user-dropdown";
@@ -342,12 +342,14 @@ function initUserMenu() {
 
     const wrapper = document.createElement("div");
     wrapper.style.position = "relative";
-    signInBtn.parentNode.insertBefore(wrapper, signInBtn);
-    wrapper.appendChild(signInBtn);
+    authBtn.parentNode.insertBefore(wrapper, authBtn);
+    wrapper.appendChild(authBtn);
     wrapper.appendChild(dropdown);
 
     wrapper.addEventListener("mouseenter", () => { dropdown.style.display = "block"; });
     wrapper.addEventListener("mouseleave", () => { dropdown.style.display = "none"; });
+
+    if (typeof state !== "undefined") state.currentUser = user;
   }).catch(() => { /* not logged in — leave button as-is */ });
 }
 

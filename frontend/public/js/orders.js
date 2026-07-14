@@ -15,13 +15,13 @@ const STATUS_COLORS = {
   cancelled: "badge-red",
 };
 
-function statusBadge(status) {
+function orderStatusBadge(status) {
   const label = status.charAt(0).toUpperCase() + status.slice(1);
   const cls = STATUS_COLORS[status] || "badge-amber";
   return `<span class="status-badge ${cls}">${label}</span>`;
 }
 
-function formatDate(dateStr) {
+function orderFormatDate(dateStr) {
   const d = new Date(dateStr.replace(" ", "T") + "Z");
   return d.toLocaleDateString("en-US", {
     year: "numeric",
@@ -108,8 +108,8 @@ function renderOrderCard(order) {
       <div class="order-card-header">
         <div class="order-card-meta">
           <strong class="order-id">Order #${order.id}</strong>
-          <span class="order-date">${formatDate(order.createdAt)}</span>
-          ${statusBadge(order.status)}
+          <span class="order-date">${orderFormatDate(order.createdAt)}</span>
+          ${orderStatusBadge(order.status)}
         </div>
         <div class="order-card-summary">
           <span class="order-count">${order.items.length} item${order.items.length !== 1 ? "s" : ""}</span>
@@ -370,12 +370,25 @@ async function bootOrdersPage() {
   try {
     await refreshSession();
   } catch (error) {
-    window.location.href = "/";
-    return;
+    /* continue — show login prompt */
   }
 
   if (!state.currentUser) {
-    window.location.href = "/";
+    const list = document.querySelector("[data-orders-list]");
+    if (list) {
+      list.innerHTML = `
+        <div class="orders-empty" style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 60px 20px;">
+          <div class="brand-mark" style="margin: 0 auto 16px;">
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>
+          </div>
+          <h3 class="section-title" style="font-size: 1.3rem;">Sign in to view your orders</h3>
+          <p class="section-copy">Please sign in to access your order history and track purchases.</p>
+          <button class="button" style="margin-top: 20px;" onclick="openAuthModal('login')">Sign in</button>
+          <p class="section-copy" style="margin-top: 12px; font-size: 0.85rem;">Don't have an account? <a href="#" onclick="openAuthModal('register'); return false;" style="color: var(--accent, #7ef4d2); text-decoration: underline;">Create one</a></p>
+        </div>
+      `;
+    }
+    wireRevealAnimations();
     return;
   }
 

@@ -15,6 +15,19 @@ const errorHandler = require("./middleware/errorHandler");
 const app = express();
 const SQLiteStore = SQLiteStoreFactory(session);
 
+const isProd = env.nodeEnv === "production";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+
+/* ── CORS (cross-origin for Vercel frontend) ── */
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", FRONTEND_URL);
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 /* ── Global middleware ── */
 app.use(compression({ level: 6 }));
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -44,7 +57,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    sameSite: "lax",
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
     maxAge: 1000 * 60 * 60 * 24 * 7,
   },
 }));
@@ -115,5 +129,7 @@ app.use(errorHandler);
   await initDatabase();
   app.listen(env.port, () => {
     console.log(`Ponnaloy e-com running at http://localhost:${env.port}`);
+    console.log(`Environment: ${env.nodeEnv}`);
+    if (FRONTEND_URL) console.log(`CORS origin: ${FRONTEND_URL}`);
   });
 })();

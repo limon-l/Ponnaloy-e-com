@@ -1,18 +1,13 @@
-let state = {
-  products: [],
-  filteredProducts: [],
-  category: "all",
-  search: "",
-  currentUser: null,
-  promoApplied: null,
-  paymentMethod: "card",
-};
+state.products = [];
+state.filteredProducts = [];
+state.category = "all";
+state.search = "";
 
 function renderHeaderAccount() {
   const button = document.querySelector("[data-auth-toggle]");
   if (!button) return;
   if (state.currentUser) {
-    button.textContent = `Sign out`;
+    button.textContent = state.currentUser.name.split(" ")[0];
     button.title = `Signed in as ${state.currentUser.name}`;
   } else {
     button.textContent = "Sign in";
@@ -117,6 +112,7 @@ function attachEvents() {
           renderHeaderAccount();
           syncCheckoutForm();
           showToast("Signed out", "Your session has been cleared.");
+          setTimeout(() => { window.location.href = "/"; }, 800);
         }).catch((error) => showToast("Logout failed", error.message));
       } else { openAuthModal("login"); }
     }
