@@ -224,14 +224,21 @@ function animatePageEntrance() {
   const hero = document.querySelector(".hero");
   if (!hero) return;
 
+  const badge = hero.querySelector(".kicker");
   const title = hero.querySelector("h1");
   const subtitle = hero.querySelector(".section-copy");
   const cta = hero.querySelector(".hero-actions");
+  const stats = hero.querySelector(".hero-stats");
 
   const tl = gsap.timeline({ defaults: { ease: "power3.out", opacity: 0 } });
+
+  if (badge) {
+    gsap.set(badge, { y: 16, scale: 0.96 });
+    tl.fromTo(badge, { y: 16, scale: 0.96 }, { y: 0, scale: 1, opacity: 1, duration: 0.5 }, 0.1);
+  }
   if (title) {
-    gsap.set(title, { y: 40 });
-    tl.fromTo(title, { y: 40 }, { y: 0, opacity: 1, duration: 0.7 }, 0.15);
+    gsap.set(title, { y: 36 });
+    tl.fromTo(title, { y: 36 }, { y: 0, opacity: 1, duration: 0.7 }, 0.2);
   }
   if (subtitle) {
     gsap.set(subtitle, { y: 24 });
@@ -239,7 +246,11 @@ function animatePageEntrance() {
   }
   if (cta) {
     gsap.set(cta, { y: 20 });
-    tl.fromTo(cta, { y: 20 }, { y: 0, opacity: 1, duration: 0.5 }, 0.55);
+    tl.fromTo(cta, { y: 20 }, { y: 0, opacity: 1, duration: 0.5 }, 0.5);
+  }
+  if (stats) {
+    gsap.set(stats, { y: 24 });
+    tl.fromTo(stats, { y: 24 }, { y: 0, opacity: 1, duration: 0.6 }, 0.6);
   }
 }
 

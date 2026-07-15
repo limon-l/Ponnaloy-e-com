@@ -1,44 +1,27 @@
 {
   "name": "ponnaloy-e-com",
-  "version": "1.0.0",
-  "description": "Premium e-commerce storefront with Express and SQLite",
-  "main": "server.js",
-  "engines": {
-    "node": ">=18.0.0"
-  },
+  "version": "2.0.0",
+  "private": true,
+  "description": "Premium B2C e-commerce platform",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "build": "npm run build:css",
-    "build:css": "tailwindcss -i ./frontend/public/input.css -o ./frontend/public/styles.css --minify",
-    "watch:css": "tailwindcss -i ./frontend/public/input.css -o ./frontend/public/styles.css --watch"
-  },
-  "keywords": [
-    "e-commerce",
-    "express",
-    "sqlite",
-    "storefront"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "compression": "^1.8.1",
-    "connect-sqlite3": "^0.9.16",
-    "cookie-parser": "^1.4.7",
-    "dotenv": "^17.4.2",
-    "express": "^4.21.2",
-    "express-rate-limit": "^8.5.2",
-    "express-session": "^1.18.1",
-    "helmet": "^8.1.0",
-    "morgan": "^1.10.0",
-    "openai": "^6.45.0",
-    "sqlite3": "^5.1.7"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "db:generate": "pnpm --filter @ponnaloy/api db:generate",
+    "db:push": "pnpm --filter @ponnaloy/api db:push",
+    "db:migrate": "pnpm --filter @ponnaloy/api db:migrate",
+    "db:seed": "pnpm --filter @ponnaloy/api db:seed",
+    "db:studio": "pnpm --filter @ponnaloy/api db:studio",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
   },
   "devDependencies": {
-    "autoprefixer": "^10.5.2",
-    "nodemon": "^3.1.10",
-    "postcss": "^8.5.16",
-    "tailwindcss": "^3.4.19"
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

@@ -1,7 +1,49 @@
+# dependencies
 node_modules/
-data/
+.pnpm-store/
+
+# build outputs
+dist/
+.next/
+out/
+
+# env files
 .env
 .env.local
-.env.production
+.env.*.local
+
+# databases
 *.db
+*.db-journal
+
+# turbo
+.turbo/
+
+# debug
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
+Thumbs.db
+
+# typescript
+*.tsbuildinfo
+
+# next.js
+.next/
+out/
+
+# misc
+*.pem
+coverage/
+.vercel
