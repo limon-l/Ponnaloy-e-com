@@ -45,7 +45,7 @@ export function Header() {
 
   // Mock auth state - replace with Clerk
   const isLoggedIn = false;
-  const user = null;
+  const user = null as { avatar?: string; firstName?: string; email?: string } | null;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

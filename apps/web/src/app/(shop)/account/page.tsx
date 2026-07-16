@@ -680,9 +680,16 @@ function AddressForm({
     country: string;
     isDefault: boolean;
   };
-  onChange: typeof useState extends (init: infer T) => infer R
-    ? (val: T) => R
-    : never;
+  onChange: (val: {
+    label: string;
+    name: string;
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+    isDefault: boolean;
+  }) => void;
   onSave: () => void;
   onCancel: () => void;
 }) {
