@@ -10,19 +10,11 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
+      - key: MONGODB_URI
+        sync: false
       - key: SESSION_SECRET
         generateValue: true
       - key: FRONTEND_URL
         sync: false
-      - key: MONGODB_URI
+      - key: REDIS_URL
         sync: false
-
-  - type: web
-    name: ponnaloy-web
-    runtime: node
-    plan: free
-    buildCommand: pnpm install --frozen-lockfile; pnpm --filter @ponnaloy/web build
-    startCommand: cd apps/web && pnpm start
-    envVars:
-      - key: NODE_ENV
-        value: production
