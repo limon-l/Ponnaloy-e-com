@@ -1,5 +1,23 @@
 services:
   - type: web
+    name: ponnaloy-api
+    runtime: node
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile; pnpm --filter @ponnaloy/api build
+    startCommand: pnpm --filter @ponnaloy/api start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+
+  - type: web
     name: ponnaloy-web
     runtime: node
     plan: free
