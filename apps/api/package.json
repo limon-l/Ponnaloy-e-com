@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "echo 'API build skipped — use dev mode with tsx'",
     "start": "node dist/server.js",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",

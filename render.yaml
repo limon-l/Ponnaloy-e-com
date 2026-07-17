@@ -1,21 +1,10 @@
 services:
   - type: web
-    name: ponnaloy-api
+    name: ponnaloy-web
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build:css
-    startCommand: node server.js
-    healthCheckPath: /api/health
+    buildCommand: pnpm install --frozen-lockfile; pnpm --filter @ponnaloy/web build
+    startCommand: cd apps/web && pnpm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: SESSION_SECRET
-        generateValue: true
-      - key: FRONTEND_URL
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-    disk:
-      name: ponnaloy-data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 1

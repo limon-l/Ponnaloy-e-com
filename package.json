@@ -5,7 +5,7 @@
   "description": "Premium B2C e-commerce platform",
   "scripts": {
     "dev": "turbo dev",
-    "build": "turbo build",
+    "build": "turbo build --filter=@ponnaloy/web",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "db:generate": "pnpm --filter @ponnaloy/api db:generate",
