@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Eye,
   EyeOff,
@@ -142,8 +141,6 @@ export default function SignUpPage() {
   const inputClasses =
     "h-11 w-full rounded-xl border border-input bg-background/50 px-4 pl-11 text-sm transition-all duration-200 placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-primary/40";
 
-  const strengthPercent = (strength / 5) * 100;
-
   return (
     <div className="space-y-6">
       {/* Mobile Logo */}
@@ -158,43 +155,23 @@ export default function SignUpPage() {
 
       {/* Header */}
       <div className="space-y-2">
-        <motion.h1
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="text-3xl font-bold tracking-tight"
-        >
+        <h1 className="text-3xl font-bold tracking-tight">
           Create your account
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="text-muted-foreground text-sm leading-relaxed"
-        >
+        </h1>
+        <p className="text-muted-foreground text-sm leading-relaxed">
           Join thousands of shoppers enjoying premium products and fast delivery.
-        </motion.p>
+        </p>
       </div>
 
       {/* Error Alert */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive"
-          >
-            {error}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {error && (
+        <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       {/* Form */}
-      <motion.form
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
+      <form
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-4"
         noValidate
@@ -216,18 +193,11 @@ export default function SignUpPage() {
                 {...register("firstName")}
               />
             </div>
-            <AnimatePresence>
-              {errors.firstName && (
-                <motion.p
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  className="text-xs text-destructive pl-1"
-                >
-                  {errors.firstName.message}
-                </motion.p>
-              )}
-            </AnimatePresence>
+            {errors.firstName && (
+              <p className="text-xs text-destructive pl-1">
+                {errors.firstName.message}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <label htmlFor="lastName" className="text-sm font-medium">
@@ -244,18 +214,11 @@ export default function SignUpPage() {
                 {...register("lastName")}
               />
             </div>
-            <AnimatePresence>
-              {errors.lastName && (
-                <motion.p
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  className="text-xs text-destructive pl-1"
-                >
-                  {errors.lastName.message}
-                </motion.p>
-              )}
-            </AnimatePresence>
+            {errors.lastName && (
+              <p className="text-xs text-destructive pl-1">
+                {errors.lastName.message}
+              </p>
+            )}
           </div>
         </div>
 
@@ -275,18 +238,11 @@ export default function SignUpPage() {
               {...register("email")}
             />
           </div>
-          <AnimatePresence>
-            {errors.email && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="text-xs text-destructive pl-1"
-              >
-                {errors.email.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {errors.email && (
+            <p className="text-xs text-destructive pl-1">
+              {errors.email.message}
+            </p>
+          )}
         </div>
 
         {/* Password */}
@@ -320,11 +276,7 @@ export default function SignUpPage() {
 
           {/* Password Strength */}
           {watchedPassword.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              className="space-y-2 pt-1"
-            >
+            <div className="space-y-2 pt-1">
               <div className="flex gap-1">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div
@@ -343,36 +295,25 @@ export default function SignUpPage() {
                   {strengthConfig[strength - 1]?.label || "Too short"}
                 </span>
               </p>
-            </motion.div>
+            </div>
           )}
 
           {/* Password Requirements */}
           {watchedPassword.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1"
-            >
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1">
               {passwordRequirements.map((req) => (
                 <PasswordRequirement key={req.label} met={req.met}>
                   {req.label}
                 </PasswordRequirement>
               ))}
-            </motion.div>
+            </div>
           )}
 
-          <AnimatePresence>
-            {errors.password && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="text-xs text-destructive pl-1"
-              >
-                {errors.password.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {errors.password && (
+            <p className="text-xs text-destructive pl-1">
+              {errors.password.message}
+            </p>
+          )}
         </div>
 
         {/* Confirm Password */}
@@ -403,18 +344,11 @@ export default function SignUpPage() {
               )}
             </button>
           </div>
-          <AnimatePresence>
-            {errors.confirmPassword && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="text-xs text-destructive pl-1"
-              >
-                {errors.confirmPassword.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {errors.confirmPassword && (
+            <p className="text-xs text-destructive pl-1">
+              {errors.confirmPassword.message}
+            </p>
+          )}
         </div>
 
         {/* Terms */}
@@ -439,18 +373,11 @@ export default function SignUpPage() {
               </Link>
             </label>
           </div>
-          <AnimatePresence>
-            {errors.agreeToTerms && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="text-xs text-destructive pl-1"
-              >
-                {errors.agreeToTerms.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {errors.agreeToTerms && (
+            <p className="text-xs text-destructive pl-1">
+              {errors.agreeToTerms.message}
+            </p>
+          )}
         </div>
 
         {/* Submit */}
@@ -468,15 +395,10 @@ export default function SignUpPage() {
             </>
           )}
         </Button>
-      </motion.form>
+      </form>
 
       {/* Divider */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.4 }}
-        className="relative"
-      >
+      <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border/60" />
         </div>
@@ -485,15 +407,10 @@ export default function SignUpPage() {
             Or continue with
           </span>
         </div>
-      </motion.div>
+      </div>
 
       {/* Social Logins */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.5 }}
-        className="grid grid-cols-2 gap-3"
-      >
+      <div className="grid grid-cols-2 gap-3">
         <Button
           type="button"
           variant="outline"
@@ -531,15 +448,10 @@ export default function SignUpPage() {
           </svg>
           GitHub
         </Button>
-      </motion.div>
+      </div>
 
       {/* Sign In Link */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.6 }}
-        className="text-center text-sm text-muted-foreground"
-      >
+      <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link
           href="/sign-in"
@@ -547,7 +459,7 @@ export default function SignUpPage() {
         >
           Sign in
         </Link>
-      </motion.p>
+      </p>
     </div>
   );
 }

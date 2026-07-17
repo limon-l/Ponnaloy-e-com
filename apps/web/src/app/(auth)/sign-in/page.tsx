@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -84,43 +83,23 @@ export default function SignInPage() {
 
       {/* Header */}
       <div className="space-y-2">
-        <motion.h1
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="text-3xl font-bold tracking-tight"
-        >
+        <h1 className="text-3xl font-bold tracking-tight">
           Welcome back
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="text-muted-foreground text-sm leading-relaxed"
-        >
+        </h1>
+        <p className="text-muted-foreground text-sm leading-relaxed">
           Sign in to your account to continue shopping and track your orders.
-        </motion.p>
+        </p>
       </div>
 
       {/* Error Alert */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive"
-          >
-            {error}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {error && (
+        <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       {/* Form */}
-      <motion.form
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
+      <form
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-4"
         noValidate
@@ -141,18 +120,11 @@ export default function SignInPage() {
               {...register("email")}
             />
           </div>
-          <AnimatePresence>
-            {errors.email && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="text-xs text-destructive pl-1"
-              >
-                {errors.email.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {errors.email && (
+            <p className="text-xs text-destructive pl-1">
+              {errors.email.message}
+            </p>
+          )}
         </div>
 
         {/* Password */}
@@ -191,18 +163,11 @@ export default function SignInPage() {
               )}
             </button>
           </div>
-          <AnimatePresence>
-            {errors.password && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="text-xs text-destructive pl-1"
-              >
-                {errors.password.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {errors.password && (
+            <p className="text-xs text-destructive pl-1">
+              {errors.password.message}
+            </p>
+          )}
         </div>
 
         {/* Remember Me */}
@@ -237,15 +202,10 @@ export default function SignInPage() {
             </>
           )}
         </Button>
-      </motion.form>
+      </form>
 
       {/* Divider */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.4 }}
-        className="relative"
-      >
+      <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border/60" />
         </div>
@@ -254,15 +214,10 @@ export default function SignInPage() {
             Or continue with
           </span>
         </div>
-      </motion.div>
+      </div>
 
       {/* Social Logins */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.5 }}
-        className="grid grid-cols-2 gap-3"
-      >
+      <div className="grid grid-cols-2 gap-3">
         <Button
           type="button"
           variant="outline"
@@ -300,15 +255,10 @@ export default function SignInPage() {
           </svg>
           GitHub
         </Button>
-      </motion.div>
+      </div>
 
       {/* Sign Up Link */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.6 }}
-        className="text-center text-sm text-muted-foreground"
-      >
+      <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
         <Link
           href="/sign-up"
@@ -316,7 +266,7 @@ export default function SignInPage() {
         >
           Create an account
         </Link>
-      </motion.p>
+      </p>
     </div>
   );
 }

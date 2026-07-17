@@ -1,7 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Package } from "lucide-react";
 
 export default function AuthLayout({
@@ -24,12 +21,7 @@ export default function AuthLayout({
             </span>
           </Link>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="space-y-6"
-          >
+          <div className="space-y-6">
             <h2 className="text-4xl font-bold text-white leading-tight tracking-tight">
               Premium Shopping
               <br />
@@ -53,24 +45,19 @@ export default function AuthLayout({
                 <p className="text-sm text-white/60">Rating</p>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           <p className="text-sm text-white/40">
-            &copy; {new Date().getFullYear()} Ponnaloy. All rights reserved.
+            &copy; 2026 Ponnaloy. All rights reserved.
           </p>
         </div>
       </div>
 
       {/* Right Form Panel */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-background">
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
+        <div className="w-full max-w-md">
           {children}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
