@@ -73,7 +73,7 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
               include: {
                 product: {
                   include: {
-                    images: { orderBy: { position: "asc" }, take: 1 },
+                    images: { orderBy: { position: "asc" } },
                   },
                 },
               },
@@ -81,7 +81,13 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
           },
           orderBy: { createdAt: "desc" },
           take: 5,
-        }),
+        }).then((orders) => orders.map((o) => ({
+          ...o,
+          items: o.items.map((i) => ({
+            ...i,
+            product: i.product ? { ...i.product, images: i.product.images.slice(0, 1) } : i.product,
+          })),
+        }))),
         prisma.order.aggregate({
           where: { userId },
           _count: { id: true },

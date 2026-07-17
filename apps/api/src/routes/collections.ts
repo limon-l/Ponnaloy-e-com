@@ -6,14 +6,14 @@ import { requireAdmin } from "../middleware/auth";
 export const collectionRoutes: FastifyPluginAsync = async (app) => {
   // Get all active collections
   app.get("/", async () => {
-    const collections = await prisma.collection.findMany({
+    const rawCollections = await prisma.collection.findMany({
       where: { isActive: true },
       include: {
         products: {
           include: {
             product: {
               include: {
-                images: { orderBy: { position: "asc" }, take: 1 },
+                images: { orderBy: { position: "asc" } },
                 category: { select: { id: true, name: true, slug: true } },
               },
             },
@@ -25,6 +25,14 @@ export const collectionRoutes: FastifyPluginAsync = async (app) => {
       orderBy: { position: "asc" },
     });
 
+    const collections = rawCollections.map((c) => ({
+      ...c,
+      products: c.products.map((p) => ({
+        ...p,
+        product: p.product ? { ...p.product, images: p.product.images.slice(0, 1) } : p.product,
+      })),
+    }));
+
     return { success: true, data: collections };
   });
 
@@ -33,14 +41,14 @@ export const collectionRoutes: FastifyPluginAsync = async (app) => {
     const { slug } = request.params as { slug: string };
     const { page = 1, limit = 20 } = request.query as { page?: number; limit?: number };
 
-    const collection = await prisma.collection.findUnique({
+    const rawCollection = await prisma.collection.findUnique({
       where: { slug },
       include: {
         products: {
           include: {
             product: {
               include: {
-                images: { orderBy: { position: "asc" }, take: 1 },
+                images: { orderBy: { position: "asc" } },
                 category: { select: { id: true, name: true, slug: true } },
                 brand: { select: { id: true, name: true, slug: true } },
                 variants: { select: { id: true, price: true, stock: true } },
@@ -55,9 +63,17 @@ export const collectionRoutes: FastifyPluginAsync = async (app) => {
       },
     });
 
-    if (!collection) {
+    if (!rawCollection) {
       return reply.code(404).send({ success: false, error: "Collection not found" });
     }
+
+    const collection = {
+      ...rawCollection,
+      products: rawCollection.products.map((p) => ({
+        ...p,
+        product: p.product ? { ...p.product, images: p.product.images.slice(0, 1) } : p.product,
+      })),
+    };
 
     return { success: true, data: collection };
   });

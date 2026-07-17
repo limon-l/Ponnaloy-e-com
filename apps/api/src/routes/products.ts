@@ -95,11 +95,11 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
 
     const skip = (page - 1) * limit;
 
-    const [products, total] = await Promise.all([
+    const [allProducts, total] = await Promise.all([
       prisma.product.findMany({
         where,
         include: {
-          images: { orderBy: { position: "asc" }, take: 1 },
+          images: { orderBy: { position: "asc" } },
           category: { select: { id: true, name: true, slug: true } },
           brand: { select: { id: true, name: true, slug: true, logo: true } },
           variants: { select: { id: true, price: true, stock: true, options: true } },
@@ -110,6 +110,11 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
       }),
       prisma.product.count({ where }),
     ]);
+
+    const products = allProducts.map((p) => ({
+      ...p,
+      images: p.images.slice(0, 1),
+    }));
 
     const result = {
       success: true,
@@ -132,16 +137,21 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
     const cached = await getCache(cacheKey);
     if (cached) return cached;
 
-    const products = await prisma.product.findMany({
+    const allProducts = await prisma.product.findMany({
       where: { isFeatured: true, status: "ACTIVE" },
       include: {
-        images: { orderBy: { position: "asc" }, take: 1 },
+        images: { orderBy: { position: "asc" } },
         category: { select: { id: true, name: true, slug: true } },
         brand: { select: { id: true, name: true, slug: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 12,
     });
+
+    const products = allProducts.map((p) => ({
+      ...p,
+      images: p.images.slice(0, 1),
+    }));
 
     const result = { success: true, data: products };
     await setCache(cacheKey, result, CACHE_TTL.MEDIUM);
@@ -154,16 +164,21 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
     const cached = await getCache(cacheKey);
     if (cached) return cached;
 
-    const products = await prisma.product.findMany({
+    const allProducts = await prisma.product.findMany({
       where: { isTrending: true, status: "ACTIVE" },
       include: {
-        images: { orderBy: { position: "asc" }, take: 1 },
+        images: { orderBy: { position: "asc" } },
         category: { select: { id: true, name: true, slug: true } },
         brand: { select: { id: true, name: true, slug: true } },
       },
       orderBy: { totalSold: "desc" },
       take: 12,
     });
+
+    const products = allProducts.map((p) => ({
+      ...p,
+      images: p.images.slice(0, 1),
+    }));
 
     const result = { success: true, data: products };
     await setCache(cacheKey, result, CACHE_TTL.MEDIUM);
@@ -172,16 +187,21 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
 
   // Get new arrivals
   app.get("/new-arrivals", async (_request, reply) => {
-    const products = await prisma.product.findMany({
+    const allProducts = await prisma.product.findMany({
       where: { isNewArrival: true, status: "ACTIVE" },
       include: {
-        images: { orderBy: { position: "asc" }, take: 1 },
+        images: { orderBy: { position: "asc" } },
         category: { select: { id: true, name: true, slug: true } },
         brand: { select: { id: true, name: true, slug: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 12,
     });
+
+    const products = allProducts.map((p) => ({
+      ...p,
+      images: p.images.slice(0, 1),
+    }));
 
     return { success: true, data: products };
   });
@@ -192,19 +212,23 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
     const cached = await getCache(cacheKey);
     if (cached) return cached;
 
-    const products = await prisma.product.findMany({
+    const allProducts = await prisma.product.findMany({
       where: {
         status: "ACTIVE",
         compareAtPrice: { not: null },
-        price: { lt: prisma.product.fields?.price || 0 },
       },
       include: {
-        images: { orderBy: { position: "asc" }, take: 1 },
+        images: { orderBy: { position: "asc" } },
         category: { select: { id: true, name: true, slug: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 8,
     });
+
+    const products = allProducts.map((p) => ({
+      ...p,
+      images: p.images.slice(0, 1),
+    }));
 
     const result = { success: true, data: products };
     await setCache(cacheKey, result, CACHE_TTL.MEDIUM);
@@ -233,17 +257,15 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
             user: { select: { id: true, firstName: true, lastName: true, avatar: true } },
           },
           orderBy: { createdAt: "desc" },
-          take: 10,
         },
         relatedProducts: {
           include: {
             target: {
               include: {
-                images: { orderBy: { position: "asc" }, take: 1 },
+                images: { orderBy: { position: "asc" } },
               },
             },
           },
-          take: 8,
         },
       },
     });
@@ -254,6 +276,18 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
         error: "Product not found",
       });
     }
+
+    const trimmedProduct = {
+      ...product,
+      reviews: product.reviews.slice(0, 10),
+      relatedProducts: product.relatedProducts.slice(0, 8).map((rp) => ({
+        ...rp,
+        target: {
+          ...rp.target,
+          images: rp.target.images.slice(0, 1),
+        },
+      })),
+    };
 
     // Check if user has wishlisted this product
     let isWishlisted = false;
@@ -271,7 +305,7 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
 
     const result = {
       success: true,
-      data: { ...product, isWishlisted },
+      data: { ...trimmedProduct, isWishlisted },
     };
 
     await setCache(cacheKey, result, CACHE_TTL.SHORT);

@@ -38,10 +38,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         },
         include: {
           variants: { select: { stock: true } },
-          images: { orderBy: { position: "asc" }, take: 1 },
+          images: { orderBy: { position: "asc" } },
         },
         take: 10,
-      }),
+      }).then((products) => products.map((p) => ({ ...p, images: p.images.slice(0, 1) }))),
       prisma.order.count({ where: { status: "PENDING" } }),
       prisma.order.groupBy({
         by: ["createdAt"],
@@ -91,7 +91,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       prisma.product.findMany({
         where,
         include: {
-          images: { orderBy: { position: "asc" }, take: 1 },
+          images: { orderBy: { position: "asc" } },
           category: { select: { id: true, name: true } },
           brand: { select: { id: true, name: true } },
           _count: { select: { variants: true, reviews: true } },
@@ -99,7 +99,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
-      }),
+      }).then((products) => products.map((p) => ({ ...p, images: p.images.slice(0, 1) }))),
       prisma.product.count({ where }),
     ]);
 

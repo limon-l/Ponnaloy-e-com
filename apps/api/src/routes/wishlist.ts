@@ -7,12 +7,12 @@ export const wishlistRoutes: FastifyPluginAsync = async (app) => {
   app.get("/", { preHandler: [requireAuth] }, async (request) => {
     const userId = request.user!.id;
 
-    const items = await prisma.wishlist.findMany({
+    const rawItems = await prisma.wishlist.findMany({
       where: { userId },
       include: {
         product: {
           include: {
-            images: { orderBy: { position: "asc" }, take: 1 },
+            images: { orderBy: { position: "asc" } },
             category: { select: { id: true, name: true, slug: true } },
             brand: { select: { id: true, name: true, slug: true } },
             variants: { select: { id: true, price: true, stock: true } },
@@ -21,6 +21,11 @@ export const wishlistRoutes: FastifyPluginAsync = async (app) => {
       },
       orderBy: { createdAt: "desc" },
     });
+
+    const items = rawItems.map((w) => ({
+      ...w,
+      product: w.product ? { ...w.product, images: w.product.images.slice(0, 1) } : w.product,
+    }));
 
     return { success: true, data: items };
   });

@@ -17,7 +17,7 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
     const where: Record<string, unknown> = { userId };
     if (status) where.status = status;
 
-    const [orders, total] = await Promise.all([
+    const [rawOrders, total] = await Promise.all([
       prisma.order.findMany({
         where,
         include: {
@@ -25,13 +25,13 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
             include: {
               product: {
                 include: {
-                  images: { orderBy: { position: "asc" }, take: 1 },
+                  images: { orderBy: { position: "asc" } },
                 },
               },
             },
           },
-          payments: { orderBy: { createdAt: "desc" }, take: 1 },
-          shipments: { orderBy: { createdAt: "desc" }, take: 1 },
+          payments: { orderBy: { createdAt: "desc" } },
+          shipments: { orderBy: { createdAt: "desc" } },
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
@@ -39,6 +39,16 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
       }),
       prisma.order.count({ where }),
     ]);
+
+    const orders = rawOrders.map((o) => ({
+      ...o,
+      items: o.items.map((i) => ({
+        ...i,
+        product: i.product ? { ...i.product, images: i.product.images.slice(0, 1) } : i.product,
+      })),
+      payments: o.payments.slice(0, 1),
+      shipments: o.shipments.slice(0, 1),
+    }));
 
     return {
       success: true,

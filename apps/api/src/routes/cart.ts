@@ -7,6 +7,14 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
   app.get("/", { preHandler: [requireAuth] }, async (request) => {
     const userId = request.user!.id;
 
+    const mapCart = (cart) => ({
+      ...cart,
+      items: cart.items.map((i) => ({
+        ...i,
+        product: i.product ? { ...i.product, images: i.product.images.slice(0, 1) } : i.product,
+      })),
+    });
+
     let cart = await prisma.cart.findUnique({
       where: { userId },
       include: {
@@ -14,7 +22,7 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
           include: {
             product: {
               include: {
-                images: { orderBy: { position: "asc" }, take: 1 },
+                images: { orderBy: { position: "asc" } },
                 variants: true,
               },
             },
@@ -33,7 +41,7 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
             include: {
               product: {
                 include: {
-                  images: { orderBy: { position: "asc" }, take: 1 },
+                  images: { orderBy: { position: "asc" } },
                   variants: true,
                 },
               },
@@ -44,6 +52,8 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
         },
       });
     }
+
+    cart = mapCart(cart);
 
     const subtotal = cart.items.reduce((sum, item) => {
       const price = item.variant?.price || item.product.price;
@@ -162,7 +172,7 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
           include: {
             product: {
               include: {
-                images: { orderBy: { position: "asc" }, take: 1 },
+                images: { orderBy: { position: "asc" } },
                 variants: true,
               },
             },
@@ -173,7 +183,7 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       },
     });
 
-    return { success: true, data: updatedCart };
+    return { success: true, data: mapCart(updatedCart) };
   });
 
   // Update cart item quantity
