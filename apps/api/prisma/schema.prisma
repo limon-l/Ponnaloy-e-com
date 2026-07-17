@@ -123,6 +123,7 @@ model ProductVariant {
   options   Json    // e.g. {"color": "Red", "size": "XL"}
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems CartItem[]
 
   @@index([productId])
 }
@@ -352,6 +353,29 @@ model Shipment {
   @@index([orderId])
 }
 
+// ─── Returns ──────────────────────────────────────────────
+
+model ReturnRequest {
+  id          String       @id @default(cuid())
+  reason      String
+  status      ReturnStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+}
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
 // ─── Reviews ─────────────────────────────────────────────────
 
 model Review {
@@ -369,6 +393,7 @@ model Review {
   user      User     @relation(fields: [userId], references: [id])
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  votes     ReviewVote[]
 
   @@unique([userId, productId])
   @@index([productId])
