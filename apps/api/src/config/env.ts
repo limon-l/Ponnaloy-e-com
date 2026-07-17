@@ -1,5 +1,12 @@
 import "dotenv/config";
 
+const required = ["MONGODB_URI"];
+const missing = required.filter((k) => !process.env[k]);
+if (missing.length > 0) {
+  console.error(`Missing required env vars: ${missing.join(", ")}`);
+  process.exit(1);
+}
+
 export const config = {
   port: parseInt(process.env.PORT || "3001", 10),
   nodeEnv: process.env.NODE_ENV || "development",
@@ -7,7 +14,7 @@ export const config = {
   backendUrl: process.env.BACKEND_URL || "http://localhost:3001",
 
   database: {
-    url: process.env.DATABASE_URL!,
+    url: process.env.MONGODB_URI!,
   },
 
   redis: {

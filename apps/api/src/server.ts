@@ -77,7 +77,7 @@ async function registerRoutes() {
   // Health & metrics
   server.get("/api/health", async () => {
     const [dbCheck, redisCheck] = await Promise.allSettled([
-      prisma.$queryRaw`SELECT 1`,
+      prisma.$runCommandRaw({ ping: 1 }),
       redis.ping(),
     ]);
     return {
@@ -149,7 +149,7 @@ async function shutdown() {
   server.log.info("Shutting down...");
   await server.close();
   await prisma.$disconnect();
-  await redis.quit();
+  try { await redis.quit(); } catch {}
   process.exit(0);
 }
 
@@ -163,11 +163,19 @@ async function bootstrap() {
     await prisma.$connect();
     server.log.info("Database connected");
 
-    await redis.connect();
-    server.log.info("Redis connected");
+    try {
+      await redis.connect();
+      server.log.info("Redis connected");
+    } catch (err) {
+      server.log.warn("Redis unavailable — caching disabled");
+    }
 
-    await ensureIndexes();
-    server.log.info("Meilisearch ready");
+    try {
+      await ensureIndexes();
+      server.log.info("Meilisearch ready");
+    } catch (err) {
+      server.log.warn("Meilisearch unavailable — search disabled");
+    }
 
     await registerPlugins();
     await registerRoutes();
