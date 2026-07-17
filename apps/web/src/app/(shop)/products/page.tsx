@@ -54,7 +54,7 @@ function ProductsContent() {
         params.set("order", sortOrder || "asc");
       } else if (sortField === "rating") {
         params.set("sort", "avgRating");
-      } else if (sortField === "popular") {
+      } else if (sortField === "popular" || sortField === "trending") {
         params.set("sort", "totalSold");
       } else if (sortField === "newest") {
         params.set("sort", "createdAt");

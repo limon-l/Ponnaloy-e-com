@@ -78,9 +78,17 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
       ];
     }
 
+    const allowedSorts: Record<string, string> = {
+      price: "price",
+      avgRating: "avgRating",
+      totalSold: "totalSold",
+      createdAt: "createdAt",
+      name: "name",
+      reviewCount: "reviewCount",
+    };
     const orderBy: Record<string, string> = {};
-    if (sort) {
-      orderBy[sort] = order;
+    if (sort && allowedSorts[sort]) {
+      orderBy[allowedSorts[sort]] = order;
     } else {
       orderBy.createdAt = "desc";
     }
