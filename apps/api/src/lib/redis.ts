@@ -11,11 +11,13 @@ export const redis =
   new Redis(config.redis.url, {
     maxRetriesPerRequest: 3,
     retryStrategy(times) {
-      const delay = Math.min(times * 50, 2000);
-      return delay;
+      if (times > 3) return null;
+      return Math.min(times * 50, 2000);
     },
     lazyConnect: true,
   });
+
+redis.on("error", () => {});
 
 if (config.nodeEnv !== "production") {
   globalForRedis.redis = redis;
