@@ -140,17 +140,24 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
           });
         }
       } else {
-        // Check total stock across variants
-        const totalStock = await prisma.productVariant.aggregate({
+        // Product without variants — check if it has any variants at all
+        const variantCount = await prisma.productVariant.count({
           where: { productId: item.product.id },
-          _sum: { stock: true },
         });
-        const stock = totalStock._sum.stock || 0;
-        if (stock < item.quantity) {
-          return reply.code(400).send({
-            success: false,
-            error: `${item.product.name} is out of stock`,
+        // If no variants exist, the product itself is stockable (no stock tracking at product level)
+        // If variants exist but none were selected, check total stock
+        if (variantCount > 0) {
+          const totalStock = await prisma.productVariant.aggregate({
+            where: { productId: item.product.id },
+            _sum: { stock: true },
           });
+          const stock = totalStock._sum.stock || 0;
+          if (stock < item.quantity) {
+            return reply.code(400).send({
+              success: false,
+              error: `${item.product.name} is out of stock`,
+            });
+          }
         }
       }
     }
@@ -200,7 +207,7 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
             create: {
               amount: total,
               method: paymentMethod as "STRIPE" | "PAYPAL" | "COD" | "BANK_TRANSFER",
-              status: paymentMethod === "COD" ? "PENDING" : "PENDING",
+              status: paymentMethod === "COD" ? "PENDING" : "PROCESSING",
             },
           },
           statusHistory: {

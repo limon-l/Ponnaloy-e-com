@@ -43,12 +43,37 @@ const server = Fastify({
 
 // ── Plugins ──────────────────────────────────────────────────
 
+function getAllowedOrigins(): string[] {
+  const origins: string[] = [];
+  // Parse FRONTEND_URL as comma-separated list
+  const envOrigins = process.env.FRONTEND_URL || "";
+  if (envOrigins) {
+    envOrigins.split(",").map((o) => o.trim()).filter(Boolean).forEach((o) => origins.push(o));
+  }
+  // Always allow localhost in development
+  if (config.nodeEnv === "development") {
+    origins.push("http://localhost:3000", "http://localhost:3001");
+  }
+  // Deduplicate
+  return [...new Set(origins)];
+}
+
 async function registerPlugins() {
+  const allowedOrigins = getAllowedOrigins();
+  server.log.info(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
+
   await server.register(cors, {
-    origin: [config.frontendUrl],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      // Allow any Vercel preview deployment (*.vercel.app)
+      if (origin.endsWith(".vercel.app")) return callback(null, true);
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   });
 
   await server.register(helmet, {

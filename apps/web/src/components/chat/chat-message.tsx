@@ -1,11 +1,23 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChatProductCard } from "./chat-product-card";
 import { ChatComparison } from "./chat-comparison";
 import { ChatSuggestions } from "./chat-suggestions";
 import type { ChatMessage as ChatMessageType } from "@/types";
+
+function Timestamp({ time }: { time: Date }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <span className="px-1 text-[10px] text-muted-foreground">&nbsp;</span>;
+  return (
+    <span className="px-1 text-[10px] text-muted-foreground">
+      {time.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+    </span>
+  );
+}
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -90,12 +102,7 @@ export function ChatMessage({
         )}
 
         {/* Timestamp */}
-        <span className="px-1 text-[10px] text-muted-foreground">
-          {message.timestamp.toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-          })}
-        </span>
+        <Timestamp time={message.timestamp} />
       </div>
 
       {/* User avatar */}

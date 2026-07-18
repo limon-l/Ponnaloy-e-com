@@ -8,19 +8,21 @@ import { sendChatMessage } from "@/lib/chat-api";
 import { ChatMessage } from "./chat-message";
 import type { ChatMessage as ChatMessageType, ChatProduct } from "@/types";
 
-const WELCOME_MESSAGE: ChatMessageType = {
-  id: "welcome",
-  role: "assistant",
-  content:
-    "Hi there! I'm Marvin, your shopping assistant. I can help you find products, compare options, check prices, and more. What are you looking for?",
-  timestamp: new Date(),
-  suggestions: [
-    "Show me today's deals",
-    "Help me find a gift under $50",
-    "What's trending?",
-    "Show all categories",
-  ],
-};
+function createWelcomeMessage(): ChatMessageType {
+  return {
+    id: "welcome",
+    role: "assistant",
+    content:
+      "Hi there! I'm Marvin, your shopping assistant. I can help you find products, compare options, check prices, and more. What are you looking for?",
+    timestamp: new Date(0),
+    suggestions: [
+      "Show me today's deals",
+      "Help me find a gift under $50",
+      "What's trending?",
+      "Show all categories",
+    ],
+  };
+}
 
 const QUICK_PROMPTS = [
   { icon: "🔥", label: "Deals", message: "Show me today's best deals" },
@@ -31,8 +33,8 @@ const QUICK_PROMPTS = [
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessageType[]>([
-    WELCOME_MESSAGE,
+  const [messages, setMessages] = useState<ChatMessageType[]>(() => [
+    createWelcomeMessage(),
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -41,6 +43,17 @@ export function ChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Fix welcome message timestamp after hydration to match real time
+  useEffect(() => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === "welcome" && m.timestamp.getTime() === 0
+          ? { ...m, timestamp: new Date() }
+          : m
+      )
+    );
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

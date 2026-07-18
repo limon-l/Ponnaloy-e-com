@@ -42,7 +42,7 @@ export default function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [dealProducts, setDealProducts] = useState<Product[]>([]);
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Array<{ name: string; image: string; slug: string }>>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; image: string; slug: string }>>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -59,10 +59,11 @@ export default function HomePage() {
       if (trendingRes.status === "fulfilled" && trendingRes.value.success) setTrendingProducts(trendingRes.value.data);
 
       if (productsRes.status === "fulfilled" && productsRes.value.success && productsRes.value.data.length > 0) {
-        const catMap = new Map<string, { name: string; slug: string; image: string }>();
+        const catMap = new Map<string, { id: string; name: string; slug: string; image: string }>();
         for (const p of productsRes.value.data) {
           if (p.category && !catMap.has(p.category.slug)) {
             catMap.set(p.category.slug, {
+              id: p.category.id,
               name: p.category.name,
               slug: p.category.slug,
               image: p.category.image || p.images?.[0]?.url || `https://picsum.photos/seed/${p.category.slug}/400/300`,
@@ -150,7 +151,7 @@ export default function HomePage() {
             {categories.map((category) => (
               <Link
                 key={category.slug}
-                href={`/products?category=${category.slug}`}
+                href={`/products?category=${category.id}`}
                 className="group relative aspect-[4/3] overflow-hidden rounded-lg"
               >
                 <Image

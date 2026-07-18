@@ -295,9 +295,23 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ success: false, error: "Cart is empty" });
     }
 
-    // Calculate subtotal
+    // Calculate subtotal by looking up actual prices
+    const productIds = cart.items.map((item) => item.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, price: true },
+    });
+    const variantIds = cart.items.filter((item) => item.variantId).map((item) => item.variantId!);
+    const variants = variantIds.length > 0 ? await prisma.productVariant.findMany({
+      where: { id: { in: variantIds } },
+      select: { id: true, price: true },
+    }) : [];
+    const variantMap = new Map(variants.map((v) => [v.id, v.price]));
+    const productMap = new Map(products.map((p) => [p.id, p.price]));
+
     const subtotal = cart.items.reduce((sum, item) => {
-      return sum + item.quantity * 1000; // simplified - would need product lookup
+      const price = (item.variantId ? variantMap.get(item.variantId) : null) || productMap.get(item.productId) || 0;
+      return sum + item.quantity * price;
     }, 0);
 
     if (coupon.minOrderAmount && subtotal < coupon.minOrderAmount) {

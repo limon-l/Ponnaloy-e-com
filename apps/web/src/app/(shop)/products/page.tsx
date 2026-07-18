@@ -38,6 +38,11 @@ function ProductsContent() {
   const currentSearch = searchParams.get("q") || "";
   const currentPage = parseInt(searchParams.get("page") || "1");
 
+  // Derive category name from loaded products if available
+  const categoryName = currentCategory
+    ? products.find((p) => p.category?.id === currentCategory)?.category?.name || ""
+    : "";
+
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
@@ -107,8 +112,8 @@ function ProductsContent() {
         <h1 className="text-3xl font-bold">
           {currentSearch
             ? `Search results for "${currentSearch}"`
-            : currentCategory
-            ? currentCategory.replace(/-/g, " ")
+            : categoryName
+            ? categoryName
             : "All Products"}
         </h1>
         {hasActiveFilters && (
@@ -123,7 +128,7 @@ function ProductsContent() {
             )}
             {currentCategory && (
               <Badge variant="secondary" className="gap-1">
-                {currentCategory.replace(/-/g, " ")}
+                {categoryName || "Category"}
                 <button onClick={() => updateParam("category", "")}>
                   <X className="h-3 w-3" />
                 </button>
