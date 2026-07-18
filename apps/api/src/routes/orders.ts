@@ -213,81 +213,93 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
 
       app.log.info({ userId, itemCount: cart.items.length, total }, "Creating order");
 
-      // Create order in transaction
-      const order = await prisma.$transaction(async (tx) => {
-        const newOrder = await tx.order.create({
-          data: {
-            orderNumber: generateOrderNumber(),
-            userId,
-            subtotal,
-            shippingFee,
-            discount,
-            total,
-            shippingAddress,
-            billingAddress,
-            notes,
-            items: {
-              create: orderItems,
-            },
-            payments: {
-              create: {
-                amount: total,
-                method: paymentMethod as "STRIPE" | "PAYPAL" | "COD" | "BANK_TRANSFER",
-                status: paymentMethod === "COD" ? "PENDING" : "PROCESSING",
-              },
-            },
-            statusHistory: {
-              create: { status: "PENDING", note: "Order placed" },
+      // Create order with nested relations (single Prisma call — atomic on MongoDB)
+      const order = await prisma.order.create({
+        data: {
+          orderNumber: generateOrderNumber(),
+          userId,
+          subtotal,
+          shippingFee,
+          discount,
+          total,
+          shippingAddress,
+          billingAddress: billingAddress || undefined,
+          notes: notes || undefined,
+          items: {
+            create: orderItems,
+          },
+          payments: {
+            create: {
+              amount: total,
+              method: paymentMethod as "STRIPE" | "PAYPAL" | "COD" | "BANK_TRANSFER",
+              status: paymentMethod === "COD" ? "PENDING" : "PROCESSING",
             },
           },
-          include: {
-            items: true,
-            payments: true,
-            statusHistory: true,
+          statusHistory: {
+            create: { status: "PENDING", note: "Order placed" },
           },
-        });
+        },
+        include: {
+          items: true,
+          payments: true,
+          statusHistory: true,
+        },
+      });
 
-        // Update stock
+      // Post-order operations (non-critical — log errors but don't fail the order)
+      try {
         for (const item of cart.items) {
           if (item.variantId) {
-            await tx.productVariant.update({
+            await prisma.productVariant.update({
               where: { id: item.variantId },
               data: { stock: { decrement: item.quantity } },
             });
           }
         }
+      } catch (stockErr) {
+        app.log.error({ err: stockErr, orderId: order.id }, "Failed to decrement stock");
+      }
 
-        // Update totalSold for products
+      try {
         for (const item of orderItems) {
-          await tx.product.update({
+          await prisma.product.update({
             where: { id: item.productId },
             data: { totalSold: { increment: item.quantity } },
           });
         }
+      } catch (soldErr) {
+        app.log.error({ err: soldErr, orderId: order.id }, "Failed to update totalSold");
+      }
 
-        // Clear cart
-        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-        await tx.cartCoupon.deleteMany({ where: { cartId: cart.id } });
+      try {
+        await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+        await prisma.cartCoupon.deleteMany({ where: { cartId: cart.id } });
+      } catch (cartErr) {
+        app.log.error({ err: cartErr, orderId: order.id }, "Failed to clear cart");
+      }
 
-        // Update coupon usage
-        if (cart.coupon) {
-          await tx.coupon.update({
+      if (cart.coupon) {
+        try {
+          await prisma.coupon.update({
             where: { code: cart.coupon.code },
             data: { usedCount: { increment: 1 } },
           });
+        } catch (couponErr) {
+          app.log.error({ err: couponErr, orderId: order.id }, "Failed to update coupon usage");
         }
-
-        return newOrder;
-      });
+      }
 
       app.log.info({ userId, orderId: order.id, orderNumber: order.orderNumber }, "Order created successfully");
 
       return reply.code(201).send({ success: true, data: order });
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
       app.log.error({ err: error, userId }, "Failed to create order");
       return reply.code(500).send({
         success: false,
-        error: "An unexpected error occurred while creating your order. Please try again.",
+        error: process.env.NODE_ENV === "production"
+          ? "An unexpected error occurred while creating your order. Please try again."
+          : `Order creation failed: ${errMsg}`,
       });
     }
   });
@@ -314,30 +326,27 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      await prisma.$transaction(async (tx) => {
-        await tx.order.update({
-          where: { id: orderId },
-          data: { status: "CANCELLED" },
-        });
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { status: "CANCELLED" },
+      });
 
-        await tx.orderStatusLog.create({
-          data: { orderId, status: "CANCELLED", note: "Cancelled by customer" },
-        });
+      await prisma.orderStatusLog.create({
+        data: { orderId, status: "CANCELLED", note: "Cancelled by customer" },
+      });
 
-        // Restore stock
-        for (const item of order.items) {
-          if (item.variantId) {
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: { stock: { increment: item.quantity } },
-            });
-          }
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { totalSold: { decrement: item.quantity } },
+      for (const item of order.items) {
+        if (item.variantId) {
+          await prisma.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: { increment: item.quantity } },
           });
         }
-      });
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: { totalSold: { decrement: item.quantity } },
+        });
+      }
 
       app.log.info({ userId, orderId }, "Order cancelled");
       return { success: true, message: "Order cancelled" };
