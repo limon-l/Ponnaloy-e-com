@@ -18,15 +18,15 @@ import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Pending", variant: "secondary" },
-  confirmed: { label: "Confirmed", variant: "default" },
-  processing: { label: "Processing", variant: "default" },
-  shipped: { label: "Shipped", variant: "default" },
-  out_for_delivery: { label: "Out for Delivery", variant: "default" },
-  delivered: { label: "Delivered", variant: "outline" },
-  cancelled: { label: "Cancelled", variant: "destructive" },
-  returned: { label: "Returned", variant: "destructive" },
-  refunded: { label: "Refunded", variant: "secondary" },
+  PENDING: { label: "Pending", variant: "secondary" },
+  CONFIRMED: { label: "Confirmed", variant: "default" },
+  PROCESSING: { label: "Processing", variant: "default" },
+  SHIPPED: { label: "Shipped", variant: "default" },
+  OUT_FOR_DELIVERY: { label: "Out for Delivery", variant: "default" },
+  DELIVERED: { label: "Delivered", variant: "outline" },
+  CANCELLED: { label: "Cancelled", variant: "destructive" },
+  RETURNED: { label: "Returned", variant: "destructive" },
+  REFUNDED: { label: "Refunded", variant: "secondary" },
 };
 
 function AccountPageContent() {
@@ -248,8 +248,8 @@ function AccountPageContent() {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
                           <span className="font-semibold">{order.orderNumber}</span>
-                          <Badge variant={statusConfig[order.status.toLowerCase()]?.variant || "secondary"}>
-                            {statusConfig[order.status.toLowerCase()]?.label || order.status}
+                          <Badge variant={statusConfig[order.status]?.variant || "secondary"}>
+                            {statusConfig[order.status]?.label || order.status}
                           </Badge>
                         </div>
                         <span className="text-sm text-muted-foreground">

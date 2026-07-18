@@ -11,10 +11,10 @@ import { useAuth } from "@/contexts/auth-context";
 import { FREE_SHIPPING_THRESHOLD } from "@ponnaloy/shared";
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, subtotal, itemCount } = useCart();
+  const { items, removeItem, updateQuantity, subtotal, discount, couponCode, itemCount } = useCart();
   const { isAuthenticated } = useAuth();
   const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 1500;
-  const total = subtotal + shippingFee;
+  const total = Math.max(0, subtotal + shippingFee - discount);
   const freeShippingProgress = Math.min(subtotal / FREE_SHIPPING_THRESHOLD, 1);
 
   if (items.length === 0) {
@@ -84,6 +84,12 @@ export default function CartPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span>Subtotal ({itemCount} items)</span><span>{formatPrice(subtotal)}</span></div>
               <div className="flex justify-between"><span>Shipping</span><span>{shippingFee === 0 ? <span className="text-primary">Free</span> : formatPrice(shippingFee)}</span></div>
+              {discount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Discount {couponCode && `(${couponCode})`}</span>
+                  <span>-{formatPrice(discount)}</span>
+                </div>
+              )}
             </div>
             <Separator className="my-4" />
             <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>{formatPrice(total)}</span></div>

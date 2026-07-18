@@ -154,7 +154,7 @@ async function registerRoutes() {
 
 // ── Error handler ────────────────────────────────────────────
 
-server.setErrorHandler((error, _request, reply) => {
+server.setErrorHandler((error: any, _request, reply) => {
   server.log.error(error);
 
   const statusCode = error.statusCode || 500;

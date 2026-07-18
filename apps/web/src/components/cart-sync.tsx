@@ -6,18 +6,23 @@ import { useCart } from "@/contexts/cart-context";
 
 export function CartSync() {
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const { syncCart } = useCart();
-  const syncedRef = useRef(false);
+  const { mergeGuestToServer, resetCart } = useCart();
+  const prevAuthRef = useRef<boolean | null>(null);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && !syncedRef.current) {
-      syncedRef.current = true;
-      syncCart();
+    if (authLoading) return;
+
+    const prevAuth = prevAuthRef.current;
+    prevAuthRef.current = isAuthenticated;
+
+    if (isAuthenticated && prevAuth !== true) {
+      mergeGuestToServer();
     }
-    if (!isAuthenticated) {
-      syncedRef.current = false;
+
+    if (!isAuthenticated && prevAuth === true) {
+      resetCart();
     }
-  }, [isAuthenticated, authLoading, syncCart]);
+  }, [isAuthenticated, authLoading, mergeGuestToServer, resetCart]);
 
   return null;
 }
