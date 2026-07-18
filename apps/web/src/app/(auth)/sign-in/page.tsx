@@ -9,11 +9,14 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2, CheckCircle2 } from "luci
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signInSchema, type SignInInput } from "@/lib/validations/auth";
+import { useAuth } from "@/contexts/auth-context";
 
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { signIn } = useAuth();
   const justCreated = searchParams.get("created") === "true";
+  const redirectTo = searchParams.get("redirect") || "/";
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,33 +42,16 @@ function SignInForm() {
     setIsLoading(true);
     setError(null);
 
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/sign-in`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: data.email,
-            password: data.password,
-          }),
-        }
-      );
+    const result = await signIn(data.email, data.password);
 
-      const result = await res.json();
-
-      if (!res.ok) {
-        setError(result.error || result.message || "Invalid email or password");
-        return;
-      }
-
-      router.push("/");
-      router.refresh();
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
+    if (result.error) {
+      setError(result.error);
       setIsLoading(false);
+      return;
     }
+
+    router.push(redirectTo);
+    router.refresh();
   }
 
   const inputClasses =

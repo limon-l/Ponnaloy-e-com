@@ -102,3 +102,57 @@ html {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* Fade in animation for page transitions */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Card hover elevation */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px hsl(var(--foreground) / 0.08), 0 4px 10px -5px hsl(var(--foreground) / 0.04);
+}
+
+/* Button press effect */
+.btn-press:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Staggered fade-in for grid items */
+@keyframes staggerFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stagger-item {
+  animation: staggerFadeIn 0.4s ease-out both;
+}
+
+/* Toast slide-in */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Progress bar animation */
+@keyframes progressFill {
+  from { width: 0; }
+}
+
+.animate-progress {
+  animation: progressFill 0.6s ease-out;
+}

@@ -47,7 +47,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   };
 
   return (
-    <div className={cn("group relative", className)}>
+    <div className={cn("group relative card-hover stagger-item", className)}>
       <Link href={`/product/${product.slug}`} className="block">
         <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
           {mainImage ? (
@@ -55,7 +55,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
               src={mainImage.url}
               alt={mainImage.alt || product.name}
               fill
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
             />
           ) : (
@@ -67,41 +67,41 @@ export function ProductCard({ product, className }: ProductCardProps) {
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {discount > 0 && (
-              <Badge variant="destructive" className="text-xs">
+              <Badge variant="destructive" className="text-xs animate-fade-in">
                 -{discount}%
               </Badge>
             )}
             {product.isNewArrival && (
-              <Badge variant="default" className="text-xs bg-primary">
+              <Badge variant="default" className="text-xs bg-primary animate-fade-in">
                 New
               </Badge>
             )}
             {product.isFeatured && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs animate-fade-in">
                 Featured
               </Badge>
             )}
           </div>
 
           {/* Quick Actions */}
-          <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
             <Button
               size="icon"
               variant="secondary"
               className={cn(
-                "h-8 w-8 rounded-full shadow-md",
+                "h-8 w-8 rounded-full shadow-md backdrop-blur-sm btn-press",
                 isWishlisted && "bg-destructive/10 text-destructive"
               )}
               onClick={handleToggleWishlist}
             >
               <Heart
-                className={cn("h-4 w-4", isWishlisted && "fill-current")}
+                className={cn("h-4 w-4 transition-transform duration-200", isWishlisted && "fill-current scale-110")}
               />
             </Button>
             <Button
               size="icon"
               variant="secondary"
-              className="h-8 w-8 rounded-full shadow-md"
+              className="h-8 w-8 rounded-full shadow-md backdrop-blur-sm btn-press"
               onClick={handleAddToCart}
             >
               <ShoppingBag className="h-4 w-4" />
@@ -118,7 +118,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           </div>
 
           {/* Name */}
-          <h3 className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">
+          <h3 className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors duration-200">
             {product.name}
           </h3>
 
@@ -129,7 +129,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
                 <Star
                   key={i}
                   className={cn(
-                    "h-3 w-3",
+                    "h-3 w-3 transition-colors duration-200",
                     i < Math.round(product.avgRating)
                       ? "fill-primary text-primary"
                       : "fill-muted text-muted"

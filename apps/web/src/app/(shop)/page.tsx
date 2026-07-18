@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { motion } from "framer-motion";
 import { ArrowRight, Truck, Shield, CreditCard, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
@@ -18,7 +19,7 @@ const features = [
 
 function ProductGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
       {Array.from({ length: 8 }).map((_, i) => (
         <ProductCardSkeleton key={i} />
       ))}
@@ -27,11 +28,9 @@ function ProductGridSkeleton() {
 }
 
 function ProductGrid({ products }: { products: Product[] }) {
-  if (products.length === 0) {
-    return <ProductGridSkeleton />;
-  }
+  if (products.length === 0) return <ProductGridSkeleton />;
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}
@@ -43,53 +42,57 @@ export default function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [dealProducts, setDealProducts] = useState<Product[]>([]);
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<
-    { name: string; image: string; slug: string }[]
-  >([]);
+  const [categories, setCategories] = useState<Array<{ name: string; image: string; slug: string }>>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [featuredRes, dealsRes, trendingRes, productsRes] = await Promise.all([
-          api.get<{ success: boolean; data: Product[] }>("/api/products/featured").catch(() => ({ success: false, data: [] as Product[] })),
-          api.get<{ success: boolean; data: Product[] }>("/api/products/deals").catch(() => ({ success: false, data: [] as Product[] })),
-          api.get<{ success: boolean; data: Product[] }>("/api/products/trending").catch(() => ({ success: false, data: [] as Product[] })),
-          api.get<{ success: boolean; data: Product[]; pagination?: { total: number } }>("/api/products?limit=100").catch(() => ({ success: false, data: [] as Product[] })),
-        ]);
+  const load = useCallback(async () => {
+    try {
+      const [featuredRes, dealsRes, trendingRes, productsRes] = await Promise.allSettled([
+        api.get<{ success: boolean; data: Product[] }>("/api/products/featured"),
+        api.get<{ success: boolean; data: Product[] }>("/api/products/deals"),
+        api.get<{ success: boolean; data: Product[] }>("/api/products/trending"),
+        api.get<{ success: boolean; data: Product[]; pagination?: { total: number } }>("/api/products?limit=100"),
+      ]);
 
-        if (featuredRes.success) setFeaturedProducts(featuredRes.data);
-        if (dealsRes.success) setDealProducts(dealsRes.data);
-        if (trendingRes.success) setTrendingProducts(trendingRes.data);
+      if (featuredRes.status === "fulfilled" && featuredRes.value.success) setFeaturedProducts(featuredRes.value.data);
+      if (dealsRes.status === "fulfilled" && dealsRes.value.success) setDealProducts(dealsRes.value.data);
+      if (trendingRes.status === "fulfilled" && trendingRes.value.success) setTrendingProducts(trendingRes.value.data);
 
-        if (productsRes.success && productsRes.data.length > 0) {
-          const catMap = new Map<string, { name: string; slug: string; image: string }>();
-          for (const p of productsRes.data) {
-            if (p.category && !catMap.has(p.category.slug)) {
-              catMap.set(p.category.slug, {
-                name: p.category.name,
-                slug: p.category.slug,
-                image: p.category.image || p.images?.[0]?.url || `https://picsum.photos/seed/${p.category.slug}/400/300`,
-              });
-            }
+      if (productsRes.status === "fulfilled" && productsRes.value.success && productsRes.value.data.length > 0) {
+        const catMap = new Map<string, { name: string; slug: string; image: string }>();
+        for (const p of productsRes.value.data) {
+          if (p.category && !catMap.has(p.category.slug)) {
+            catMap.set(p.category.slug, {
+              name: p.category.name,
+              slug: p.category.slug,
+              image: p.category.image || p.images?.[0]?.url || `https://picsum.photos/seed/${p.category.slug}/400/300`,
+            });
           }
-          setCategories(Array.from(catMap.values()));
         }
-      } catch (err) {
-        console.error("Failed to load homepage data:", err);
-      } finally {
-        setLoading(false);
+        setCategories(Array.from(catMap.values()));
       }
+    } catch (err) {
+      console.error("Failed to load homepage data:", err);
+    } finally {
+      setLoading(false);
     }
-    load();
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <div>
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-primary/10">
         <div className="container py-16 md:py-24">
-          <div className="max-w-2xl space-y-6">
+          <motion.div
+            className="max-w-2xl space-y-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
               Premium Shopping{" "}
               <span className="text-primary">Experience</span>
@@ -109,7 +112,7 @@ export default function HomePage() {
                 <Link href="/products?sort=newest">New Arrivals</Link>
               </Button>
             </div>
-          </div>
+          </motion.div>
         </div>
         <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary/10 to-transparent -z-10" />
       </section>
@@ -140,10 +143,7 @@ export default function HomePage() {
               <p className="text-muted-foreground mt-1">Browse our curated collections</p>
             </div>
             <Button variant="ghost" asChild>
-              <Link href="/products">
-                View All
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              <Link href="/products">View All<ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -162,9 +162,7 @@ export default function HomePage() {
                 />
                 <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm md:text-base">
-                    {category.name}
-                  </span>
+                  <span className="text-white font-semibold text-sm md:text-base">{category.name}</span>
                 </div>
               </Link>
             ))}
@@ -180,10 +178,7 @@ export default function HomePage() {
             <p className="text-muted-foreground mt-1">Handpicked for you</p>
           </div>
           <Button variant="ghost" asChild>
-            <Link href="/products?sort=featured">
-              View All
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
+            <Link href="/products?sort=featured">View All<ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         </div>
         {loading ? <ProductGridSkeleton /> : <ProductGrid products={featuredProducts} />}
@@ -198,10 +193,7 @@ export default function HomePage() {
               <p className="text-muted-foreground mt-1">Limited time offers</p>
             </div>
             <Button variant="ghost" asChild>
-              <Link href="/products?sort=deals">
-                View All
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              <Link href="/products?sort=deals">View All<ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>
           {loading ? <ProductGridSkeleton /> : <ProductGrid products={dealProducts} />}
@@ -217,10 +209,7 @@ export default function HomePage() {
               <p className="text-muted-foreground mt-1">What everyone&apos;s talking about</p>
             </div>
             <Button variant="ghost" asChild>
-              <Link href="/products?sort=trending">
-                View All
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              <Link href="/products?sort=trending">View All<ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>
           {loading ? <ProductGridSkeleton /> : <ProductGrid products={trendingProducts} />}

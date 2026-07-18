@@ -4,14 +4,20 @@ interface RequestOptions extends RequestInit {
   token?: string;
 }
 
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("ponnaloy_token");
+}
+
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { token, ...fetchOptions } = options;
+  const { token: tokenOverride, ...fetchOptions } = options;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
 
+  const token = tokenOverride || getToken();
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }

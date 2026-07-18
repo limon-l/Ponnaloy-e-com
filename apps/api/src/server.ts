@@ -28,6 +28,7 @@ import { notificationRoutes } from "./routes/notifications";
 import { bannerRoutes } from "./routes/banners";
 import { collectionRoutes } from "./routes/collections";
 import { chatRoutes } from "./routes/chat";
+import { authRoutes } from "./routes/auth";
 
 const server = Fastify({
   logger: {
@@ -101,6 +102,7 @@ async function registerRoutes() {
   });
 
   // Core routes
+  await server.register(authRoutes, { prefix: "/api/auth" });
   await server.register(productRoutes, { prefix: "/api/products" });
   await server.register(categoryRoutes, { prefix: "/api/categories" });
   await server.register(brandRoutes, { prefix: "/api/brands" });
