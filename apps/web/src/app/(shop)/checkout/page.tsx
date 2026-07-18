@@ -254,7 +254,7 @@ export default function CheckoutPage() {
                         billingAddress: address,
                         paymentMethod: paymentMethod.toUpperCase(),
                         couponCode: couponCode || undefined,
-                        notes: null,
+                        notes: undefined,
                       });
                       clearCart(); router.push("/orders?created=true");
                     } catch (err: unknown) {

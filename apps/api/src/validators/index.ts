@@ -107,7 +107,7 @@ export const createOrderSchema = z.object({
     "BANK_TRANSFER",
   ]),
   couponCode: z.string().optional(),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
 });
 
 export const createReviewSchema = z.object({
