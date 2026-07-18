@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -12,10 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
+import { api } from "@/lib/api";
 
-// --- Mock Data ---
-
-type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
+type OrderStatus = "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 
 interface OrderItem {
   name: string;
@@ -26,131 +25,136 @@ interface OrderItem {
 
 interface Order {
   id: string;
+  orderNumber: string;
   date: string;
   status: OrderStatus;
   total: number;
   items: OrderItem[];
 }
 
-const mockOrders: Order[] = [
-  {
-    id: "ORD-2024-001",
-    date: "2024-12-15",
-    status: "delivered",
-    total: 32998,
-    items: [
-      {
-        name: "Wireless Earbuds Pro",
-        image: "https://picsum.photos/seed/earbuds/600/600",
-        price: 7999,
-        quantity: 1,
-      },
-      {
-        name: "Smart Watch Ultra",
-        image: "https://picsum.photos/seed/watch/600/600",
-        price: 24999,
-        quantity: 1,
-      },
-    ],
-  },
-  {
-    id: "ORD-2024-002",
-    date: "2024-12-20",
-    status: "shipped",
-    total: 7999,
-    items: [
-      {
-        name: "Leather Crossbody Bag",
-        image: "https://picsum.photos/seed/bag/600/600",
-        price: 7999,
-        quantity: 1,
-      },
-    ],
-  },
-  {
-    id: "ORD-2024-003",
-    date: "2025-01-05",
-    status: "pending",
-    total: 6498,
-    items: [
-      {
-        name: "Cotton Crew Neck T-Shirt",
-        image: "https://picsum.photos/seed/tshirt/600/600",
-        price: 2499,
-        quantity: 1,
-      },
-      {
-        name: "Minimalist Desk Lamp",
-        image: "https://picsum.photos/seed/lamp/600/600",
-        price: 3999,
-        quantity: 1,
-      },
-    ],
-  },
-  {
-    id: "ORD-2024-004",
-    date: "2025-01-10",
-    status: "confirmed",
-    total: 3999,
-    items: [
-      {
-        name: "Yoga Mat Premium",
-        image: "https://picsum.photos/seed/yoga/600/600",
-        price: 3999,
-        quantity: 1,
-      },
-    ],
-  },
-  {
-    id: "ORD-2024-005",
-    date: "2024-11-28",
-    status: "cancelled",
-    total: 12499,
-    items: [
-      {
-        name: "Smart Watch Ultra",
-        image: "https://picsum.photos/seed/watch/600/600",
-        price: 24999,
-        quantity: 1,
-      },
-    ],
-  },
-];
-
 const statusConfig: Record<
   OrderStatus,
   { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
 > = {
-  pending: { label: "Pending", variant: "secondary" },
-  confirmed: { label: "Confirmed", variant: "default" },
-  shipped: { label: "Shipped", variant: "default" },
-  delivered: { label: "Delivered", variant: "outline" },
-  cancelled: { label: "Cancelled", variant: "destructive" },
+  PENDING: { label: "Pending", variant: "secondary" },
+  CONFIRMED: { label: "Confirmed", variant: "default" },
+  SHIPPED: { label: "Shipped", variant: "default" },
+  DELIVERED: { label: "Delivered", variant: "outline" },
+  CANCELLED: { label: "Cancelled", variant: "destructive" },
 };
 
 const filterOptions: { value: string; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "shipped", label: "Shipped" },
-  { value: "delivered", label: "Delivered" },
-  { value: "cancelled", label: "Cancelled" },
+  ...Object.entries(statusConfig).map(([value, config]) => ({
+    value: value.toLowerCase(),
+    label: config.label,
+  })),
 ];
 
-// --- Page Component ---
+// Demo orders shown when not authenticated
+const demoOrders: Order[] = [
+  {
+    id: "ORD-2024-001",
+    orderNumber: "ORD-2024-001",
+    date: "2024-12-15",
+    status: "DELIVERED",
+    total: 32998,
+    items: [
+      { name: "Wireless Earbuds Pro", image: "https://picsum.photos/seed/earbuds/600/600", price: 7999, quantity: 1 },
+      { name: "Smart Watch Ultra", image: "https://picsum.photos/seed/watch/600/600", price: 24999, quantity: 1 },
+    ],
+  },
+  {
+    id: "ORD-2024-002",
+    orderNumber: "ORD-2024-002",
+    date: "2024-12-20",
+    status: "SHIPPED",
+    total: 7999,
+    items: [
+      { name: "Leather Crossbody Bag", image: "https://picsum.photos/seed/bag/600/600", price: 7999, quantity: 1 },
+    ],
+  },
+  {
+    id: "ORD-2024-003",
+    orderNumber: "ORD-2024-003",
+    date: "2025-01-05",
+    status: "PENDING",
+    total: 6498,
+    items: [
+      { name: "Cotton Crew Neck T-Shirt", image: "https://picsum.photos/seed/tshirt/600/600", price: 2499, quantity: 1 },
+      { name: "Minimalist Desk Lamp", image: "https://picsum.photos/seed/lamp/600/600", price: 3999, quantity: 1 },
+    ],
+  },
+];
 
 export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
+  useEffect(() => {
+    async function fetchOrders() {
+      try {
+        const res = await api.get<{ success: boolean; data: Array<{
+          id: string;
+          orderNumber: string;
+          createdAt: string;
+          status: string;
+          total: number;
+          items: Array<{
+            quantity: number;
+            unitPrice: number;
+            product: { name: string; images: Array<{ url: string }> };
+          }>;
+        }> }>("/api/orders");
+        if (res.success && res.data.length > 0) {
+          setOrders(
+            res.data.map((o) => ({
+              id: o.id,
+              orderNumber: o.orderNumber,
+              date: o.createdAt,
+              status: o.status as OrderStatus,
+              total: o.total,
+              items: o.items.map((i) => ({
+                name: i.product.name,
+                image: i.product.images?.[0]?.url || "https://picsum.photos/seed/product/600/600",
+                price: i.unitPrice,
+                quantity: i.quantity,
+              })),
+            }))
+          );
+          return;
+        }
+      } catch {
+        // Not authenticated or API error — use demo data
+      }
+      setOrders(demoOrders);
+    }
+    fetchOrders().finally(() => setLoading(false));
+  }, []);
+
   const filteredOrders =
     filter === "all"
-      ? mockOrders
-      : mockOrders.filter((o) => o.status === filter);
+      ? orders
+      : orders.filter((o) => o.status.toLowerCase() === filter);
 
   const toggleOrder = (id: string) => {
     setExpandedOrder((prev) => (prev === id ? null : id));
   };
+
+  if (loading) {
+    return (
+      <div className="container py-8">
+        <div className="h-8 w-48 bg-muted rounded animate-pulse mb-8" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-8">
@@ -177,8 +181,8 @@ export default function OrdersPage() {
                 variant="secondary"
                 className="ml-2 h-5 min-w-5 justify-center px-1"
               >
-                {mockOrders.filter(
-                  (o) => o.status === option.value
+                {orders.filter(
+                  (o) => o.status.toLowerCase() === option.value
                 ).length}
               </Badge>
             )}
@@ -193,7 +197,7 @@ export default function OrdersPage() {
           <h2 className="text-xl font-semibold mb-2">No orders found</h2>
           <p className="text-muted-foreground mb-6">
             {filter === "all"
-              ? "You haven't placed any orders yet."
+              ? "You haven&apos;t placed any orders yet."
               : `No ${filter} orders found.`}
           </p>
           <Button asChild>
@@ -216,11 +220,11 @@ export default function OrdersPage() {
                     <div className="flex items-center gap-2">
                       <Package className="h-5 w-5 text-muted-foreground" />
                       <span className="font-semibold text-sm sm:text-base">
-                        {order.id}
+                        {order.orderNumber || order.id}
                       </span>
                     </div>
-                    <Badge variant={statusConfig[order.status].variant}>
-                      {statusConfig[order.status].label}
+                    <Badge variant={statusConfig[order.status]?.variant || "secondary"}>
+                      {statusConfig[order.status]?.label || order.status}
                     </Badge>
                     <span className="text-sm text-muted-foreground hidden sm:inline">
                       {new Date(order.date).toLocaleDateString("en-US", {

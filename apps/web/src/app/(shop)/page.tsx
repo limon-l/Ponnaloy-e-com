@@ -1,153 +1,19 @@
 "use client";
 
-import { Suspense } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Truck, Shield, CreditCard, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
-
-// Mock data for static generation - in production, fetch from API
-const featuredProducts = [
-  {
-    id: "1",
-    name: "Wireless Earbuds Pro",
-    slug: "wireless-earbuds-pro",
-    price: 7999,
-    compareAtPrice: 9999,
-    avgRating: 4.8,
-    reviewCount: 124,
-    isFeatured: true,
-    isNewArrival: false,
-    isTrending: true,
-    images: [{ url: "https://picsum.photos/seed/earbuds/600/600", alt: "Earbuds" }],
-    category: { id: "1", name: "Electronics", slug: "electronics" },
-    brand: { id: "1", name: "TechNova", slug: "technova" },
-    variants: [],
-  },
-  {
-    id: "2",
-    name: "Smart Watch Ultra",
-    slug: "smart-watch-ultra",
-    price: 24999,
-    compareAtPrice: 29999,
-    avgRating: 4.9,
-    reviewCount: 89,
-    isFeatured: true,
-    isNewArrival: true,
-    isTrending: true,
-    images: [{ url: "https://picsum.photos/seed/watch/600/600", alt: "Watch" }],
-    category: { id: "1", name: "Electronics", slug: "electronics" },
-    brand: { id: "1", name: "TechNova", slug: "technova" },
-    variants: [],
-  },
-  {
-    id: "3",
-    name: "Cotton Crew Neck T-Shirt",
-    slug: "cotton-crew-neck-tshirt",
-    price: 2499,
-    compareAtPrice: 3499,
-    avgRating: 4.5,
-    reviewCount: 256,
-    isFeatured: true,
-    isNewArrival: false,
-    isTrending: false,
-    images: [{ url: "https://picsum.photos/seed/tshirt/600/600", alt: "T-Shirt" }],
-    category: { id: "2", name: "Clothing", slug: "clothing" },
-    brand: { id: "2", name: "UrbanEdge", slug: "urbanedge" },
-    variants: [],
-  },
-  {
-    id: "4",
-    name: "Minimalist Desk Lamp",
-    slug: "minimalist-desk-lamp",
-    price: 3999,
-    compareAtPrice: 5499,
-    avgRating: 4.7,
-    reviewCount: 67,
-    isFeatured: true,
-    isNewArrival: false,
-    isTrending: true,
-    images: [{ url: "https://picsum.photos/seed/lamp/600/600", alt: "Lamp" }],
-    category: { id: "3", name: "Home & Living", slug: "home-living" },
-    brand: { id: "3", name: "HomeCraft", slug: "homecraft" },
-    variants: [],
-  },
-  {
-    id: "5",
-    name: "Leather Crossbody Bag",
-    slug: "leather-crossbody-bag",
-    price: 7999,
-    compareAtPrice: 9999,
-    avgRating: 4.6,
-    reviewCount: 143,
-    isFeatured: true,
-    isNewArrival: true,
-    isTrending: false,
-    images: [{ url: "https://picsum.photos/seed/bag/600/600", alt: "Bag" }],
-    category: { id: "7", name: "Accessories", slug: "accessories" },
-    brand: { id: "10", name: "StyleHub", slug: "stylehub" },
-    variants: [],
-  },
-  {
-    id: "6",
-    name: "Yoga Mat Premium",
-    slug: "yoga-mat-premium",
-    price: 3999,
-    compareAtPrice: 5499,
-    avgRating: 4.8,
-    reviewCount: 98,
-    isFeatured: true,
-    isNewArrival: false,
-    isTrending: true,
-    images: [{ url: "https://picsum.photos/seed/yoga/600/600", alt: "Yoga Mat" }],
-    category: { id: "5", name: "Sports", slug: "sports" },
-    brand: { id: "4", name: "FitPro", slug: "fitpro" },
-    variants: [],
-  },
-];
-
-const trendingProducts = [
-  ...featuredProducts.slice(0, 4).map((p) => ({ ...p, id: `t${p.id}` })),
-];
-
-const dealProducts = [
-  ...featuredProducts.slice(0, 3).map((p) => ({
-    ...p,
-    id: `d${p.id}`,
-    compareAtPrice: p.price * 1.5,
-  })),
-];
+import { api } from "@/lib/api";
+import type { Product } from "@/types";
 
 const features = [
-  {
-    icon: Truck,
-    title: "Free Shipping",
-    description: "On orders over $150",
-  },
-  {
-    icon: Shield,
-    title: "Secure Payment",
-    description: "256-bit SSL encryption",
-  },
-  {
-    icon: CreditCard,
-    title: "Easy Returns",
-    description: "30-day return policy",
-  },
-  {
-    icon: Headphones,
-    title: "24/7 Support",
-    description: "Dedicated customer care",
-  },
-];
-
-const categories = [
-  { name: "Electronics", image: "https://picsum.photos/seed/cat-electronics/400/300", slug: "electronics" },
-  { name: "Clothing", image: "https://picsum.photos/seed/cat-clothing/400/300", slug: "clothing" },
-  { name: "Home & Living", image: "https://picsum.photos/seed/cat-home/400/300", slug: "home-living" },
-  { name: "Beauty", image: "https://picsum.photos/seed/cat-beauty/400/300", slug: "beauty" },
-  { name: "Sports", image: "https://picsum.photos/seed/cat-sports/400/300", slug: "sports" },
-  { name: "Accessories", image: "https://picsum.photos/seed/cat-accessories/400/300", slug: "accessories" },
+  { icon: Truck, title: "Free Shipping", description: "On orders over $150" },
+  { icon: Shield, title: "Secure Payment", description: "256-bit SSL encryption" },
+  { icon: CreditCard, title: "Easy Returns", description: "30-day return policy" },
+  { icon: Headphones, title: "24/7 Support", description: "Dedicated customer care" },
 ];
 
 function ProductGridSkeleton() {
@@ -160,17 +26,64 @@ function ProductGridSkeleton() {
   );
 }
 
-function ProductGrid({ products }: { products: typeof featuredProducts }) {
+function ProductGrid({ products }: { products: Product[] }) {
+  if (products.length === 0) {
+    return <ProductGridSkeleton />;
+  }
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product as any} />
+        <ProductCard key={product.id} product={product} />
       ))}
     </div>
   );
 }
 
 export default function HomePage() {
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [dealProducts, setDealProducts] = useState<Product[]>([]);
+  const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<
+    { name: string; image: string; slug: string }[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [featuredRes, dealsRes, trendingRes, productsRes] = await Promise.all([
+          api.get<{ success: boolean; data: Product[] }>("/api/products/featured").catch(() => ({ success: false, data: [] as Product[] })),
+          api.get<{ success: boolean; data: Product[] }>("/api/products/deals").catch(() => ({ success: false, data: [] as Product[] })),
+          api.get<{ success: boolean; data: Product[] }>("/api/products/trending").catch(() => ({ success: false, data: [] as Product[] })),
+          api.get<{ success: boolean; data: Product[]; pagination?: { total: number } }>("/api/products?limit=100").catch(() => ({ success: false, data: [] as Product[] })),
+        ]);
+
+        if (featuredRes.success) setFeaturedProducts(featuredRes.data);
+        if (dealsRes.success) setDealProducts(dealsRes.data);
+        if (trendingRes.success) setTrendingProducts(trendingRes.data);
+
+        if (productsRes.success && productsRes.data.length > 0) {
+          const catMap = new Map<string, { name: string; slug: string; image: string }>();
+          for (const p of productsRes.data) {
+            if (p.category && !catMap.has(p.category.slug)) {
+              catMap.set(p.category.slug, {
+                name: p.category.name,
+                slug: p.category.slug,
+                image: p.category.image || p.images?.[0]?.url || `https://picsum.photos/seed/${p.category.slug}/400/300`,
+              });
+            }
+          }
+          setCategories(Array.from(catMap.values()));
+        }
+      } catch (err) {
+        console.error("Failed to load homepage data:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
   return (
     <div>
       {/* Hero Section */}
@@ -198,7 +111,6 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-        {/* Decorative gradient */}
         <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary/10 to-transparent -z-10" />
       </section>
 
@@ -211,9 +123,7 @@ export default function HomePage() {
                 <feature.icon className="h-8 w-8 text-primary shrink-0" />
                 <div>
                   <p className="font-medium text-sm">{feature.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {feature.description}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{feature.description}</p>
                 </div>
               </div>
             ))}
@@ -222,52 +132,52 @@ export default function HomePage() {
       </section>
 
       {/* Categories */}
-      <section className="container py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold">Shop by Category</h2>
-            <p className="text-muted-foreground mt-1">
-              Browse our curated collections
-            </p>
+      {categories.length > 0 && (
+        <section className="container py-12">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold">Shop by Category</h2>
+              <p className="text-muted-foreground mt-1">Browse our curated collections</p>
+            </div>
+            <Button variant="ghost" asChild>
+              <Link href="/products">
+                View All
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
-          <Button variant="ghost" asChild>
-            <Link href="/products">
-              View All
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {categories.map((category) => (
-            <Link
-              key={category.name}
-              href={`/products?category=${category.slug}`}
-              className="group relative aspect-[4/3] overflow-hidden rounded-lg"
-            >
-              <img
-                src={category.image}
-                alt={category.name}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-white font-semibold text-sm md:text-base">
-                  {category.name}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {categories.map((category) => (
+              <Link
+                key={category.slug}
+                href={`/products?category=${category.slug}`}
+                className="group relative aspect-[4/3] overflow-hidden rounded-lg"
+              >
+                <Image
+                  src={category.image}
+                  alt={category.name}
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  sizes="(max-width: 768px) 50vw, 16vw"
+                />
+                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm md:text-base">
+                    {category.name}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Featured Products */}
       <section className="container py-12">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold">Featured Products</h2>
-            <p className="text-muted-foreground mt-1">
-              Handpicked for you
-            </p>
+            <p className="text-muted-foreground mt-1">Handpicked for you</p>
           </div>
           <Button variant="ghost" asChild>
             <Link href="/products?sort=featured">
@@ -276,52 +186,46 @@ export default function HomePage() {
             </Link>
           </Button>
         </div>
-        <Suspense fallback={<ProductGridSkeleton />}>
-          <ProductGrid products={featuredProducts} />
-        </Suspense>
+        {loading ? <ProductGridSkeleton /> : <ProductGrid products={featuredProducts} />}
       </section>
 
       {/* Deals Section */}
-      <section className="container py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold">Today&apos;s Deals</h2>
-            <p className="text-muted-foreground mt-1">
-              Limited time offers
-            </p>
+      {dealProducts.length > 0 && (
+        <section className="container py-12">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold">Today&apos;s Deals</h2>
+              <p className="text-muted-foreground mt-1">Limited time offers</p>
+            </div>
+            <Button variant="ghost" asChild>
+              <Link href="/products?sort=deals">
+                View All
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
-          <Button variant="ghost" asChild>
-            <Link href="/products?sort=deals">
-              View All
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-        <Suspense fallback={<ProductGridSkeleton />}>
-          <ProductGrid products={dealProducts} />
-        </Suspense>
-      </section>
+          {loading ? <ProductGridSkeleton /> : <ProductGrid products={dealProducts} />}
+        </section>
+      )}
 
       {/* Trending Section */}
-      <section className="container py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold">Trending Now</h2>
-            <p className="text-muted-foreground mt-1">
-              What everyone&apos;s talking about
-            </p>
+      {trendingProducts.length > 0 && (
+        <section className="container py-12">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold">Trending Now</h2>
+              <p className="text-muted-foreground mt-1">What everyone&apos;s talking about</p>
+            </div>
+            <Button variant="ghost" asChild>
+              <Link href="/products?sort=trending">
+                View All
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
-          <Button variant="ghost" asChild>
-            <Link href="/products?sort=trending">
-              View All
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-        <Suspense fallback={<ProductGridSkeleton />}>
-          <ProductGrid products={trendingProducts} />
-        </Suspense>
-      </section>
+          {loading ? <ProductGridSkeleton /> : <ProductGrid products={trendingProducts} />}
+        </section>
+      )}
 
       {/* Newsletter */}
       <section className="border-t bg-muted/50">

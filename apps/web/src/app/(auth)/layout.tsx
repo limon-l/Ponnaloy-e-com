@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Package } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 
 export default function AuthLayout({
   children,
@@ -14,7 +14,7 @@ export default function AuthLayout({
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <Link href="/" className="flex items-center gap-2.5 w-fit">
             <div className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Package className="h-5 w-5 text-white" />
+              <ShoppingBag className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold text-white tracking-tight">
               Ponnaloy

@@ -6,6 +6,9 @@ import { Heart, ShoppingBag, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatPrice, calculateDiscount } from "@/lib/utils";
+import { useCart } from "@/contexts/cart-context";
+import { useWishlist } from "@/contexts/wishlist-context";
+import { useToast } from "@/components/ui/toast";
 import type { Product } from "@/types";
 
 interface ProductCardProps {
@@ -16,6 +19,32 @@ interface ProductCardProps {
 export function ProductCard({ product, className }: ProductCardProps) {
   const discount = calculateDiscount(product.price, product.compareAtPrice);
   const mainImage = product.images?.[0];
+  const { addItem } = useCart();
+  const { toggleItem, hasItem } = useWishlist();
+  const { toast } = useToast();
+  const isWishlisted = hasItem(product.id);
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem(product, 1);
+    toast({
+      title: "Added to cart",
+      description: `${product.name} has been added to your cart.`,
+    });
+  };
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleItem(product);
+    toast({
+      title: isWishlisted ? "Removed from wishlist" : "Added to wishlist",
+      description: isWishlisted
+        ? `${product.name} has been removed from your wishlist.`
+        : `${product.name} has been added to your wishlist.`,
+    });
+  };
 
   return (
     <div className={cn("group relative", className)}>
@@ -59,22 +88,21 @@ export function ProductCard({ product, className }: ProductCardProps) {
             <Button
               size="icon"
               variant="secondary"
-              className="h-8 w-8 rounded-full shadow-md"
-              onClick={(e) => {
-                e.preventDefault();
-                // Add to wishlist
-              }}
+              className={cn(
+                "h-8 w-8 rounded-full shadow-md",
+                isWishlisted && "bg-destructive/10 text-destructive"
+              )}
+              onClick={handleToggleWishlist}
             >
-              <Heart className="h-4 w-4" />
+              <Heart
+                className={cn("h-4 w-4", isWishlisted && "fill-current")}
+              />
             </Button>
             <Button
               size="icon"
               variant="secondary"
               className="h-8 w-8 rounded-full shadow-md"
-              onClick={(e) => {
-                e.preventDefault();
-                // Add to cart
-              }}
+              onClick={handleAddToCart}
             >
               <ShoppingBag className="h-4 w-4" />
             </Button>

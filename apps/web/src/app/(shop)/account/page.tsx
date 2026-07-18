@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
+import { useWishlist } from "@/contexts/wishlist-context";
 
 // --- Mock Data ---
 
@@ -93,41 +95,6 @@ const mockOrders = [
   },
 ];
 
-const mockWishlist = [
-  {
-    id: "w1",
-    name: "Yoga Mat Premium",
-    slug: "yoga-mat-premium",
-    price: 3999,
-    compareAtPrice: 5499,
-    image: "https://picsum.photos/seed/yoga/600/600",
-  },
-  {
-    id: "w2",
-    name: "Wireless Earbuds Pro",
-    slug: "wireless-earbuds-pro",
-    price: 7999,
-    compareAtPrice: 9999,
-    image: "https://picsum.photos/seed/earbuds/600/600",
-  },
-  {
-    id: "w3",
-    name: "Minimalist Desk Lamp",
-    slug: "minimalist-desk-lamp",
-    price: 3999,
-    compareAtPrice: 5499,
-    image: "https://picsum.photos/seed/lamp/600/600",
-  },
-  {
-    id: "w4",
-    name: "Smart Watch Ultra",
-    slug: "smart-watch-ultra",
-    price: 24999,
-    compareAtPrice: 29999,
-    image: "https://picsum.photos/seed/watch/600/600",
-  },
-];
-
 const mockAddresses = [
   {
     id: "a1",
@@ -168,11 +135,14 @@ const statusConfig: Record<
 
 // --- Page Component ---
 
-export default function AccountPage() {
+function AccountPageContent() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") || "profile";
+
   const [user, setUser] = useState(mockUser);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState(mockUser);
-  const [wishlist, setWishlist] = useState(mockWishlist);
+  const { items: wishlistItems, removeItem: removeFromWishlist } = useWishlist();
   const [addresses, setAddresses] = useState(mockAddresses);
   const [editingAddress, setEditingAddress] = useState<string | null>(null);
   const [addressForm, setAddressForm] = useState({
@@ -190,10 +160,6 @@ export default function AccountPage() {
   const handleProfileSave = () => {
     setUser(profileForm);
     setEditingProfile(false);
-  };
-
-  const removeFromWishlist = (id: string) => {
-    setWishlist((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleAddressEdit = (address: (typeof mockAddresses)[0]) => {
@@ -257,7 +223,7 @@ export default function AccountPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs defaultValue={initialTab} className="space-y-6">
         <TabsList className="w-full justify-start h-auto flex-wrap">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
@@ -270,6 +236,11 @@ export default function AccountPage() {
           <TabsTrigger value="wishlist" className="gap-2">
             <Heart className="h-4 w-4" />
             Wishlist
+            {wishlistItems.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 min-w-5 justify-center px-1">
+                {wishlistItems.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="addresses" className="gap-2">
             <MapPin className="h-4 w-4" />
@@ -476,7 +447,7 @@ export default function AccountPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {wishlist.length === 0 ? (
+              {wishlistItems.length === 0 ? (
                 <div className="text-center py-12">
                   <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">
@@ -488,9 +459,9 @@ export default function AccountPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {wishlist.map((item) => (
+                  {wishlistItems.map((item) => (
                     <div
-                      key={item.id}
+                      key={item.productId}
                       className="group border rounded-lg overflow-hidden"
                     >
                       <div className="relative aspect-square bg-muted">
@@ -513,7 +484,7 @@ export default function AccountPage() {
                           <span className="font-semibold text-sm">
                             {formatPrice(item.price)}
                           </span>
-                          {item.compareAtPrice && (
+                          {item.compareAtPrice && item.compareAtPrice > item.price && (
                             <span className="text-xs text-muted-foreground line-through">
                               {formatPrice(item.compareAtPrice)}
                             </span>
@@ -529,7 +500,7 @@ export default function AccountPage() {
                             size="sm"
                             variant="ghost"
                             className="text-destructive"
-                            onClick={() => removeFromWishlist(item.id)}
+                            onClick={() => removeFromWishlist(item.productId)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -659,6 +630,22 @@ export default function AccountPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container py-8">
+          <div className="h-8 w-48 bg-muted rounded animate-pulse mb-8" />
+          <div className="h-10 w-full bg-muted rounded animate-pulse mb-6" />
+          <div className="h-64 w-full bg-muted rounded animate-pulse" />
+        </div>
+      }
+    >
+      <AccountPageContent />
+    </Suspense>
   );
 }
 

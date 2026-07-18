@@ -7,13 +7,10 @@ import {
   ShoppingBag,
   User,
   Menu,
-  X,
   Sun,
   Moon,
   Heart,
-  Package,
   LogOut,
-  Settings,
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +26,8 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "@/hooks/use-theme";
-import { cn } from "@/lib/utils";
+import { useCart } from "@/contexts/cart-context";
+import { useWishlist } from "@/contexts/wishlist-context";
 
 const navLinks = [
   { label: "New Arrivals", href: "/products?sort=newest" },
@@ -42,10 +40,8 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
-
-  // Mock auth state - replace with Clerk
-  const isLoggedIn = false;
-  const user = null as { avatar?: string; firstName?: string; email?: string } | null;
+  const { itemCount } = useCart();
+  const { count: wishlistCount } = useWishlist();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +92,7 @@ export function Header() {
         </form>
 
         {/* Right Actions */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 sm:space-x-2">
           {/* Theme Toggle */}
           <Button
             variant="ghost"
@@ -109,84 +105,42 @@ export function Header() {
           </Button>
 
           {/* Wishlist */}
-          {isLoggedIn && (
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/account?tab=wishlist">
-                <Heart className="h-5 w-5" />
-              </Link>
-            </Button>
-          )}
+          <Button variant="ghost" size="icon" className="relative" asChild>
+            <Link href="/account?tab=wishlist">
+              <Heart className="h-5 w-5" />
+              {wishlistCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </Badge>
+              )}
+            </Link>
+          </Button>
 
           {/* Cart */}
           <Button variant="ghost" size="icon" className="relative" asChild>
             <Link href="/cart">
               <ShoppingBag className="h-5 w-5" />
-              <Badge
-                variant="destructive"
-                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-              >
-                0
-              </Badge>
+              {itemCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  {itemCount > 99 ? "99+" : itemCount}
+                </Badge>
+              )}
             </Link>
           </Button>
 
-          {/* User Menu */}
-          {isLoggedIn ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="space-x-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.avatar || ""} />
-                    <AvatarFallback>U</AvatarFallback>
-                  </Avatar>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="flex items-center gap-2 p-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.avatar || ""} />
-                    <AvatarFallback>U</AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col">
-                    <p className="text-sm font-medium">{user?.firstName || "User"}</p>
-                    <p className="text-xs text-muted-foreground">{user?.email}</p>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/account">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/orders">
-                    <Package className="mr-2 h-4 w-4" />
-                    Orders
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/account?tab=wishlist">
-                    <Heart className="mr-2 h-4 w-4" />
-                    Wishlist
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/sign-in">
-                <User className="h-5 w-5 mr-1" />
-                <span className="hidden sm:inline">Sign In</span>
-              </Link>
-            </Button>
-          )}
+          {/* User Menu - Sign In link always visible */}
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/sign-in">
+              <User className="h-5 w-5 mr-1" />
+              <span className="hidden sm:inline">Sign In</span>
+            </Link>
+          </Button>
 
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

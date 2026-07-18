@@ -17,7 +17,7 @@ export default function ShippingPage() {
               <p className="text-muted-foreground text-sm">
                 5-7 business days
               </p>
-              <p className="text-sm mt-1">Free on orders over $50</p>
+              <p className="text-sm mt-1">Free on orders over $150</p>
             </div>
           </div>
           <div className="flex items-start gap-4 p-6 border rounded-lg">

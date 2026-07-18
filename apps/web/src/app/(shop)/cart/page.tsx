@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from "lucide-react";
@@ -8,57 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
-
-// Mock cart data - replace with actual cart state
-const mockCartItems = [
-  {
-    id: "1",
-    quantity: 2,
-    product: {
-      id: "p1",
-      name: "Wireless Earbuds Pro",
-      slug: "wireless-earbuds-pro",
-      price: 7999,
-      images: [{ url: "https://picsum.photos/seed/earbuds/600/600", alt: "Earbuds" }],
-    },
-  },
-  {
-    id: "2",
-    quantity: 1,
-    product: {
-      id: "p2",
-      name: "Smart Watch Ultra",
-      slug: "smart-watch-ultra",
-      price: 24999,
-      images: [{ url: "https://picsum.photos/seed/watch/600/600", alt: "Watch" }],
-    },
-  },
-];
+import { useCart } from "@/contexts/cart-context";
+import { FREE_SHIPPING_THRESHOLD } from "@ponnaloy/shared";
 
 export default function CartPage() {
-  const [items, setItems] = useState(mockCartItems);
-  const [couponCode, setCouponCode] = useState("");
-
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
-    0
-  );
-  const shippingFee = subtotal >= 15000 ? 0 : 1500;
+  const { items, removeItem, updateQuantity, subtotal, itemCount } = useCart();
+  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 1500;
   const total = subtotal + shippingFee;
-
-  const updateQuantity = (id: string, delta: number) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
-    );
-  };
-
-  const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  };
+  const freeShippingProgress = Math.min(subtotal / FREE_SHIPPING_THRESHOLD, 1);
 
   if (items.length === 0) {
     return (
@@ -77,7 +33,9 @@ export default function CartPage() {
 
   return (
     <div className="container py-8">
-      <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
+      <h1 className="text-3xl font-bold mb-8">
+        Shopping Cart ({itemCount} {itemCount === 1 ? "item" : "items"})
+      </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Cart Items */}
@@ -89,8 +47,8 @@ export default function CartPage() {
             >
               <div className="relative w-24 h-24 rounded-md overflow-hidden bg-muted shrink-0">
                 <Image
-                  src={item.product.images[0]?.url || ""}
-                  alt={item.product.name}
+                  src={item.image || ""}
+                  alt={item.name}
                   fill
                   className="object-cover"
                   sizes="96px"
@@ -98,13 +56,18 @@ export default function CartPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <Link
-                  href={`/product/${item.product.slug}`}
+                  href={`/product/${item.slug}`}
                   className="font-medium hover:text-primary line-clamp-1"
                 >
-                  {item.product.name}
+                  {item.name}
                 </Link>
+                {item.variant && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {item.variant.name}
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground mt-1">
-                  {formatPrice(item.product.price)}
+                  {formatPrice(item.price)}
                 </p>
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex items-center border rounded-md">
@@ -112,7 +75,8 @@ export default function CartPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 rounded-none"
-                      onClick={() => updateQuantity(item.id, -1)}
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      disabled={item.quantity <= 1}
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -123,7 +87,7 @@ export default function CartPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 rounded-none"
-                      onClick={() => updateQuantity(item.id, 1)}
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
@@ -140,7 +104,7 @@ export default function CartPage() {
                 </div>
               </div>
               <div className="text-right font-semibold">
-                {formatPrice(item.product.price * item.quantity)}
+                {formatPrice(item.price * item.quantity)}
               </div>
             </div>
           ))}
@@ -158,23 +122,31 @@ export default function CartPage() {
           <div className="border rounded-lg p-6 sticky top-24">
             <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
 
-            {/* Coupon */}
-            <div className="flex gap-2 mb-4">
-              <Input
-                placeholder="Coupon code"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-              />
-              <Button variant="outline" size="sm">
-                Apply
-              </Button>
-            </div>
+            {subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD && (
+              <div className="mb-4 p-3 bg-primary/5 rounded-lg text-sm text-center">
+                <span className="text-primary font-medium">
+                  {formatPrice(FREE_SHIPPING_THRESHOLD - subtotal)}
+                </span>{" "}
+                away from free shipping
+                <div className="w-full bg-muted rounded-full h-1.5 mt-2">
+                  <div
+                    className="bg-primary h-1.5 rounded-full transition-all"
+                    style={{ width: `${freeShippingProgress * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            {subtotal >= FREE_SHIPPING_THRESHOLD && (
+              <div className="mb-4 p-3 bg-primary/10 rounded-lg text-sm text-center text-primary font-medium">
+                You qualify for free shipping!
+              </div>
+            )}
 
             <Separator className="my-4" />
 
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Subtotal</span>
+                <span>Subtotal ({itemCount} items)</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between">

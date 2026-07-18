@@ -1,6 +1,41 @@
-import { Mail, MapPin, Phone, Clock } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { Mail, MapPin, Phone, Clock, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function ContactPage() {
+  const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitted(true);
+  };
+
+  if (submitted) {
+    return (
+      <div className="container py-16 text-center">
+        <CheckCircle className="h-16 w-16 mx-auto text-primary mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Message Sent!</h1>
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+          Thank you for reaching out. We&apos;ll get back to you within 24 hours.
+        </p>
+        <Button variant="outline" onClick={() => { setSubmitted(false); setForm({ name: "", email: "", subject: "", message: "" }); }}>
+          Send Another Message
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="container py-12">
       <div className="max-w-3xl mx-auto">
@@ -60,71 +95,52 @@ export default function ContactPage() {
 
         <div className="border rounded-lg p-8">
           <h2 className="text-xl font-bold mb-4">Send us a message</h2>
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block text-sm font-medium mb-1"
-                >
-                  Name
-                </label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
                   id="name"
-                  type="text"
-                  className="w-full border rounded-md px-3 py-2 text-sm"
                   placeholder="Your name"
+                  value={form.name}
+                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  required
                 />
               </div>
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium mb-1"
-                >
-                  Email
-                </label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
                   id="email"
                   type="email"
-                  className="w-full border rounded-md px-3 py-2 text-sm"
                   placeholder="you@example.com"
+                  value={form.email}
+                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                  required
                 />
               </div>
             </div>
-            <div>
-              <label
-                htmlFor="subject"
-                className="block text-sm font-medium mb-1"
-              >
-                Subject
-              </label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="subject">Subject</Label>
+              <Input
                 id="subject"
-                type="text"
-                className="w-full border rounded-md px-3 py-2 text-sm"
                 placeholder="How can we help?"
+                value={form.subject}
+                onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))}
+                required
               />
             </div>
-            <div>
-              <label
-                htmlFor="message"
-                className="block text-sm font-medium mb-1"
-              >
-                Message
-              </label>
-              <textarea
+            <div className="space-y-2">
+              <Label htmlFor="message">Message</Label>
+              <Textarea
                 id="message"
                 rows={5}
-                className="w-full border rounded-md px-3 py-2 text-sm"
                 placeholder="Tell us more..."
+                value={form.message}
+                onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))}
+                required
               />
             </div>
-            <button
-              type="submit"
-              className="bg-primary text-primary-foreground px-6 py-2 rounded-md text-sm font-medium hover:opacity-90"
-            >
-              Send Message
-            </button>
+            <Button type="submit">Send Message</Button>
           </form>
         </div>
       </div>

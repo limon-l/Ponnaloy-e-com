@@ -23,6 +23,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
 import { cn, formatPrice, calculateDiscount } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { useCart } from "@/contexts/cart-context";
+import { useWishlist } from "@/contexts/wishlist-context";
+import { useToast } from "@/components/ui/toast";
 import type { Product } from "@/types";
 
 export default function ProductDetailPage() {
@@ -34,6 +37,10 @@ export default function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+
+  const { addItem } = useCart();
+  const { toggleItem, hasItem } = useWishlist();
+  const { toast } = useToast();
 
   useEffect(() => {
     async function fetchProduct() {
@@ -83,9 +90,29 @@ export default function ProductDetailPage() {
   }
 
   const discount = calculateDiscount(product.price, product.compareAtPrice);
-  const currentPrice = selectedVariant
-    ? product.variants?.find((v) => v.id === selectedVariant)?.price || product.price
-    : product.price;
+  const selectedVariantData = product.variants?.find(
+    (v) => v.id === selectedVariant
+  );
+  const currentPrice = selectedVariantData?.price ?? product.price;
+  const isWishlisted = hasItem(product.id);
+
+  const handleAddToCart = () => {
+    addItem(product, quantity, selectedVariantData || null);
+    toast({
+      title: "Added to cart",
+      description: `${quantity}x ${product.name} has been added to your cart.`,
+    });
+  };
+
+  const handleToggleWishlist = () => {
+    toggleItem(product);
+    toast({
+      title: isWishlisted ? "Removed from wishlist" : "Added to wishlist",
+      description: isWishlisted
+        ? `${product.name} has been removed from your wishlist.`
+        : `${product.name} has been added to your wishlist.`,
+    });
+  };
 
   return (
     <div className="container py-8">
@@ -135,7 +162,7 @@ export default function ProductDetailPage() {
             <div className="flex gap-2">
               {product.images.map((image, index) => (
                 <button
-                  key={image.id}
+                  key={image.id || index}
                   onClick={() => setSelectedImage(index)}
                   className={cn(
                     "relative w-20 h-20 rounded-md overflow-hidden border-2 transition-colors",
@@ -261,12 +288,17 @@ export default function ProductDetailPage() {
 
           {/* Actions */}
           <div className="flex gap-3">
-            <Button size="lg" className="flex-1">
+            <Button size="lg" className="flex-1" onClick={handleAddToCart}>
               <ShoppingBag className="h-5 w-5 mr-2" />
               Add to Cart
             </Button>
-            <Button size="lg" variant="outline">
-              <Heart className="h-5 w-5" />
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={handleToggleWishlist}
+              className={cn(isWishlisted && "border-destructive text-destructive")}
+            >
+              <Heart className={cn("h-5 w-5", isWishlisted && "fill-current")} />
             </Button>
           </div>
 

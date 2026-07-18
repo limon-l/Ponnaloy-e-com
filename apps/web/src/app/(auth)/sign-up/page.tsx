@@ -70,6 +70,7 @@ export default function SignUpPage() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<SignUpInput>({
     resolver: zodResolver(signUpSchema),
@@ -79,6 +80,7 @@ export default function SignUpPage() {
       email: "",
       password: "",
       confirmPassword: "",
+      agreeToTerms: false as unknown as true,
     },
   });
 
@@ -357,7 +359,12 @@ export default function SignUpPage() {
             <Checkbox
               id="agreeToTerms"
               className="mt-0.5"
-              onCheckedChange={() => {}}
+              checked={watch("agreeToTerms") || false}
+              onCheckedChange={(checked) =>
+                setValue("agreeToTerms", checked === true ? true : false, {
+                  shouldValidate: true,
+                })
+              }
             />
             <label
               htmlFor="agreeToTerms"

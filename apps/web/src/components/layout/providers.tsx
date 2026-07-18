@@ -2,6 +2,8 @@
 
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { ToastProvider } from "@/components/ui/toast";
+import { CartProvider } from "@/contexts/cart-context";
+import { WishlistProvider } from "@/contexts/wishlist-context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -11,7 +13,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <ToastProvider>{children}</ToastProvider>
+      <ToastProvider>
+        <CartProvider>
+          <WishlistProvider>{children}</WishlistProvider>
+        </CartProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }
