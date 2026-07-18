@@ -13,9 +13,11 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   const { token: tokenOverride, ...fetchOptions } = options;
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
+  if (fetchOptions.body) {
+    headers["Content-Type"] = "application/json";
+  }
 
   const token = tokenOverride || getToken();
   if (token) {

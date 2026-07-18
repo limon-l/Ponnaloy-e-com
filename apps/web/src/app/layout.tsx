@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   description:
     "Discover premium products at Ponnaloy. Shop electronics, fashion, home goods, and more with fast shipping and secure checkout.",
   keywords: ["e-commerce", "online shopping", "premium products"],
+  icons: {
+    icon: "/favicon.svg",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
