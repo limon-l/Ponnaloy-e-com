@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
+import { StaggerGrid } from "@/components/ui/stagger-grid";
 import { api } from "@/lib/api";
 import type { Product } from "@/types";
 
@@ -176,7 +177,7 @@ function ProductsContent() {
 
       {/* Products Grid */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
           {Array.from({ length: 12 }).map((_, i) => (
             <ProductCardSkeleton key={i} />
           ))}
@@ -189,11 +190,14 @@ function ProductsContent() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <StaggerGrid
+          className="grid-cols-2 md:grid-cols-3 gap-6"
+          staggerDelay={40}
+        >
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
-        </div>
+        </StaggerGrid>
       )}
 
       {/* Pagination */}
@@ -220,7 +224,7 @@ export default function ProductsPage() {
     <Suspense
       fallback={
         <div className="container py-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
             {Array.from({ length: 12 }).map((_, i) => (
               <ProductCardSkeleton key={i} />
             ))}

@@ -88,13 +88,16 @@ export default function ProductDetailPage() {
   const isWishlisted = hasItem(product.id);
 
   const handleAddToCart = async () => {
+    if (addingToCart) return;
     setAddingToCart(true);
     addItem(product, quantity, selectedVariantData || null);
-    toast({
-      title: "Added to cart",
-      description: `${quantity}x ${product.name} has been added to your cart.`,
-    });
-    setTimeout(() => setAddingToCart(false), 500);
+    setTimeout(() => {
+      toast({
+        title: "Added to cart",
+        description: `${quantity}x ${product.name} has been added to your cart.`,
+      });
+      setAddingToCart(false);
+    }, 500);
   };
 
   const handleToggleWishlist = () => {
@@ -236,7 +239,12 @@ export default function ProductDetailPage() {
 
           {/* Actions */}
           <div className="flex gap-3">
-            <Button size="lg" className="flex-1" onClick={handleAddToCart} disabled={addingToCart}>
+            <Button
+              size="lg"
+              className="flex-1 transition-all duration-300"
+              onClick={handleAddToCart}
+              disabled={addingToCart}
+            >
               {addingToCart ? (
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
               ) : (
@@ -248,9 +256,12 @@ export default function ProductDetailPage() {
               size="lg"
               variant="outline"
               onClick={handleToggleWishlist}
-              className={cn(isWishlisted && "border-destructive text-destructive")}
+              className={cn(
+                "transition-all duration-300",
+                isWishlisted && "border-destructive text-destructive bg-destructive/5"
+              )}
             >
-              <Heart className={cn("h-5 w-5", isWishlisted && "fill-current")} />
+              <Heart className={cn("h-5 w-5 transition-transform duration-200", isWishlisted && "fill-current scale-110")} />
             </Button>
           </div>
 
@@ -268,14 +279,14 @@ export default function ProductDetailPage() {
 
           {/* Trust signals */}
           <div className="space-y-3 pt-4">
-            <div className="flex items-center gap-3 text-sm">
-              <Truck className="h-5 w-5 text-primary" /><span>Free shipping on orders over $150</span>
+            <div className="flex items-center gap-2.5 text-sm">
+              <Truck className="h-4 w-4 text-primary shrink-0" /><span>Free shipping on orders over $150</span>
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <RotateCcw className="h-5 w-5 text-primary" /><span>30-day return policy</span>
+            <div className="flex items-center gap-2.5 text-sm">
+              <RotateCcw className="h-4 w-4 text-primary shrink-0" /><span>30-day return policy</span>
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <Shield className="h-5 w-5 text-primary" /><span>Secure checkout</span>
+            <div className="flex items-center gap-2.5 text-sm">
+              <Shield className="h-4 w-4 text-primary shrink-0" /><span>Secure checkout</span>
             </div>
           </div>
         </div>
@@ -285,7 +296,7 @@ export default function ProductDetailPage() {
       {(product as any).relatedProducts && (product as any).relatedProducts.length > 0 && (
         <section className="mt-16">
           <h2 className="text-2xl font-bold mb-6">You may also like</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
             {(product as any).relatedProducts.slice(0, 4).map((rp: any) => (
               <ProductCard key={rp.target?.id} product={rp.target} />
             ))}

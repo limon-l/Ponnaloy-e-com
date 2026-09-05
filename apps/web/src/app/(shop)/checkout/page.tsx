@@ -53,7 +53,7 @@ export default function CheckoutPage() {
   if (!isAuthenticated) {
     return (
       <div className="container py-16 text-center">
-        <Lock className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+        <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <h1 className="text-2xl font-bold mb-2">Sign in to checkout</h1>
         <p className="text-muted-foreground mb-6">You need to be signed in to complete your purchase.</p>
         <Button asChild>

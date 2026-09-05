@@ -24,7 +24,7 @@ export default function ContactPage() {
   if (submitted) {
     return (
       <div className="container py-16 text-center">
-        <CheckCircle className="h-16 w-16 mx-auto text-primary mb-4" />
+        <CheckCircle className="h-12 w-12 mx-auto text-primary mb-4" />
         <h1 className="text-2xl font-bold mb-2">Message Sent!</h1>
         <p className="text-muted-foreground mb-6 max-w-md mx-auto">
           Thank you for reaching out. We&apos;ll get back to you within 24 hours.

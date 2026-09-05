@@ -2,18 +2,19 @@
 
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
+import { X, CheckCircle, AlertCircle, Info } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group pointer-events-auto relative flex w-full items-center space-x-3 overflow-hidden rounded-lg border p-4 pr-8 shadow-lg transition-all duration-300",
   {
     variants: {
       variant: {
         default: "border bg-background text-foreground",
         destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground",
+          "destructive group border-destructive/50 bg-destructive text-destructive-foreground",
+        success: "border-green-500/30 bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-100",
       },
     },
     defaultVariants: {
@@ -33,10 +34,14 @@ const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
     return (
       <div
         ref={ref}
-        className={cn(toastVariants({ variant }), className)}
+        className={cn(
+          toastVariants({ variant }),
+          "animate-slide-up",
+          className
+        )}
         {...props}
       >
-        {children}
+        <div className="flex-1">{children}</div>
         {onClose && (
           <button
             onClick={onClose}
@@ -117,7 +122,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       setToasts((prev) => [...prev, { id, ...props }])
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id))
-      }, 5000)
+      }, 4000)
     },
     []
   )

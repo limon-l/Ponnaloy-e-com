@@ -41,21 +41,21 @@ export default function HelpPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
           <div className="flex flex-col items-center p-6 border rounded-lg text-center">
-            <HelpCircle className="h-8 w-8 text-primary mb-3" />
+            <HelpCircle className="h-5 w-5 text-primary mb-3" />
             <h3 className="font-semibold mb-1">FAQ</h3>
             <p className="text-sm text-muted-foreground">
               Browse common questions
             </p>
           </div>
           <div className="flex flex-col items-center p-6 border rounded-lg text-center">
-            <Mail className="h-8 w-8 text-primary mb-3" />
+            <Mail className="h-5 w-5 text-primary mb-3" />
             <h3 className="font-semibold mb-1">Email</h3>
             <p className="text-sm text-muted-foreground">
               support@ponnaloy.com
             </p>
           </div>
           <div className="flex flex-col items-center p-6 border rounded-lg text-center">
-            <Phone className="h-8 w-8 text-primary mb-3" />
+            <Phone className="h-5 w-5 text-primary mb-3" />
             <h3 className="font-semibold mb-1">Phone</h3>
             <p className="text-sm text-muted-foreground">+1 (555) 123-4567</p>
           </div>

@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Truck, Shield, CreditCard, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
+import { StaggerGrid } from "@/components/ui/stagger-grid";
 import { api } from "@/lib/api";
 import type { Product } from "@/types";
 
@@ -19,7 +20,7 @@ const features = [
 
 function ProductGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
       {Array.from({ length: 8 }).map((_, i) => (
         <ProductCardSkeleton key={i} />
       ))}
@@ -30,11 +31,14 @@ function ProductGridSkeleton() {
 function ProductGrid({ products }: { products: Product[] }) {
   if (products.length === 0) return <ProductGridSkeleton />;
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+    <StaggerGrid
+      className="grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6"
+      staggerDelay={40}
+    >
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}
-    </div>
+    </StaggerGrid>
   );
 }
 
@@ -119,12 +123,20 @@ export default function HomePage() {
       </section>
 
       {/* Features Bar */}
-      <section className="border-y bg-muted/50">
+      <motion.section
+        className="border-y bg-muted/50"
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ duration: 0.4 }}
+      >
         <div className="container py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {features.map((feature) => (
-              <div key={feature.title} className="flex items-center gap-3">
-                <feature.icon className="h-8 w-8 text-primary shrink-0" />
+              <div key={feature.title} className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                  <feature.icon className="h-4 w-4 text-primary" />
+                </div>
                 <div>
                   <p className="font-medium text-sm">{feature.title}</p>
                   <p className="text-xs text-muted-foreground">{feature.description}</p>
@@ -133,11 +145,17 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Categories */}
       {categories.length > 0 && (
-        <section className="container py-12">
+        <motion.section
+          className="container py-12"
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.4 }}
+        >
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-bold">Shop by Category</h2>
@@ -148,31 +166,44 @@ export default function HomePage() {
             </Button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((category) => (
-              <Link
+            {categories.map((category, i) => (
+              <motion.div
                 key={category.slug}
-                href={`/products?category=${category.id}`}
-                className="group relative aspect-[4/3] overflow-hidden rounded-lg"
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: i * 0.05 }}
               >
-                <Image
-                  src={category.image}
-                  alt={category.name}
-                  fill
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  sizes="(max-width: 768px) 50vw, 16vw"
-                />
-                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm md:text-base">{category.name}</span>
-                </div>
-              </Link>
+                <Link
+                  href={`/products?category=${category.id}`}
+                  className="group relative aspect-[4/3] overflow-hidden rounded-lg block"
+                >
+                  <Image
+                    src={category.image}
+                    alt={category.name}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="(max-width: 768px) 50vw, 16vw"
+                  />
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm md:text-base">{category.name}</span>
+                  </div>
+                </Link>
+              </motion.div>
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
 
       {/* Featured Products */}
-      <section className="container py-12">
+      <motion.section
+        className="container py-12"
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ duration: 0.4 }}
+      >
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold">Featured Products</h2>
@@ -183,11 +214,17 @@ export default function HomePage() {
           </Button>
         </div>
         {loading ? <ProductGridSkeleton /> : <ProductGrid products={featuredProducts} />}
-      </section>
+      </motion.section>
 
       {/* Deals Section */}
       {dealProducts.length > 0 && (
-        <section className="container py-12">
+        <motion.section
+          className="container py-12"
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.4 }}
+        >
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-bold">Today&apos;s Deals</h2>
@@ -198,12 +235,18 @@ export default function HomePage() {
             </Button>
           </div>
           {loading ? <ProductGridSkeleton /> : <ProductGrid products={dealProducts} />}
-        </section>
+        </motion.section>
       )}
 
       {/* Trending Section */}
       {trendingProducts.length > 0 && (
-        <section className="container py-12">
+        <motion.section
+          className="container py-12"
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.4 }}
+        >
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-bold">Trending Now</h2>
@@ -214,11 +257,17 @@ export default function HomePage() {
             </Button>
           </div>
           {loading ? <ProductGridSkeleton /> : <ProductGrid products={trendingProducts} />}
-        </section>
+        </motion.section>
       )}
 
       {/* Newsletter */}
-      <section className="border-t bg-muted/50">
+      <motion.section
+        className="border-t bg-muted/50"
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ duration: 0.4 }}
+      >
         <div className="container py-16 text-center max-w-xl mx-auto">
           <h2 className="text-2xl font-bold">Stay in the Loop</h2>
           <p className="text-muted-foreground mt-2 mb-6">
@@ -233,7 +282,7 @@ export default function HomePage() {
             <Button type="submit">Subscribe</Button>
           </form>
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, ShoppingBag, User, Menu, Sun, Moon, Heart,
@@ -23,7 +23,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useCart } from "@/contexts/cart-context";
 import { useWishlist } from "@/contexts/wishlist-context";
 import { useAuth } from "@/contexts/auth-context";
-import { getInitials } from "@/lib/utils";
+import { getInitials, cn } from "@/lib/utils";
 
 const navLinks = [
   { label: "New Arrivals", href: "/products?sort=newest" },
@@ -31,6 +31,35 @@ const navLinks = [
   { label: "Deals", href: "/products?sort=deals" },
   { label: "Categories", href: "/products" },
 ];
+
+function AnimatedBadge({ count, className }: { count: number; className?: string }) {
+  const prevCount = useRef(count);
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    if (count !== prevCount.current) {
+      setAnimate(true);
+      prevCount.current = count;
+      const t = setTimeout(() => setAnimate(false), 300);
+      return () => clearTimeout(t);
+    }
+  }, [count]);
+
+  if (count === 0) return null;
+
+  return (
+    <Badge
+      variant="destructive"
+      className={cn(
+        "absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-[10px] sm:text-xs transition-transform duration-300",
+        animate && "scale-125",
+        className
+      )}
+    >
+      {count > 99 ? "99+" : count}
+    </Badge>
+  );
+}
 
 export function Header() {
   const router = useRouter();
@@ -55,11 +84,11 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between gap-2 sm:gap-4">
+        <div className="container flex h-14 items-center justify-between gap-2 sm:gap-4">
         {/* Logo - Always visible */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <ShoppingBag className="h-6 w-6 text-primary" />
-          <span className="font-bold text-lg sm:text-xl">Ponnaloy</span>
+          <ShoppingBag className="h-4 w-4 text-primary" />
+          <span className="font-bold text-base sm:text-lg">Ponnaloy</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -98,41 +127,27 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 sm:h-10 sm:w-10"
+            className="h-8 w-8"
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           >
-            <Sun className="h-4 w-4 sm:h-5 sm:w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 sm:h-5 sm:w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
           </Button>
 
           {/* Wishlist */}
-          <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10" asChild>
+          <Button variant="ghost" size="icon" className="relative h-8 w-8" asChild>
             <Link href={isAuthenticated ? "/account?tab=wishlist" : "/sign-in?redirect=/account?tab=wishlist"}>
-              <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
-              {wishlistCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-[10px] sm:text-xs"
-                >
-                  {wishlistCount > 99 ? "99+" : wishlistCount}
-                </Badge>
-              )}
+              <Heart className="h-4 w-4 transition-transform duration-200 hover:scale-110" />
+              <AnimatedBadge count={wishlistCount} />
             </Link>
           </Button>
 
           {/* Cart */}
-          <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10" asChild>
+          <Button variant="ghost" size="icon" className="relative h-8 w-8" asChild>
             <Link href="/cart">
-              <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
-              {itemCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-[10px] sm:text-xs"
-                >
-                  {itemCount > 99 ? "99+" : itemCount}
-                </Badge>
-              )}
+              <ShoppingBag className="h-4 w-4 transition-transform duration-200 hover:scale-110" />
+              <AnimatedBadge count={itemCount} />
             </Link>
           </Button>
 
@@ -140,14 +155,14 @@ export function Header() {
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1.5 h-9 px-2 sm:px-3">
-                  <Avatar className="h-6 w-6">
+                <Button variant="ghost" size="sm" className="gap-1.5 h-8 px-2">
+                  <Avatar className="h-5 w-5">
                     <AvatarImage src={user?.avatar || undefined} />
-                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                       {getInitials(user?.firstName, user?.lastName)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden sm:inline text-sm font-medium max-w-[100px] truncate">
+                  <span className="hidden sm:inline text-xs font-medium max-w-[100px] truncate">
                     {user?.firstName || "Account"}
                   </span>
                   <ChevronDown className="h-3 w-3 hidden sm:block" />
@@ -193,10 +208,10 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="ghost" size="sm" asChild className="gap-1.5 h-9 px-2 sm:px-3">
+            <Button variant="ghost" size="sm" asChild className="gap-1.5 h-8 px-2">
               <Link href="/sign-in">
-                <User className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="hidden sm:inline text-sm">Sign In</span>
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline text-xs">Sign In</span>
               </Link>
             </Button>
           )}
@@ -204,8 +219,8 @@ export function Header() {
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden h-9 w-9">
-                <Menu className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
+                <Menu className="h-4 w-4" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72">

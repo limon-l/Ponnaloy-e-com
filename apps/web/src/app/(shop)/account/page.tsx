@@ -143,7 +143,7 @@ function AccountPageContent() {
   if (!isAuthenticated) {
     return (
       <div className="container py-16 text-center">
-        <User className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+        <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <h1 className="text-2xl font-bold mb-2">Sign in to your account</h1>
         <p className="text-muted-foreground mb-6">Manage your profile, orders, and preferences.</p>
         <Button asChild>
@@ -237,7 +237,7 @@ function AccountPageContent() {
             <CardContent>
               {orders.length === 0 ? (
                 <div className="text-center py-12">
-                  <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <Package className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">No orders yet</p>
                   <Button asChild className="mt-4"><Link href="/products">Start Shopping</Link></Button>
                 </div>
@@ -280,7 +280,7 @@ function AccountPageContent() {
             <CardContent>
               {wishlistItems.length === 0 ? (
                 <div className="text-center py-12">
-                  <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <Heart className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">Your wishlist is empty</p>
                   <Button asChild className="mt-4"><Link href="/products">Discover Products</Link></Button>
                 </div>
@@ -335,7 +335,7 @@ function AccountPageContent() {
               )}
               {addresses.length === 0 && !showNewAddress ? (
                 <div className="text-center py-12">
-                  <MapPin className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <MapPin className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">No addresses saved</p>
                 </div>
               ) : (

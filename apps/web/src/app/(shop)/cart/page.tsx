@@ -1,26 +1,43 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Lock } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Lock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { formatPrice } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 import { useCart } from "@/contexts/cart-context";
 import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/components/ui/toast";
 import { FREE_SHIPPING_THRESHOLD } from "@ponnaloy/shared";
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, subtotal, discount, couponCode, itemCount } = useCart();
   const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 1500;
   const total = Math.max(0, subtotal + shippingFee - discount);
   const freeShippingProgress = Math.min(subtotal / FREE_SHIPPING_THRESHOLD, 1);
 
+  const handleRemove = (id: string, name: string) => {
+    setRemovingId(id);
+    setTimeout(() => {
+      removeItem(id);
+      setRemovingId(null);
+      toast({
+        title: "Removed from cart",
+        description: `${name} has been removed from your cart.`,
+        variant: "destructive",
+      });
+    }, 300);
+  };
+
   if (items.length === 0) {
     return (
-      <div className="container py-16 text-center">
-        <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+      <div className="container py-16 text-center animate-fade-in">
+        <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <h1 className="text-2xl font-bold mb-2">Your cart is empty</h1>
         <p className="text-muted-foreground mb-6">Add items to your cart to get started.</p>
         <Button asChild><Link href="/products">Continue Shopping</Link></Button>
@@ -32,30 +49,55 @@ export default function CartPage() {
 
   return (
     <div className="container py-8">
-      <h1 className="text-3xl font-bold mb-8">Shopping Cart ({itemCount} {itemCount === 1 ? "item" : "items"})</h1>
+      <h1 className="text-3xl font-bold mb-8 animate-fade-in">Shopping Cart ({itemCount} {itemCount === 1 ? "item" : "items"})</h1>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-4">
-          {items.map((item) => (
-            <div key={item.id} className="flex gap-4 p-4 border rounded-lg">
-              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-md overflow-hidden bg-muted shrink-0">
+        <div className="lg:col-span-2 space-y-3">
+          {items.map((item, index) => (
+            <div
+              key={item.id}
+              className={cn(
+                "flex gap-4 p-4 border rounded-xl transition-all duration-300 animate-slide-up",
+                removingId === item.id && "opacity-50 scale-95"
+              )}
+              style={{ animationDelay: `${index * 40}ms`, animationFillMode: "both" }}
+            >
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-muted shrink-0">
                 <Image src={item.image || ""} alt={item.name} fill className="object-cover" sizes="96px" />
               </div>
               <div className="flex-1 min-w-0">
-                <Link href={`/product/${item.slug}`} className="font-medium hover:text-primary line-clamp-1">{item.name}</Link>
+                <Link href={`/product/${item.slug}`} className="font-medium hover:text-primary line-clamp-1 transition-colors">{item.name}</Link>
                 {item.variant && <p className="text-xs text-muted-foreground mt-0.5">{item.variant.name}</p>}
                 <p className="text-sm text-muted-foreground mt-1">{formatPrice(item.price)}</p>
                 <div className="flex items-center justify-between mt-3">
-                  <div className="flex items-center border rounded-md">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}>
+                  <div className="flex items-center border rounded-lg overflow-hidden">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-none hover:bg-muted transition-colors"
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      disabled={item.quantity <= 1}
+                    >
                       <Minus className="h-3 w-3" />
                     </Button>
-                    <span className="w-10 text-center text-sm">{item.quantity}</span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+                    <span className="w-10 text-center text-sm font-medium tabular-nums">{item.quantity}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-none hover:bg-muted transition-colors"
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    >
                       <Plus className="h-3 w-3" />
                     </Button>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeItem(item.id)}>
-                    <Trash2 className="h-4 w-4 mr-1" />Remove
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/5 transition-all"
+                    onClick={() => handleRemove(item.id, item.name)}
+                    disabled={removingId === item.id}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    {removingId === item.id ? "Removing..." : "Remove"}
                   </Button>
                 </div>
               </div>
@@ -67,27 +109,33 @@ export default function CartPage() {
           </Button>
         </div>
         <div className="lg:col-span-1">
-          <div className="border rounded-lg p-6 sticky top-24">
+          <div className="border rounded-xl p-6 sticky top-24 animate-fade-in">
             <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
             {subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD && (
               <div className="mb-4 p-3 bg-primary/5 rounded-lg text-sm text-center">
                 <span className="text-primary font-medium">{formatPrice(FREE_SHIPPING_THRESHOLD - subtotal)}</span>{" "}away from free shipping
-                <div className="w-full bg-muted rounded-full h-1.5 mt-2">
-                  <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${freeShippingProgress * 100}%` }} />
+                <div className="w-full bg-muted rounded-full h-1.5 mt-2 overflow-hidden">
+                  <div
+                    className="bg-primary h-1.5 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${freeShippingProgress * 100}%` }}
+                  />
                 </div>
               </div>
             )}
             {subtotal >= FREE_SHIPPING_THRESHOLD && (
-              <div className="mb-4 p-3 bg-primary/10 rounded-lg text-sm text-center text-primary font-medium">You qualify for free shipping!</div>
+              <div className="mb-4 p-3 bg-primary/10 rounded-lg text-sm text-center text-primary font-medium flex items-center justify-center gap-2">
+                <Check className="h-4 w-4" />
+                You qualify for free shipping!
+              </div>
             )}
             <Separator className="my-4" />
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span>Subtotal ({itemCount} items)</span><span>{formatPrice(subtotal)}</span></div>
-              <div className="flex justify-between"><span>Shipping</span><span>{shippingFee === 0 ? <span className="text-primary">Free</span> : formatPrice(shippingFee)}</span></div>
+              <div className="flex justify-between"><span>Subtotal ({itemCount} items)</span><span className="font-medium">{formatPrice(subtotal)}</span></div>
+              <div className="flex justify-between"><span>Shipping</span><span>{shippingFee === 0 ? <span className="text-primary font-medium">Free</span> : formatPrice(shippingFee)}</span></div>
               {discount > 0 && (
-                <div className="flex justify-between text-green-600">
+                <div className="flex justify-between text-green-600 dark:text-green-400">
                   <span>Discount {couponCode && `(${couponCode})`}</span>
-                  <span>-{formatPrice(discount)}</span>
+                  <span className="font-medium">-{formatPrice(discount)}</span>
                 </div>
               )}
             </div>
