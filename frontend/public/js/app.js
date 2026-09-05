@@ -93,6 +93,7 @@ function attachEvents() {
       if (product) {
         addToCart(product, 1);
         renderCart();
+        animateAddToCart(addButton);
         showToast("Added to cart", `${product.name} is ready in your cart.`);
       }
     }

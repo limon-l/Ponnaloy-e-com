@@ -21,34 +21,41 @@ async function loadProductPage() {
 
     addRecentlyViewed(product);
 
+    const discount = product.compareAtPrice > product.price
+      ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
+      : 0;
+    const stars = product.rating >= 4.5 ? "★★★★★" : product.rating >= 3.5 ? "★★★★☆" : product.rating >= 2.5 ? "★★★☆☆" : "★★☆☆☆";
+    const stockStatus = product.stock > 10 ? "in-stock" : product.stock > 0 ? "low-stock" : "out-of-stock";
+    const stockLabel = product.stock > 10 ? "In Stock" : product.stock > 0 ? `Only ${product.stock} left` : "Out of Stock";
+    const breadcrumb = document.querySelector("#breadcrumb-product");
+    if (breadcrumb) breadcrumb.textContent = product.name;
+
     detailNode.innerHTML = `
       <div class="split-layout grid-cols-1 md:grid-cols-[1.1fr_0.9fr]">
-        <div class="detail-figure">
-          <span class="badge">${product.badge}</span>
-          <img src="${product.imageUrl}" alt="${product.name}" data-detail-image />
+        <div class="detail-gallery">
+          <div class="detail-main-image">
+            <img src="${product.imageUrl}" alt="${product.name}" data-detail-image />
+            ${discount > 0 ? `<span class="product-badge badge-discount">-${discount}%</span>` : ""}
+          </div>
         </div>
         <div class="detail-grid">
           <div>
-            <a class="icon-chip" href="/">&larr; Back to shop</a>
-            <div class="rating-row">
-              <div class="stars-group">
-                ${renderStars(product.rating)}
-                <span class="rating-value">${product.rating.toFixed(1)}</span>
-              </div>
-              <span class="rating-divider"></span>
-            </div>
-            <div class="stock-row">
-              ${renderStockBadge(product.stock)}
+            <div class="detail-badges">
               <span class="pill">${product.category}</span>
+              ${product.brand ? `<span class="pill">${product.brand}</span>` : ""}
             </div>
             <h1 class="detail-title">${product.name}</h1>
-            <p class="detail-copy">${product.description}</p>
-            <div class="hero-actions" style="margin: 18px 0 10px;">
-              <div>
-                <div class="price">${formatCurrencyPrecise(product.price)}</div>
-                <div class="compare-price">${formatCurrencyPrecise(product.compareAtPrice)}</div>
-              </div>
+            <div class="detail-rating">
+              <span class="rating-stars">${stars}</span>
+              <span class="rating-value">${product.rating.toFixed(1)}</span>
+              <span class="rating-divider"></span>
+              <span class="stock-badge ${stockStatus}">${stockLabel}</span>
             </div>
+            <div class="detail-price-block">
+              <span class="price">${formatCurrencyPrecise(product.price)}</span>
+              ${discount > 0 ? `<span class="compare-price">${formatCurrencyPrecise(product.compareAtPrice)}</span>` : ""}
+            </div>
+            <p class="detail-copy">${product.description}</p>
             <div class="detail-form">
               <div class="qty-stepper">
                 <label class="qty-label">Quantity:</label>
@@ -58,14 +65,29 @@ async function loadProductPage() {
                   <button type="button" class="step-btn" data-qty-inc aria-label="Increase quantity">+</button>
                 </div>
               </div>
-              <div class="hero-actions" style="margin: 0;">
-                <button class="button" data-detail-add="${product.id}">Add to cart</button>
-                <button class="button-secondary" data-cart-open>Open cart</button>
+              <div class="detail-actions">
+                <button class="button detail-add-btn" data-detail-add="${product.id}" ${product.stock <= 0 ? 'disabled' : ''}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon"><path d="M6 6h15l-1.5 8h-11z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+                  <span class="btn-text">${product.stock <= 0 ? 'Out of stock' : 'Add to cart'}</span>
+                </button>
+                <button class="button-secondary" data-cart-open>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon"><path d="M6 6h15l-1.5 8h-11z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+                </button>
               </div>
             </div>
-            <div class="timeline-card" style="margin-top: 18px;">
-              <h4>Why customers love it</h4>
-              <p>Refined finish, dependable performance, and a premium unboxing feel. This product is part of the curated showcase collection used throughout the storefront.</p>
+            <div class="trust-badges">
+              <div class="trust-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Secure checkout</span>
+              </div>
+              <div class="trust-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                <span>Free shipping over $150</span>
+              </div>
+              <div class="trust-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 0 1 9-9"/></svg>
+                <span>30-day returns</span>
+              </div>
             </div>
           </div>
         </div>
@@ -93,21 +115,35 @@ async function loadProductPage() {
       if (current < 99) qtyInput.value = current + 1;
     });
 
-    document.querySelector("[data-detail-add]")?.addEventListener("click", () => {
-      const qty = Number(qtyInput?.value || 1);
-      addToCart(product, qty);
-      renderCart();
-      showToast("Added to cart", `${product.name} is now in your cart.`);
-    });
+    const addBtn = document.querySelector("[data-detail-add]");
+    if (addBtn) {
+      addBtn.addEventListener("click", () => {
+        const qty = Number(qtyInput?.value || 1);
+        addToCart(product, qty);
+        renderCart();
+        animateAddToCart(addBtn);
+        showToast("Added to cart", `${product.name} is now in your cart.`);
+      });
+    }
 
     document.querySelectorAll("[data-add-cart]").forEach((button) => {
       button.addEventListener("click", () => {
         const item = catalog.products.find((entry) => entry.id === Number(button.dataset.addCart));
-        if (item) { addToCart(item, 1); renderCart(); showToast("Added to cart", `${item.name} is now in your cart.`); }
+        if (item) { addToCart(item, 1); renderCart(); animateAddToCart(button); showToast("Added to cart", `${item.name} is now in your cart.`); }
       });
     });
   } catch (error) {
-    detailNode.innerHTML = `<div class="empty-card"><h3>Unable to load product</h3><p class="section-copy">${error.message}</p></div>`;
+    detailNode.innerHTML = `
+      <div class="error-card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <h3>Unable to load product</h3>
+        <p>${error.message}</p>
+        <a href="/products" class="button">Back to catalog</a>
+      </div>`;
   }
 }
 

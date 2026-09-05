@@ -74,18 +74,73 @@ async function loadCatalog() {
   renderCatalog();
 }
 
+function renderSearchSuggestions(query, products) {
+  const container = document.querySelector("[data-search-suggestions]");
+  if (!container) return;
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) { container.style.display = "none"; container.innerHTML = ""; return; }
+
+  const matches = products
+    .filter((p) => {
+      const haystack = `${p.name} ${p.category} ${p.description}`.toLowerCase();
+      return haystack.includes(trimmed);
+    })
+    .slice(0, 6);
+
+  if (!matches.length) {
+    container.style.display = "none";
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = matches.map((p) => `
+    <a class="suggestion-item" href="/product.html?id=${p.id}">
+      <img src="${p.imageUrl}" alt="" loading="lazy" width="40" height="40" />
+      <div>
+        <div class="suggestion-name">${p.name}</div>
+        <div class="suggestion-meta">${p.category} · ${formatCurrency(p.price)}</div>
+      </div>
+    </a>
+  `).join("");
+  container.style.display = "block";
+}
+
+function hideSearchSuggestions() {
+  const container = document.querySelector("[data-search-suggestions]");
+  if (container) { container.style.display = "none"; }
+}
+
 function attachCatalogEvents() {
   const searchNode = document.querySelector("[data-catalog-search]");
   const sortNode = document.querySelector("[data-catalog-sort]");
 
-  searchNode?.addEventListener("input", (event) => { catalogState.search = event.target.value; renderCatalog(); });
+  const debouncedSuggestions = debounce((value) => {
+    renderSearchSuggestions(value, catalogState.products);
+  }, 200);
+
+  searchNode?.addEventListener("input", (event) => {
+    catalogState.search = event.target.value;
+    renderCatalog();
+    debouncedSuggestions(event.target.value);
+  });
+
+  searchNode?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hideSearchSuggestions();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-catalog-search]") && !event.target.closest("[data-search-suggestions]")) {
+      hideSearchSuggestions();
+    }
+  });
+
   sortNode?.addEventListener("change", (event) => { catalogState.sort = event.target.value; renderCatalog(); });
 
   document.addEventListener("click", (event) => {
     const addButton = event.target.closest("[data-add-cart]");
     if (addButton) {
       const product = catalogState.products.find((entry) => entry.id === Number(addButton.dataset.addCart));
-      if (product) { addToCart(product, 1); renderCart(); showToast("Added to cart", `${product.name} is ready in your cart.`); }
+      if (product) { addToCart(product, 1); renderCart(); animateAddToCart(addButton); showToast("Added to cart", `${product.name} is ready in your cart.`); }
     }
 
     const wishlistBtn = event.target.closest("[data-wishlist-toggle]");

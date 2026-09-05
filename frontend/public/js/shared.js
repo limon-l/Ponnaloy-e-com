@@ -22,29 +22,49 @@ function formatCurrencyPrecise(value) {
 
 function createProductCard(product) {
   const wished = getWishlist().includes(product.id) ? " is-wished" : "";
+  const discount = product.compareAtPrice > product.price
+    ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
+    : 0;
+  const stars = product.rating >= 4.5 ? "★★★★★" : product.rating >= 3.5 ? "★★★★☆" : product.rating >= 2.5 ? "★★★☆☆" : "★★☆☆☆";
+  const stockLabel = product.stock <= 0 ? "Out of stock" : product.stock <= 5 ? `Only ${product.stock} left` : "";
   return `
-    <article class="product-card" data-product-card>
-      <a class="product-image" href="/product.html?id=${product.id}">
-        <img src="${product.imageUrl}" alt="${product.name}" loading="lazy" decoding="async">
+    <article class="product-card" data-product-card data-product-id="${product.id}">
+      <a class="product-image" href="/product.html?id=${product.id}" aria-label="View ${product.name}">
+        <img src="${product.imageUrl}" alt="${product.name}" loading="lazy" decoding="async" width="400" height="400">
         <div class="overlay"></div>
+        ${discount > 0 ? `<span class="product-badge badge-discount">-${discount}%</span>` : ""}
+        ${product.isNew ? '<span class="product-badge badge-new">New</span>' : ""}
       </a>
-      <button class="wishlist-btn${wished}" data-wishlist-toggle="${product.id}" aria-label="Toggle wishlist">
+      <button class="wishlist-btn${wished}" data-wishlist-toggle="${product.id}" aria-label="Toggle wishlist for ${product.name}">
         <svg viewBox="0 0 24 24" fill="${wished ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
       </button>
       <div class="product-body">
-        <div class="product-category">${product.category}</div>
+        <div class="product-meta-row">
+          <span class="product-category">${product.category}</span>
+          ${product.brand ? `<span class="product-brand">${product.brand}</span>` : ""}
+        </div>
         <h3><a href="/product.html?id=${product.id}">${product.name}</a></h3>
-        <p>${product.shortDescription}</p>
+        <p class="product-desc">${product.shortDescription}</p>
+        <div class="product-rating-row">
+          <span class="rating-stars" aria-label="${product.rating.toFixed(1)} out of 5 stars">${stars}</span>
+          <span class="rating-value">${product.rating.toFixed(1)}</span>
+          ${product.reviewCount ? `<span class="rating-count">(${product.reviewCount})</span>` : ""}
+        </div>
         <div class="product-footer">
           <div class="price-wrap">
-            <div class="price">${formatCurrency(product.price)}</div>
-            <div class="compare-price">${formatCurrency(product.compareAtPrice)}</div>
+            <span class="price">${formatCurrency(product.price)}</span>
+            ${discount > 0 ? `<span class="compare-price">${formatCurrency(product.compareAtPrice)}</span>` : ""}
           </div>
-          <div class="rating">${"★".repeat(5)} ${product.rating.toFixed(1)}</div>
         </div>
+        ${stockLabel ? `<div class="stock-label${product.stock <= 0 ? ' out' : ''}">${stockLabel}</div>` : ""}
         <div class="product-actions">
-          <button class="button-secondary" data-add-cart="${product.id}">Add to cart</button>
-          <a class="button-ghost" href="/product.html?id=${product.id}">View &rarr;</a>
+          <button class="button add-to-cart-btn" data-add-cart="${product.id}" ${product.stock <= 0 ? 'disabled' : ''}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon"><path d="M6 6h15l-1.5 8h-11z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+            <span class="btn-text">${product.stock <= 0 ? 'Out of stock' : 'Add to cart'}</span>
+          </button>
+          <a class="button-secondary quick-view-btn" href="/product.html?id=${product.id}" aria-label="Quick view ${product.name}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </a>
         </div>
       </div>
     </article>

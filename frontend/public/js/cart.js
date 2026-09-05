@@ -21,6 +21,23 @@ function addToCart(product, quantity = 1) {
   return cart;
 }
 
+function animateAddToCart(button) {
+  if (!button) return;
+  const btnText = button.querySelector('.btn-text');
+  const originalText = btnText?.textContent || 'Add to cart';
+  button.classList.add('adding');
+  if (btnText) btnText.textContent = 'Adding...';
+  setTimeout(() => {
+    button.classList.remove('adding');
+    button.classList.add('added');
+    if (btnText) btnText.textContent = 'Added!';
+    setTimeout(() => {
+      button.classList.remove('added');
+      if (btnText) btnText.textContent = originalText;
+    }, 1200);
+  }, 400);
+}
+
 function updateCartQuantity(productId, quantity) {
   const cart = getCart().map((item) => (item.id === productId ? { ...item, quantity } : item)).filter((item) => item.quantity > 0);
   setCart(cart);
@@ -93,7 +110,15 @@ function renderCart() {
   const clearBtn = document.querySelector("[data-clear-cart]");
 
   if (!cart.length) {
-    cartItems.innerHTML = `<div class="empty-card"><h3>Your cart is empty</h3><p class="section-copy">Add products from the catalog to start building your order.</p></div>`;
+    cartItems.innerHTML = `
+      <div class="cart-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="cart-empty-icon">
+          <path d="M6 6h15l-1.5 8h-11z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M5 6l-1-3H1"/>
+        </svg>
+        <h3>Your cart is empty</h3>
+        <p class="section-copy">Add products from the catalog to start building your order.</p>
+        <a href="/products" class="button cart-empty-cta">Browse products</a>
+      </div>`;
     if (placeBtn) placeBtn.disabled = true;
     if (clearBtn) clearBtn.disabled = true;
     return;
@@ -113,10 +138,12 @@ function renderCart() {
           <strong>${formatCurrencyPrecise(item.price * item.quantity)}</strong>
         </div>
         <div class="controls">
-          <button class="mini-button" data-qty-minus="${item.id}" aria-label="Decrease quantity">−</button>
-          <span>${item.quantity}</span>
+          <button class="mini-button" data-qty-minus="${item.id}" aria-label="Decrease quantity">&minus;</button>
+          <span class="qty-display">${item.quantity}</span>
           <button class="mini-button" data-qty-plus="${item.id}" aria-label="Increase quantity">+</button>
-          <button class="button-ghost" data-remove-item="${item.id}">Remove</button>
+          <button class="cart-remove-btn" data-remove-item="${item.id}" aria-label="Remove ${item.name}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
         </div>
       </div>
     </article>

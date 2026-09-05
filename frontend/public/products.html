@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ponnaloy | Product Catalog</title>
-    <meta name="description" content="A 500-product premium e-commerce catalog with live search, filtering, sorting, cart, and AI concierge." />
+    <title>Ponnaloy | Premium E-Commerce Store</title>
+    <meta name="description" content="A premium e-commerce storefront with curated products, cart, checkout, secure accounts, AI concierge, and immersive shopping experience." />
     <meta name="theme-color" content="#07111f" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/styles.css" />
     <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+    <script src="/js/theme.js"></script>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="floating-shapes" aria-hidden="true"><span></span><span></span><span></span></div>
     <div class="app-shell page-transition">
         <div class="topbar">
@@ -39,6 +41,14 @@
                     <input type="search" placeholder="Search luxury essentials" data-product-search />
                 </label>
                 <div class="header-actions xs:ml-0 md:ml-auto">
+                    <button class="icon-button" data-theme-toggle aria-label="Toggle theme"></button>
+                    <button class="icon-button mobile-menu-toggle" data-mobile-menu-toggle aria-label="Open menu">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
                     <button class="button-ghost" data-auth-toggle>Sign in</button>
                     <button class="icon-button" data-cart-open aria-label="Open cart">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -52,7 +62,7 @@
                 </div>
             </div>
         </header>
-        <main>
+        <main id="main-content">
             <section class="catalog-hero" data-aos="fade-up">
                 <div class="container catalog-hero-grid xs:grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] xs:gap-4 lg:gap-6">
                     <div class="hero-left">
@@ -99,13 +109,16 @@
             <section class="section" id="catalog">
                 <div class="container">
                     <div class="catalog-toolbar" data-aos="fade-up">
-                        <label class="search-bar xs:w-full xs:min-w-0 lg:min-w-[min(520px,100%)]" aria-label="Search catalog">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="11" cy="11" r="7"></circle>
-                                <path d="M20 20l-3.6-3.6"></path>
-                            </svg>
-                            <input type="search" placeholder="Search 500+ products by name, category, or feature" data-catalog-search />
-                        </label>
+                        <div class="search-autocomplete-wrapper">
+                            <label class="search-bar xs:w-full xs:min-w-0 lg:min-w-[min(520px,100%)]" aria-label="Search catalog">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="7"></circle>
+                                    <path d="M20 20l-3.6-3.6"></path>
+                                </svg>
+                                <input type="search" placeholder="Search 500+ products by name, category, or feature" data-catalog-search autocomplete="off" />
+                            </label>
+                            <div class="search-suggestions" data-search-suggestions></div>
+                        </div>
                         <select class="sort-select xs:w-full sm:w-auto" data-catalog-sort>
                             <option value="featured">Featured first</option>
                             <option value="rating">Top rated</option>
@@ -165,7 +178,38 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 15l-6-6-6 6"></path></svg>
     </button>
 
-    <div class="cart-drawer xs:grid-cols-1 md:grid-cols-[1fr_min(440px,100%)]" data-cart-drawer>
+    <div class="mobile-menu-drawer" data-mobile-menu>
+        <div class="mobile-menu-backdrop" data-mobile-menu-close></div>
+        <div class="mobile-menu-panel">
+            <div class="mobile-menu-header">
+                <a class="brand" href="/">
+                    <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-1.5 9H7.5z"/><circle cx="9.5" cy="20" r="1.2"/><circle cx="17.5" cy="20" r="1.2"/><path d="M5.5 6l-1-3H2"/></svg></span>
+                    Ponnaloy
+                </a>
+                <button class="icon-button" data-mobile-menu-close aria-label="Close menu">&#10005;</button>
+            </div>
+            <nav class="mobile-menu-nav" aria-label="Mobile navigation">
+                <a href="/">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    Home
+                </a>
+                <a class="active" href="/products">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    Products
+                </a>
+                <a href="/dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Dashboard
+                </a>
+                <a href="/orders">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Orders
+                </a>
+            </nav>
+        </div>
+    </div>
+
+    <div class="cart-drawer xs:grid-cols-1 md:grid-cols-[1fr_min(440px,100%)]" data-cart-drawer role="dialog" aria-modal="true" aria-label="Shopping cart">
         <div class="cart-drawer-backdrop" data-cart-close></div>
         <aside class="cart-panel xs:border-l-0 xs:border-t md:border-l md:border-t-0">
             <div class="cart-header">
@@ -212,7 +256,7 @@
         </aside>
     </div>
 
-    <div class="modal" data-auth-modal>
+    <div class="modal" data-auth-modal role="dialog" aria-modal="true" aria-label="Account sign in">
         <div class="modal-card auth-card">
             <div class="auth-header">
                 <div>
@@ -333,6 +377,7 @@
     <script src="/js/cart.js"></script>
     <script src="/js/app.js"></script>
     <script src="/js/auth.js"></script>
+    <script src="/js/mobile-menu.js"></script>
     <script src="/js/assistant.js"></script>
     <script src="/js/products.js"></script>
 </body>
