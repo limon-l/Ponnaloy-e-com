@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { SlidersHorizontal, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,14 +32,12 @@ function ProductsContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
 
   const currentSort = searchParams.get("sort") || "newest";
   const currentCategory = searchParams.get("category") || "";
   const currentSearch = searchParams.get("q") || "";
   const currentPage = parseInt(searchParams.get("page") || "1");
 
-  // Derive category name from loaded products if available
   const categoryName = currentCategory
     ? products.find((p) => p.category?.id === currentCategory)?.category?.name || ""
     : "";
@@ -53,7 +51,6 @@ function ProductsContent() {
       params.set("page", String(currentPage));
       params.set("limit", "20");
 
-      // Map sort values
       const [sortField, sortOrder] = currentSort.split("_");
       if (sortField === "price") {
         params.set("sort", "price");
@@ -109,8 +106,8 @@ function ProductsContent() {
   return (
     <div className="container py-8">
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold">
           {currentSearch
             ? `Search results for "${currentSearch}"`
             : categoryName
@@ -118,19 +115,25 @@ function ProductsContent() {
             : "All Products"}
         </h1>
         {hasActiveFilters && (
-          <div className="flex items-center gap-2 mt-3">
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
             {currentSearch && (
-              <Badge variant="secondary" className="gap-1">
+              <Badge variant="secondary" size="lg" className="gap-1.5 pr-1.5">
                 Search: {currentSearch}
-                <button onClick={() => updateParam("q", "")}>
+                <button
+                  onClick={() => updateParam("q", "")}
+                  className="ml-0.5 hover:bg-muted-foreground/20 rounded-full p-0.5 transition-colors"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
             )}
             {currentCategory && (
-              <Badge variant="secondary" className="gap-1">
+              <Badge variant="secondary" size="lg" className="gap-1.5 pr-1.5">
                 {categoryName || "Category"}
-                <button onClick={() => updateParam("category", "")}>
+                <button
+                  onClick={() => updateParam("category", "")}
+                  className="ml-0.5 hover:bg-muted-foreground/20 rounded-full p-0.5 transition-colors"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
@@ -143,20 +146,10 @@ function ProductsContent() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <SlidersHorizontal className="h-4 w-4 mr-2" />
-            Filters
-          </Button>
-          <p className="text-sm text-muted-foreground">
-            {loading ? "Loading..." : `${products.length} products`}
-          </p>
-        </div>
+      <div className="flex items-center justify-between mb-6 gap-4">
+        <p className="text-sm text-muted-foreground">
+          {loading ? "Loading..." : `${products.length} products`}
+        </p>
 
         <Select
           value={currentSort}
@@ -177,21 +170,29 @@ function ProductsContent() {
 
       {/* Products Grid */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           {Array.from({ length: 12 }).map((_, i) => (
             <ProductCardSkeleton key={i} />
           ))}
         </div>
       ) : products.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-lg text-muted-foreground">No products found</p>
-          <Button variant="outline" className="mt-4" onClick={clearFilters}>
+          <div className="flex justify-center mb-4">
+            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+              <Search className="h-8 w-8 text-muted-foreground" />
+            </div>
+          </div>
+          <p className="text-lg font-medium mb-1">No products found</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Try adjusting your search or filter criteria
+          </p>
+          <Button variant="outline" onClick={clearFilters}>
             Clear filters
           </Button>
         </div>
       ) : (
         <StaggerGrid
-          className="grid-cols-2 md:grid-cols-3 gap-6"
+          className="grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
           staggerDelay={40}
         >
           {products.map((product) => (
@@ -209,6 +210,7 @@ function ProductsContent() {
               variant={currentPage === i + 1 ? "default" : "outline"}
               size="sm"
               onClick={() => updateParam("page", String(i + 1))}
+              className="min-w-[36px]"
             >
               {i + 1}
             </Button>
@@ -224,7 +226,7 @@ export default function ProductsPage() {
     <Suspense
       fallback={
         <div className="container py-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {Array.from({ length: 12 }).map((_, i) => (
               <ProductCardSkeleton key={i} />
             ))}

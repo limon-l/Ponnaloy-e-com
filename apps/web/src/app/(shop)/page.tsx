@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowRight, Truck, Shield, CreditCard, Headphones } from "lucide-react";
+import { ArrowRight, Truck, Shield, CreditCard, Headphones, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
 import { StaggerGrid } from "@/components/ui/stagger-grid";
 import { api } from "@/lib/api";
@@ -20,7 +21,7 @@ const features = [
 
 function ProductGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
       {Array.from({ length: 8 }).map((_, i) => (
         <ProductCardSkeleton key={i} />
       ))}
@@ -32,7 +33,7 @@ function ProductGrid({ products }: { products: Product[] }) {
   if (products.length === 0) return <ProductGridSkeleton />;
   return (
     <StaggerGrid
-      className="grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6"
+      className="grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
       staggerDelay={40}
     >
       {products.map((product) => (
@@ -107,13 +108,13 @@ export default function HomePage() {
               and a seamless shopping experience designed for you.
             </p>
             <div className="flex gap-4">
-              <Button size="lg" asChild>
+              <Button size="xl" asChild>
                 <Link href="/products">
                   Shop Now
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" asChild>
+              <Button size="xl" variant="outline" asChild>
                 <Link href="/products?sort=newest">New Arrivals</Link>
               </Button>
             </div>
@@ -133,9 +134,9 @@ export default function HomePage() {
         <div className="container py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {features.map((feature) => (
-              <div key={feature.title} className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                  <feature.icon className="h-4 w-4 text-primary" />
+              <div key={feature.title} className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                  <feature.icon className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="font-medium text-sm">{feature.title}</p>
@@ -158,11 +159,14 @@ export default function HomePage() {
         >
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-bold">Shop by Category</h2>
-              <p className="text-muted-foreground mt-1">Browse our curated collections</p>
+              <h2 className="text-xl sm:text-2xl font-bold">Shop by Category</h2>
+              <p className="text-muted-foreground mt-1 text-sm">Browse our curated collections</p>
             </div>
-            <Button variant="ghost" asChild>
-              <Link href="/products">View All<ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/products">
+                View All
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -176,7 +180,7 @@ export default function HomePage() {
               >
                 <Link
                   href={`/products?category=${category.id}`}
-                  className="group relative aspect-[4/3] overflow-hidden rounded-lg block"
+                  className="group relative aspect-[4/3] overflow-hidden rounded-xl block"
                 >
                   <Image
                     src={category.image}
@@ -206,11 +210,14 @@ export default function HomePage() {
       >
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl font-bold">Featured Products</h2>
-            <p className="text-muted-foreground mt-1">Handpicked for you</p>
+            <h2 className="text-xl sm:text-2xl font-bold">Featured Products</h2>
+            <p className="text-muted-foreground mt-1 text-sm">Handpicked for you</p>
           </div>
-          <Button variant="ghost" asChild>
-            <Link href="/products?sort=featured">View All<ArrowRight className="ml-2 h-4 w-4" /></Link>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/products?sort=featured">
+              View All
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </Button>
         </div>
         {loading ? <ProductGridSkeleton /> : <ProductGrid products={featuredProducts} />}
@@ -227,11 +234,14 @@ export default function HomePage() {
         >
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-bold">Today&apos;s Deals</h2>
-              <p className="text-muted-foreground mt-1">Limited time offers</p>
+              <h2 className="text-xl sm:text-2xl font-bold">Today&apos;s Deals</h2>
+              <p className="text-muted-foreground mt-1 text-sm">Limited time offers</p>
             </div>
-            <Button variant="ghost" asChild>
-              <Link href="/products?sort=deals">View All<ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/products?sort=deals">
+                View All
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
           {loading ? <ProductGridSkeleton /> : <ProductGrid products={dealProducts} />}
@@ -249,11 +259,14 @@ export default function HomePage() {
         >
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-bold">Trending Now</h2>
-              <p className="text-muted-foreground mt-1">What everyone&apos;s talking about</p>
+              <h2 className="text-xl sm:text-2xl font-bold">Trending Now</h2>
+              <p className="text-muted-foreground mt-1 text-sm">What everyone&apos;s talking about</p>
             </div>
-            <Button variant="ghost" asChild>
-              <Link href="/products?sort=trending">View All<ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/products?sort=trending">
+                View All
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
           {loading ? <ProductGridSkeleton /> : <ProductGrid products={trendingProducts} />}
@@ -269,15 +282,16 @@ export default function HomePage() {
         transition={{ duration: 0.4 }}
       >
         <div className="container py-16 text-center max-w-xl mx-auto">
-          <h2 className="text-2xl font-bold">Stay in the Loop</h2>
-          <p className="text-muted-foreground mt-2 mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold">Stay in the Loop</h2>
+          <p className="text-muted-foreground mt-2 mb-6 text-sm">
             Subscribe for exclusive deals, new arrivals, and more.
           </p>
           <form className="flex gap-2" onSubmit={(e) => e.preventDefault()}>
-            <input
+            <Input
               type="email"
               placeholder="Enter your email"
-              className="flex-1 px-4 py-2 rounded-lg border bg-background text-sm"
+              className="flex-1"
+              icon={<Send className="h-4 w-4" />}
             />
             <Button type="submit">Subscribe</Button>
           </form>

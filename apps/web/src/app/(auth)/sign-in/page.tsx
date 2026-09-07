@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signInSchema, type SignInInput } from "@/lib/validations/auth";
 import { useAuth } from "@/contexts/auth-context";
@@ -54,9 +55,6 @@ function SignInForm() {
     router.refresh();
   }
 
-  const inputClasses =
-    "h-11 w-full rounded-xl border border-input bg-background/50 px-4 pl-11 text-sm transition-all duration-200 placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-primary/40";
-
   return (
     <div className="space-y-8">
       {/* Mobile Logo */}
@@ -81,7 +79,7 @@ function SignInForm() {
 
       {/* Success Alert */}
       {justCreated && (
-        <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-3 text-sm text-primary flex items-center gap-2">
+        <div className="rounded-xl bg-success/10 border border-success/20 px-4 py-3 text-sm text-success flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           Account created successfully. Please sign in.
         </div>
@@ -89,7 +87,7 @@ function SignInForm() {
 
       {/* Error Alert */}
       {error && (
-        <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -97,34 +95,32 @@ function SignInForm() {
       {/* Form */}
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="space-y-4"
+        className="space-y-5"
         noValidate
       >
         {/* Email */}
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium">
             Email address
           </label>
-          <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-            <input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              autoComplete="email"
-              className={inputClasses}
-              {...register("email")}
-            />
-          </div>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            icon={<Mail className="h-4 w-4" />}
+            error={!!errors.email}
+            {...register("email")}
+          />
           {errors.email && (
-            <p className="text-xs text-destructive pl-1">
+            <p className="text-xs text-destructive">
               {errors.email.message}
             </p>
           )}
         </div>
 
         {/* Password */}
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label htmlFor="password" className="text-sm font-medium">
               Password
@@ -136,31 +132,31 @@ function SignInForm() {
               Forgot password?
             </Link>
           </div>
-          <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-            <input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter your password"
-              autoComplete="current-password"
-              className={inputClasses + " pr-11"}
-              {...register("password")}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors p-0.5 rounded-md hover:bg-muted"
-              tabIndex={-1}
-            >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </button>
-          </div>
+          <Input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            placeholder="Enter your password"
+            autoComplete="current-password"
+            icon={<Lock className="h-4 w-4" />}
+            error={!!errors.password}
+            suffix={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-muted-foreground/50 hover:text-foreground transition-colors p-0.5 rounded-md hover:bg-muted"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            }
+            {...register("password")}
+          />
           {errors.password && (
-            <p className="text-xs text-destructive pl-1">
+            <p className="text-xs text-destructive">
               {errors.password.message}
             </p>
           )}
@@ -187,16 +183,12 @@ function SignInForm() {
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full h-11 rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.98]"
+          loading={isLoading}
+          className="w-full"
+          size="lg"
         >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              Sign In
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </>
-          )}
+          Sign In
+          <ArrowRight className="h-4 w-4" />
         </Button>
       </form>
 
@@ -217,7 +209,7 @@ function SignInForm() {
         <Button
           type="button"
           variant="outline"
-          className="h-11 rounded-xl text-sm font-medium border-border/60 hover:bg-muted/50 hover:border-border transition-all duration-200 active:scale-[0.98]"
+          size="lg"
           disabled={isLoading}
         >
           <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
@@ -243,7 +235,7 @@ function SignInForm() {
         <Button
           type="button"
           variant="outline"
-          className="h-11 rounded-xl text-sm font-medium border-border/60 hover:bg-muted/50 hover:border-border transition-all duration-200 active:scale-[0.98]"
+          size="lg"
           disabled={isLoading}
         >
           <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">

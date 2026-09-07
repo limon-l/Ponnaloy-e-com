@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2, Check, X,
+  Eye, EyeOff, Mail, Lock, User, ArrowRight, Check, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signUpSchema, type SignUpInput } from "@/lib/validations/auth";
 import { useAuth } from "@/contexts/auth-context";
@@ -27,7 +28,7 @@ const strengthConfig = [
   { label: "Very Weak", color: "bg-destructive" },
   { label: "Weak", color: "bg-orange-500" },
   { label: "Fair", color: "bg-yellow-500" },
-  { label: "Strong", color: "bg-primary" },
+  { label: "Strong", color: "bg-success" },
   { label: "Very Strong", color: "bg-emerald-500" },
 ];
 
@@ -41,11 +42,11 @@ function PasswordRequirement({
   return (
     <div className="flex items-center gap-1.5 text-xs">
       {met ? (
-        <Check className="h-3 w-3 text-emerald-500" />
+        <Check className="h-3 w-3 text-success" />
       ) : (
         <X className="h-3 w-3 text-muted-foreground/40" />
       )}
-      <span className={met ? "text-emerald-600" : "text-muted-foreground/60"}>
+      <span className={met ? "text-success" : "text-muted-foreground/60"}>
         {children}
       </span>
     </div>
@@ -118,9 +119,6 @@ export default function SignUpPage() {
     router.push("/sign-in?created=true");
   }
 
-  const inputClasses =
-    "h-11 w-full rounded-xl border border-input bg-background/50 px-4 pl-11 text-sm transition-all duration-200 placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-primary/40";
-
   return (
     <div className="space-y-6">
       {/* Mobile Logo */}
@@ -145,7 +143,7 @@ export default function SignUpPage() {
 
       {/* Error Alert */}
       {error && (
-        <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -153,49 +151,45 @@ export default function SignUpPage() {
       {/* Form */}
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="space-y-4"
+        className="space-y-5"
         noValidate
       >
         {/* Name Row */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
             <label htmlFor="firstName" className="text-sm font-medium">
               First name
             </label>
-            <div className="relative">
-              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-              <input
-                id="firstName"
-                type="text"
-                placeholder="John"
-                autoComplete="given-name"
-                className={inputClasses}
-                {...register("firstName")}
-              />
-            </div>
+            <Input
+              id="firstName"
+              type="text"
+              placeholder="John"
+              autoComplete="given-name"
+              icon={<User className="h-4 w-4" />}
+              error={!!errors.firstName}
+              {...register("firstName")}
+            />
             {errors.firstName && (
-              <p className="text-xs text-destructive pl-1">
+              <p className="text-xs text-destructive">
                 {errors.firstName.message}
               </p>
             )}
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <label htmlFor="lastName" className="text-sm font-medium">
               Last name
             </label>
-            <div className="relative">
-              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-              <input
-                id="lastName"
-                type="text"
-                placeholder="Doe"
-                autoComplete="family-name"
-                className={inputClasses}
-                {...register("lastName")}
-              />
-            </div>
+            <Input
+              id="lastName"
+              type="text"
+              placeholder="Doe"
+              autoComplete="family-name"
+              icon={<User className="h-4 w-4" />}
+              error={!!errors.lastName}
+              {...register("lastName")}
+            />
             {errors.lastName && (
-              <p className="text-xs text-destructive pl-1">
+              <p className="text-xs text-destructive">
                 {errors.lastName.message}
               </p>
             )}
@@ -203,52 +197,50 @@ export default function SignUpPage() {
         </div>
 
         {/* Email */}
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium">
             Email address
           </label>
-          <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-            <input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              autoComplete="email"
-              className={inputClasses}
-              {...register("email")}
-            />
-          </div>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            icon={<Mail className="h-4 w-4" />}
+            error={!!errors.email}
+            {...register("email")}
+          />
           {errors.email && (
-            <p className="text-xs text-destructive pl-1">
+            <p className="text-xs text-destructive">
               {errors.email.message}
             </p>
           )}
         </div>
 
         {/* Password */}
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <label htmlFor="password" className="text-sm font-medium">
             Password
           </label>
-          <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-            <input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Create a strong password"
-              autoComplete="new-password"
-              className={inputClasses + " pr-11"}
-              {...register("password")}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors p-0.5 rounded-md hover:bg-muted"
-              tabIndex={-1}
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
+          <Input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            placeholder="Create a strong password"
+            autoComplete="new-password"
+            icon={<Lock className="h-4 w-4" />}
+            error={!!errors.password}
+            suffix={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-muted-foreground/50 hover:text-foreground transition-colors p-0.5 rounded-md hover:bg-muted"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
+            {...register("password")}
+          />
 
           {watchedPassword.length > 0 && (
             <div className="space-y-2 pt-1">
@@ -284,38 +276,38 @@ export default function SignUpPage() {
           )}
 
           {errors.password && (
-            <p className="text-xs text-destructive pl-1">
+            <p className="text-xs text-destructive">
               {errors.password.message}
             </p>
           )}
         </div>
 
         {/* Confirm Password */}
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <label htmlFor="confirmPassword" className="text-sm font-medium">
             Confirm password
           </label>
-          <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-            <input
-              id="confirmPassword"
-              type={showConfirmPassword ? "text" : "password"}
-              placeholder="Confirm your password"
-              autoComplete="new-password"
-              className={inputClasses + " pr-11"}
-              {...register("confirmPassword")}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors p-0.5 rounded-md hover:bg-muted"
-              tabIndex={-1}
-            >
-              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
+          <Input
+            id="confirmPassword"
+            type={showConfirmPassword ? "text" : "password"}
+            placeholder="Confirm your password"
+            autoComplete="new-password"
+            icon={<Lock className="h-4 w-4" />}
+            error={!!errors.confirmPassword}
+            suffix={
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="text-muted-foreground/50 hover:text-foreground transition-colors p-0.5 rounded-md hover:bg-muted"
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
+            {...register("confirmPassword")}
+          />
           {errors.confirmPassword && (
-            <p className="text-xs text-destructive pl-1">
+            <p className="text-xs text-destructive">
               {errors.confirmPassword.message}
             </p>
           )}
@@ -359,16 +351,12 @@ export default function SignUpPage() {
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full h-11 rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.98]"
+          loading={isLoading}
+          className="w-full"
+          size="lg"
         >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              Create Account
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </>
-          )}
+          Create Account
+          <ArrowRight className="h-4 w-4" />
         </Button>
       </form>
 
@@ -389,7 +377,7 @@ export default function SignUpPage() {
         <Button
           type="button"
           variant="outline"
-          className="h-11 rounded-xl text-sm font-medium border-border/60 hover:bg-muted/50 hover:border-border transition-all duration-200 active:scale-[0.98]"
+          size="lg"
           disabled={isLoading}
         >
           <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
@@ -403,7 +391,7 @@ export default function SignUpPage() {
         <Button
           type="button"
           variant="outline"
-          className="h-11 rounded-xl text-sm font-medium border-border/60 hover:bg-muted/50 hover:border-border transition-all duration-200 active:scale-[0.98]"
+          size="lg"
           disabled={isLoading}
         >
           <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">

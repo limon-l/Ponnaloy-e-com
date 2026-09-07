@@ -68,7 +68,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           ? `${product.name} removed from your wishlist.`
           : `${product.name} added to your wishlist.`,
       });
-      setTimeout(() => setWishAnimating(false), 300);
+      setTimeout(() => setWishAnimating(false), 500);
     },
     [isWishlisted, toggleItem, product, toast]
   );
@@ -76,8 +76,8 @@ export function ProductCard({ product, className }: ProductCardProps) {
   return (
     <div
       className={cn(
-        "group relative flex flex-col rounded-xl border bg-card text-card-foreground transition-all duration-300",
-        "hover:shadow-[0_8px_30px_-4px_hsl(var(--foreground)/0.08),0_4px_12px_-4px_hsl(var(--foreground)/0.04)]",
+        "group relative flex flex-col rounded-xl border bg-card text-card-foreground transition-all duration-200",
+        "hover:shadow-md hover:border-primary/20",
         "hover:-translate-y-0.5",
         isOutOfStock && "opacity-75",
         className
@@ -92,7 +92,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
                 src={mainImage.url}
                 alt={mainImage.alt || product.name}
                 fill
-                className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
                 sizes="(max-width: 768px) 50vw, (max-width: 1200px) 50vw, 33vw"
               />
               {secondImage && (
@@ -100,7 +100,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
                   src={secondImage.url}
                   alt={secondImage.alt || product.name}
                   fill
-                  className="object-cover transition-all duration-500 ease-out opacity-0 group-hover:opacity-100 group-hover:scale-105"
+                  className="object-cover transition-all duration-300 ease-out opacity-0 group-hover:opacity-100 group-hover:scale-105"
                   sizes="(max-width: 768px) 50vw, (max-width: 1200px) 50vw, 33vw"
                 />
               )}
@@ -112,50 +112,41 @@ export function ProductCard({ product, className }: ProductCardProps) {
           )}
 
           {/* Badges */}
-          <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10">
+          <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
             {discount > 0 && (
-              <Badge
-                variant="destructive"
-                className="text-[10px] font-semibold px-2 py-0.5 shadow-sm"
-              >
+              <Badge variant="destructive" size="sm">
                 -{discount}%
               </Badge>
             )}
             {product.isNewArrival && (
-              <Badge
-                variant="default"
-                className="text-[10px] font-semibold px-2 py-0.5 bg-primary text-primary-foreground shadow-sm"
-              >
+              <Badge variant="default" size="sm">
                 New
               </Badge>
             )}
             {isOutOfStock && (
-              <Badge
-                variant="secondary"
-                className="text-[10px] font-semibold px-2 py-0.5 bg-muted-foreground/80 text-background shadow-sm"
-              >
+              <Badge variant="secondary" size="sm" className="bg-muted-foreground/80 text-background">
                 Out of Stock
               </Badge>
             )}
           </div>
 
-          {/* Wishlist Button */}
+          {/* Wishlist Button - 40x40 touch target */}
           <button
             onClick={handleToggleWishlist}
             className={cn(
-              "absolute top-2 right-2 z-20 flex h-7 w-7 items-center justify-center rounded-full",
-              "bg-background/80 backdrop-blur-sm border shadow-sm",
+              "absolute top-2.5 right-2.5 z-20 flex h-10 w-10 items-center justify-center rounded-full",
+              "bg-background/90 backdrop-blur-sm border shadow-sm",
               "transition-all duration-200",
               "opacity-0 group-hover:opacity-100",
               "max-md:opacity-100",
-              "hover:scale-110 active:scale-95",
+              "hover:scale-110 hover:shadow-md active:scale-95",
               isWishlisted && "bg-destructive/10 border-destructive/20"
             )}
             aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           >
             <Heart
               className={cn(
-                "h-3.5 w-3.5 transition-all duration-200",
+                "h-4 w-4 transition-all duration-200",
                 isWishlisted
                   ? "fill-destructive text-destructive"
                   : "text-foreground/70",
@@ -170,7 +161,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
       <div className="flex flex-1 flex-col p-3 sm:p-4">
         <Link href={`/product/${product.slug}`} className="block">
           {/* Brand & Category */}
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-1.5">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
             {product.brand && (
               <span className="font-medium">{product.brand.name}</span>
             )}
@@ -186,51 +177,51 @@ export function ProductCard({ product, className }: ProductCardProps) {
           </h3>
 
           {/* Rating */}
-          <div className="flex items-center gap-0.5 mt-1.5">
+          <div className="flex items-center gap-1 mt-1.5">
             <div className="flex items-center">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Star
                   key={i}
                   className={cn(
-                    "h-2.5 w-2.5",
+                    "h-3 w-3",
                     i < Math.round(product.avgRating)
-                      ? "fill-primary text-primary"
+                      ? "fill-warning text-warning"
                       : "fill-muted text-muted"
                   )}
                 />
               ))}
             </div>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               ({product.reviewCount})
             </span>
           </div>
 
           {/* Price */}
           <div className="flex items-baseline gap-1.5 mt-1.5">
-            <span className="font-bold text-sm">
+            <span className="font-bold text-base">
               {formatPrice(product.price)}
             </span>
             {product.compareAtPrice &&
               product.compareAtPrice > product.price && (
-                <span className="text-[11px] text-muted-foreground line-through">
+                <span className="text-xs text-muted-foreground line-through">
                   {formatPrice(product.compareAtPrice)}
                 </span>
               )}
             {discount > 0 && (
-              <span className="text-[10px] font-medium text-destructive ml-auto">
+              <Badge variant="destructive" size="sm" className="ml-auto">
                 Save {discount}%
-              </span>
+              </Badge>
             )}
           </div>
         </Link>
 
         {/* Add to Cart Button */}
-        <div className="mt-2.5 pt-2.5 border-t border-border/50">
+        <div className="mt-3 pt-3 border-t border-border/50">
           {isOutOfStock ? (
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-8 text-xs font-medium cursor-not-allowed opacity-50"
+              className="w-full cursor-not-allowed opacity-50"
               disabled
             >
               Out of Stock
@@ -239,21 +230,19 @@ export function ProductCard({ product, className }: ProductCardProps) {
             <Button
               size="sm"
               className={cn(
-                "w-full h-8 text-xs font-medium transition-all duration-300",
+                "w-full transition-all duration-200",
                 cartState === "success" &&
-                  "bg-green-600 hover:bg-green-600 text-white"
+                  "bg-success hover:bg-success text-success-foreground"
               )}
               onClick={handleAddToCart}
               disabled={cartState !== "idle"}
+              loading={cartState === "loading"}
             >
-              {cartState === "loading" && (
-                <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-              )}
               {cartState === "success" && (
-                <Check className="h-3 w-3 mr-1.5" />
+                <Check className="h-3.5 w-3.5" />
               )}
               {cartState === "idle" && (
-                <ShoppingBag className="h-3 w-3 mr-1.5" />
+                <ShoppingBag className="h-3.5 w-3.5" />
               )}
               {cartState === "loading"
                 ? "Adding..."
@@ -272,12 +261,12 @@ export function ProductCardSkeleton() {
   return (
     <div className="flex flex-col rounded-xl border bg-card overflow-hidden">
       <div className="aspect-square skeleton" />
-      <div className="p-4 space-y-2.5">
+      <div className="p-4 space-y-3">
         <div className="h-3 w-20 skeleton rounded" />
         <div className="h-4 w-full skeleton rounded" />
         <div className="h-3 w-24 skeleton rounded" />
-        <div className="h-3 w-16 skeleton rounded mt-1" />
-        <div className="h-8 w-full skeleton rounded mt-2.5 pt-2.5 border-t border-border/50" />
+        <div className="h-4 w-16 skeleton rounded mt-1" />
+        <div className="h-9 w-full skeleton rounded mt-3 pt-3 border-t border-border/50" />
       </div>
     </div>
   );
