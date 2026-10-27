@@ -5,9 +5,9 @@
 | Field | Value |
 |---|---|
 | Project name | Ponnaloy E-Commerce Platform |
-| Document version | 1.1 |
+| Document version | 1.2 |
 | Last updated | 2026-10-27 |
-| Repository version | Root package `2.0.0`, commit `583783d` (Batch 01) + Batches 02–03 working changes |
+| Repository version | Root package `2.0.0`, Batches 01–04 (Batch 04: 46-product catalog + live order-flow verification) |
 | Primary status | Active development — functional B2C foundation with real admin UI, tested commerce API and local media storage; production database and payment gateway pending |
 | Audience | Engineers, reviewers, DevOps, product stakeholders |
 | Secret handling | This document lists environment variable **names only**. No credentials, keys or customer data are reproduced. |
@@ -59,6 +59,7 @@ The platform is a **single-vendor B2C storefront today**. Its data model already
 | API type safety | **PASS** | `tsc --noEmit` — 0 diagnostics across all modules |
 | Lint | **PASS** | ESLint flat configs; 0 errors (22 API + 55 web warnings) |
 | Automated tests | **PASS** | Vitest: 29/29 (10 pricing unit + 19 API integration) |
+| Live order-flow E2E | **PASS** | 106/106 assertions over real HTTP against a MongoDB replica set (catalog → cart → checkout → fulfilment → return/refund) |
 | API runtime (in-memory replica set) | **PASS** | Booted with `tsx`; health `200`, database `connected`, payment methods `COD`/`BANK_TRANSFER` |
 | Security headers / CSP | **PASS** | CSP emitted by the built server; verified from the HTTP response |
 | Admin workspace | **PASS** | Dashboard, products, orders and customers read/write live API data |
@@ -179,7 +180,7 @@ Ponnaloy-e-com/
 │   ├── api/                     # Fastify + Prisma backend (active)
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma    # 31 models, 9 enums (MongoDB)
-│   │   │   └── seed.ts          # 8 categories, 33 products, brands, images
+│   │   │   └── seed.ts          # 8 categories, 46 products, brands, images
 │   │   ├── src/
 │   │   │   ├── config/env.ts    # Boot-time configuration validation
 │   │   │   ├── lib/             # prisma, redis, meili, openai, chat, storage
@@ -841,6 +842,7 @@ Integration tests use `MongoMemoryReplSet` and Fastify `inject`; they do not req
 | `pnpm typecheck` | **PASS** | 3/3 workspaces, 0 diagnostics |
 | `pnpm lint` | **PASS** | 2/2 tasks, 0 errors (22 API + 55 web warnings) |
 | `pnpm --filter @ponnaloy/api test` | **PASS** | 2 files, 29/29 tests |
+| Live order-flow E2E | **PASS** | 106/106 assertions over real HTTP against a single-node replica set: catalog (46 products), cart maths, coupon discount, checkout, idempotent replay, ownership isolation, cancellation, admin state machine, shipment tracking, return/refund, restock-once, insufficient-stock rejection |
 | `pnpm --filter @ponnaloy/web build` | **PASS** | Compiled; 27/27 static pages generated |
 | `pnpm --filter @ponnaloy/api db:generate` | **PASS** | Prisma Client 6.19.3 generated |
 | API runtime (in-memory replica set) | **PASS** | `tsx src/server.ts`; `/api/health` 200 with `database: connected`; payment methods `["COD","BANK_TRANSFER"]` |
@@ -871,7 +873,8 @@ Route (app)                                 Size  First Load JS
 |---|---|---|
 | Unit | Vitest | 10 tests: coupon types, date/usage/minimum rules, clamping, shipping and total maths |
 | API integration | Vitest + Fastify `inject` + `MongoMemoryReplSet` | 19 tests: auth, cart, checkout, idempotent replay, stock reservation/rollback, customer cancellation, admin authorization, admin pagination, product create/archive, full order lifecycle with tracking and single restock, concurrent admin cancellation, stats revenue/low stock, role guards |
-| E2E | Playwright | **Planned** — browse → cart → checkout → order → cancel |
+| E2E | Manual Node script over real HTTP | **PASS** — 106 assertions executed against a live API and replica set (catalog, cart, coupon, checkout, idempotency, cancellation, fulfilment, tracking, return/refund, restock-once, insufficient stock). The temporary harness was removed after the run |
+| E2E (repeatable) | Playwright | **Planned** — browse → cart → checkout → order → cancel |
 | Non-functional | Lighthouse/axe | **Planned** — Core Web Vitals, WCAG 2.2 AA |
 
 ---
@@ -883,7 +886,7 @@ Route (app)                                 Size  First Load JS
 | R1 | Prisma MongoDB transactions require a replica set; a standalone MongoDB cannot complete writes | High | Checkout and admin transitions fail | Docker compose and the test harness use replica sets; production Atlas must be a replica set. A PostgreSQL migration remains an option for heavier financial workloads |
 | R2 | Configured production database host is unreachable | Critical | No runtime verification against real data | Replace with a reachable cluster; local runtime is verified against an in-memory replica set |
 | R3 | API type errors | **Resolved** | Weak CI signal | `pnpm typecheck` now passes 3/3 |
-| R4 | Automated coverage is partial | Medium | Regressions in untested paths | 29 unit/integration tests pass; E2E and accessibility suites still missing |
+| R4 | Automated coverage is partial | Medium | Regressions in untested paths | 29 unit/integration tests plus a 106-assertion live E2E run pass; repeatable Playwright and accessibility suites still missing |
 | R5 | No ESLint configuration | **Resolved** | Inconsistent code quality | Flat configs added for both apps; 0 errors |
 | R6 | Admin UI renders mock data | **Resolved** | Operators may act on false information | Dashboard, products, orders and customers now use live API data |
 | R7 | Legacy stored XSS | Critical (legacy only) | Account compromise on legacy deployment | Retire or patch the legacy frontend |
@@ -903,7 +906,7 @@ Route (app)                                 Size  First Load JS
 | Priority | Workstream | Scope | Exit criteria | Status |
 |---|---|---|---|---|
 | **P0** | Production runtime unblock | Reachable replica-set database, `db:push`, `db:seed`, API boot, manual checkout | Order created, stock decremented, cancel restocks | **Blocked** — local replica-set runtime verified; production host unreachable |
-| **P0** | Verification harness | Vitest + Fastify inject; ESLint flat configs; Playwright smoke | CI green on typecheck, lint, tests | **Partial** — 29 tests, lint and typecheck pass; E2E and CI missing |
+| **P0** | Verification harness | Vitest + Fastify inject; ESLint flat configs; Playwright smoke | CI green on typecheck, lint, tests | **Partial** — 29 tests, 106-assertion live E2E, lint and typecheck pass; Playwright and CI missing |
 | **P0** | API type baseline | Resolve existing diagnostics | `pnpm typecheck` passes workspace-wide | **Done** |
 | **P1** | Real admin | Replace mock arrays with `/api/admin/*` | Admin CRUD persists | **Done** for dashboard, products, orders, customers |
 | **P1** | Media storage | Validated uploads, MIME/size enforcement; durable object storage | Upload → serve round trip | **Partial** — local disk driver done; R2/S3 pending |
@@ -998,13 +1001,26 @@ Route (app)                                 Size  First Load JS
 | Security | Baseline CSP added to the Next.js headers and verified on the built server |
 | Verification | `pnpm typecheck` 3/3, `pnpm lint` 0 errors, 29/29 tests, 27/27 pages built |
 
+### Batch 04 — Catalog depth and independently verified order flow
+
+| Area | Change |
+|---|---|
+| Catalog | Seed expanded from 33 to 46 products across electronics, fashion, sports, home, beauty, books, toys and food; every new product has explicit stock, SKU, imagery and merchandising flags |
+| Seed integrity | Removed two accidental duplicate slugs (matcha → hojicha, duplicate vitamin C → niacinamide moisturiser) so all 46 products are distinct and seed output matches database state |
+| Order verification | 106 live HTTP assertions against a real MongoDB replica set: health, 46-product catalog, honest payment methods, role guards, coupon creation/application, cart totals, checkout, stock reservation, idempotent replay, order ownership isolation, customer cancellation, admin state machine, shipment carrier/tracking, delivery timestamps, return/refund, restock-once guards and server-authoritative insufficient-stock rejection |
+| Fixes found | No product defects in the order system; two verification expectations were corrected (actual order-number format is `PNyymmdd-XXXXXX`; catalog totals only count `ACTIVE` products) |
+| Verification | `pnpm typecheck` 3/3, `pnpm lint` 0 errors, 29/29 tests, 27/27 pages built, live E2E 106/106 |
+
 ### Verification
 
 - Storefront type check and production build: **PASS**.
 - API type check, lint and 29 automated tests: **PASS**.
 - API runtime against an in-memory MongoDB replica set: **PASS**.
+- Live order-flow E2E over real HTTP: **PASS** — 106/106 assertions, including checkout, cancellation, fulfilment, tracking, return/refund and restock-once.
+- Seeded catalog: **PASS** — 8 categories, 10 brands, 46 distinct products.
 - API runtime against the configured production database: **BLOCKED** by DNS resolution.
 - Docker Compose: **NOT RUN** (Docker unavailable here).
+- Repeatable Playwright E2E and accessibility audits: **NOT RUN / PLANNED**; the manual harness is not committed.
 - No performance or accessibility claims are made; neither audit has been run.
 
 ---

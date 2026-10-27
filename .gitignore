@@ -20,7 +20,7 @@ out/
 uploads/
 
 # scratch verification files
-.tmp-mongo-uri
+.tmp-*
 
 # turbo
 .turbo/
