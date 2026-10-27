@@ -31,20 +31,7 @@ export default function AuthLayout({
               Discover curated products with exceptional quality, fast shipping,
               and a seamless experience designed around you.
             </p>
-            <div className="flex gap-8 pt-2">
-              <div>
-                <p className="text-2xl font-bold text-white">10K+</p>
-                <p className="text-sm text-white/60">Products</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">50K+</p>
-                <p className="text-sm text-white/60">Customers</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">4.9</p>
-                <p className="text-sm text-white/60">Rating</p>
-              </div>
-            </div>
+
           </div>
 
           <p className="text-sm text-white/40">

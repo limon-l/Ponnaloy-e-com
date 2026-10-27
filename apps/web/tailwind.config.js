@@ -104,7 +104,10 @@ module.exports = {
       fontSize: {
         "2xs": ["0.625rem", { lineHeight: "0.875rem" }],
       },
-      keyframes: {
+      fontFamily: {
+        sans: ["var(--font-inter)"],
+        display: ["var(--font-inter)"],
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

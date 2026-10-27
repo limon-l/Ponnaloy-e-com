@@ -34,12 +34,12 @@ function ProductsContent() {
   const [totalPages, setTotalPages] = useState(1);
 
   const currentSort = searchParams.get("sort") || "newest";
-  const currentCategory = searchParams.get("category") || "";
+  const currentCategory = searchParams.get("category") || searchParams.get("categoryId") || "";
   const currentSearch = searchParams.get("q") || "";
   const currentPage = parseInt(searchParams.get("page") || "1");
 
   const categoryName = currentCategory
-    ? products.find((p) => p.category?.id === currentCategory)?.category?.name || ""
+    ? products.find((p) => (p.category?.id === currentCategory || p.category?.slug === currentCategory))?.category?.name || ""
     : "";
 
   const fetchProducts = useCallback(async () => {
@@ -47,7 +47,9 @@ function ProductsContent() {
     try {
       const params = new URLSearchParams();
       if (currentSearch) params.set("q", currentSearch);
-      if (currentCategory) params.set("categoryId", currentCategory);
+      if (currentCategory) {
+        params.set("categoryId", currentCategory);
+      }
       params.set("page", String(currentPage));
       params.set("limit", "20");
 
@@ -89,9 +91,18 @@ function ProductsContent() {
   const updateParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) {
-      params.set(key, value);
+      if (key === "category") {
+        params.set("category", value);
+        params.delete("categoryId");
+      } else {
+        params.set(key, value);
+      }
     } else {
       params.delete(key);
+      if (key === "category") {
+        params.delete("categoryId");
+        params.delete("categorySlug");
+      }
     }
     if (key !== "page") params.set("page", "1");
     router.push(`/products?${params.toString()}`);
@@ -127,11 +138,11 @@ function ProductsContent() {
                 </button>
               </Badge>
             )}
-            {currentCategory && (
+            {(currentCategory) && (
               <Badge variant="secondary" size="lg" className="gap-1.5 pr-1.5">
                 {categoryName || "Category"}
                 <button
-                  onClick={() => updateParam("category", "")}
+                  onClick={() => { const params = new URLSearchParams(searchParams.toString()); params.delete("category"); params.delete("categoryId"); params.delete("page"); router.push(`/products?${params.toString()}`); }}
                   className="ml-0.5 hover:bg-muted-foreground/20 rounded-full p-0.5 transition-colors"
                 >
                   <X className="h-3 w-3" />

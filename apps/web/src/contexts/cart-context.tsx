@@ -12,6 +12,7 @@ import {
 import type { Product, ProductVariant } from "@/types";
 import { api } from "@/lib/api";
 import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_FEE } from "@ponnaloy/shared";
+import { useAuth } from "@/contexts/auth-context";
 
 export interface CartItem {
   id: string;
@@ -97,6 +98,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [serverMode, setServerMode] = useState(false);
   const [discount, setDiscount] = useState(0);
   const [couponCode, setCouponCode] = useState<string | null>(null);
+  const { isAuthenticated } = useAuth();
   const mountedRef = useRef(true);
   const mergingRef = useRef(false);
 
@@ -284,6 +286,42 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     saveCart([]);
   }, [serverMode]);
 
+  const applyCoupon = useCallback(
+    async (code: string) => {
+      if (serverMode && isAuthenticated) {
+        try {
+        const res: any = await api.post("/api/cart/coupon", { code: code.toUpperCase() });
+        await syncCart();
+        return res.data;
+      } catch (e) {
+        throw e;
+      }
+      } else {
+        // Guest: no coupon apply via API; skip server sync path
+        setCouponCode(code.toUpperCase());
+      }
+    },
+    [serverMode, isAuthenticated, syncCart]
+  );
+
+  const removeCoupon = useCallback(
+    async () => {
+      if (serverMode && isAuthenticated) {
+        try {
+          await api.delete("/api/cart/coupon");
+          await syncCart();
+          return;
+        } catch (e) {
+          throw e;
+        }
+      } else {
+        setCouponCode(null);
+        setDiscount(0);
+      }
+    },
+    [serverMode, isAuthenticated, syncCart]
+  );
+
   const resetCart = useCallback(() => {
     setItems([]);
     setServerMode(false);
@@ -323,8 +361,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       loading,
       syncCart,
       mergeGuestToServer,
-    }),
-    [items, addItem, removeItem, updateQuantity, clearCart, resetCart, itemCount, subtotal, discount, couponCode, total, loading, syncCart, mergeGuestToServer]
+      applyCoupon,
+      removeCoupon,
+    }) as any,
+    [items, addItem, removeItem, updateQuantity, clearCart, resetCart, itemCount, subtotal, discount, couponCode, total, loading, syncCart, mergeGuestToServer, applyCoupon, removeCoupon]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

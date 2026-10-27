@@ -52,30 +52,26 @@ export default function HomePage() {
 
   const load = useCallback(async () => {
     try {
-      const [featuredRes, dealsRes, trendingRes, productsRes] = await Promise.allSettled([
+      const [featuredRes, dealsRes, trendingRes, categoriesRes] = await Promise.allSettled([
         api.get<{ success: boolean; data: Product[] }>("/api/products/featured"),
         api.get<{ success: boolean; data: Product[] }>("/api/products/deals"),
         api.get<{ success: boolean; data: Product[] }>("/api/products/trending"),
-        api.get<{ success: boolean; data: Product[]; pagination?: { total: number } }>("/api/products?limit=100"),
+        api.get<{ success: boolean; data: any[] }>("/api/categories"),
       ]);
 
       if (featuredRes.status === "fulfilled" && featuredRes.value.success) setFeaturedProducts(featuredRes.value.data);
       if (dealsRes.status === "fulfilled" && dealsRes.value.success) setDealProducts(dealsRes.value.data);
       if (trendingRes.status === "fulfilled" && trendingRes.value.success) setTrendingProducts(trendingRes.value.data);
-
-      if (productsRes.status === "fulfilled" && productsRes.value.success && productsRes.value.data.length > 0) {
-        const catMap = new Map<string, { id: string; name: string; slug: string; image: string }>();
-        for (const p of productsRes.value.data) {
-          if (p.category && !catMap.has(p.category.slug)) {
-            catMap.set(p.category.slug, {
-              id: p.category.id,
-              name: p.category.name,
-              slug: p.category.slug,
-              image: p.category.image || p.images?.[0]?.url || `https://picsum.photos/seed/${p.category.slug}/400/300`,
-            });
-          }
-        }
-        setCategories(Array.from(catMap.values()));
+      if (categoriesRes.status === "fulfilled" && categoriesRes.value.success) {
+        const cats = categoriesRes.value.data || [];
+        setCategories(
+          cats.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            slug: c.slug,
+            image: c.image || `https://picsum.photos/seed/${c.slug}/400/300`,
+          }))
+        );
       }
     } catch (err) {
       console.error("Failed to load homepage data:", err);
@@ -179,7 +175,7 @@ export default function HomePage() {
                 transition={{ duration: 0.3, delay: i * 0.05 }}
               >
                 <Link
-                  href={`/products?category=${category.id}`}
+                  href={`/products?category=${category.slug}`}
                   className="group relative aspect-[4/3] overflow-hidden rounded-xl block"
                 >
                   <Image

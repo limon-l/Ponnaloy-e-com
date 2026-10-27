@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Lock, Check, PackageOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { cn, formatPrice } from "@/lib/utils";
 import { useCart } from "@/contexts/cart-context";
@@ -13,10 +14,12 @@ import { useToast } from "@/components/ui/toast";
 import { FREE_SHIPPING_THRESHOLD } from "@ponnaloy/shared";
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, subtotal, discount, couponCode, itemCount } = useCart();
+  const { items, removeItem, updateQuantity, subtotal, discount, couponCode, itemCount, applyCoupon, removeCoupon, loading: cartLoading } = useCart() as any;
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [couponInput, setCouponInput] = useState(couponCode || "");
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
   const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 1500;
   const total = Math.max(0, subtotal + shippingFee - discount);
   const freeShippingProgress = Math.min(subtotal / FREE_SHIPPING_THRESHOLD, 1);
@@ -68,7 +71,7 @@ export default function CartPage() {
       </h1>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-3">
-          {items.map((item, index) => (
+          {items.map((item: any, index: number) => (
             <div
               key={item.id}
               className={cn(
@@ -157,6 +160,55 @@ export default function CartPage() {
             )}
 
             <Separator className="my-4" />
+            {/* Coupon */}
+            <div className="space-y-2 mb-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Coupon code"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  className="flex-1 h-9 text-xs"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (!couponInput.trim()) return;
+                    setApplyingCoupon(true);
+                    try {
+                      if ((applyCoupon as any)) {
+                        await (applyCoupon as any)(couponInput.trim());
+                        toast({ title: "Coupon applied", description: couponInput.trim() });
+                      }
+                    } catch (e: any) {
+                      toast({ title: "Invalid coupon", description: e?.response?.data?.error || "Could not apply coupon", variant: "destructive" });
+                    } finally {
+                      setApplyingCoupon(false);
+                    }
+                  }}
+                  disabled={applyingCoupon || !couponInput.trim()}
+                >
+                  Apply
+                </Button>
+              </div>
+              {couponCode && discount > 0 && (
+                <div className="flex items-center justify-between text-xs text-success">
+                  <span className="flex items-center gap-1"><Check className="h-3 w-3" /> {couponCode} applied</span>
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                    onClick={async () => {
+                      try {
+                        if ((removeCoupon as any)) await (removeCoupon as any)();
+                        setCouponInput("");
+                        toast({ title: "Coupon removed" });
+                      } catch (e) {}
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span>Subtotal ({itemCount} items)</span>

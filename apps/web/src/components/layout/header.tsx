@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, ShoppingBag, User, Menu, Sun, Moon, Heart,
-  LogOut, ChevronDown, Package, Settings,
+  LogOut, ChevronDown, Package, Settings, Clock, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import { useCart } from "@/contexts/cart-context";
 import { useWishlist } from "@/contexts/wishlist-context";
 import { useAuth } from "@/contexts/auth-context";
 import { getInitials, cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 const navLinks = [
   { label: "New Arrivals", href: "/products?sort=newest" },
@@ -72,10 +73,129 @@ export function Header() {
   const { count: wishlistCount } = useWishlist();
   const { user, isAuthenticated, signOut } = useAuth();
 
+  const [suggestions, setSuggestions] = useState<{ products: Array<{ id: string; slug: string; name: string; image: string; price: number }>; categories: Array<{ id: string; slug: string; name: string }>; total: number }>({ products: [], categories: [], total: 0 });
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("ponnaloy_recent_searches");
+      if (stored) {
+        setRecentSearches(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+        setSelectedIndex(-1);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      const query = searchQuery.trim();
+      if (!query) {
+        setSuggestions({ products: [], categories: [], total: 0 });
+        setShowSuggestions(recentSearches.length > 0);
+        setSelectedIndex(-1);
+        return;
+      }
+      try {
+        const res: any = await api.get(`/api/search/suggestions?q=${encodeURIComponent(query)}`);
+        setSuggestions(res.data?.data || res.data || { products: [], categories: [], total: 0 });
+        setShowSuggestions(true);
+        setSelectedIndex(-1);
+      } catch (error) {
+        console.error("Failed to fetch suggestions:", error);
+        setSuggestions({ products: [], categories: [], total: 0 });
+      }
+    }, 200);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, recentSearches.length]);
+
+  const saveRecentSearch = (query: string) => {
+    try {
+      const updated = [query, ...recentSearches.filter((s) => s !== query)].slice(0, 5);
+      setRecentSearches(updated);
+      localStorage.setItem("ponnaloy_recent_searches", JSON.stringify(updated));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      window.location.href = `/products?q=${encodeURIComponent(searchQuery.trim())}`;
+    const query = searchQuery.trim();
+    if (query) {
+      saveRecentSearch(query);
+      router.push(`/products?q=${encodeURIComponent(query)}`);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (href: string, query?: string) => {
+    if (query) {
+      saveRecentSearch(query);
+    }
+    router.push(href);
+    setShowSuggestions(false);
+    setSearchQuery(query || "");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const items = [
+      ...suggestions.categories.map((c) => ({ type: "category", data: c })),
+      ...suggestions.products.map((p) => ({ type: "product", data: p })),
+    ];
+    const hasRecent = !searchQuery.trim() && recentSearches.length > 0;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (hasRecent) {
+        setSelectedIndex((prev) => (prev < recentSearches.length - 1 ? prev + 1 : prev));
+        setShowSuggestions(true);
+      } else if (items.length > 0) {
+        setSelectedIndex((prev) => (prev < items.length - 1 ? prev + 1 : prev));
+        setShowSuggestions(true);
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (selectedIndex > 0) {
+        setSelectedIndex((prev) => prev - 1);
+      } else {
+        setSelectedIndex(-1);
+      }
+    } else if (e.key === "Enter") {
+      if (selectedIndex >= 0) {
+        e.preventDefault();
+        if (hasRecent) {
+          const query = recentSearches[selectedIndex];
+          handleSuggestionClick(`/products?q=${encodeURIComponent(query)}`, query);
+        } else if (items[selectedIndex]) {
+          const item = items[selectedIndex];
+          if (item.type === "category") {
+            const c = item.data as any;
+            handleSuggestionClick(`/products?category=${c.slug}`);
+          } else if (item.type === "product") {
+            const p = item.data as any;
+            handleSuggestionClick(`/product/${p.slug}`);
+          }
+        }
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setSelectedIndex(-1);
     }
   };
 
@@ -108,19 +228,109 @@ export function Header() {
           </nav>
 
           {/* Search Bar */}
-          <form
-            onSubmit={handleSearch}
-            className="hidden md:flex items-center flex-1 max-w-md mx-2 lg:mx-6"
-          >
-            <Input
-              type="search"
-              placeholder="Search products..."
-              icon={<Search className="h-4 w-4" />}
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
+          <div ref={searchContainerRef} className="hidden md:flex items-center flex-1 max-w-md mx-2 lg:mx-6 relative">
+            <form onSubmit={handleSearch} className="w-full">
+              <Input
+                type="search"
+                placeholder="Search products..."
+                icon={<Search className="h-4 w-4" />}
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(searchQuery.trim() ? true : recentSearches.length > 0)}
+                onKeyDown={handleKeyDown}
+                autoComplete="off"
+              />
+            </form>
+            {showSuggestions && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                {!searchQuery.trim() && recentSearches.length > 0 && (
+                  <div className="p-2">
+                    <div className="px-2 py-1 text-xs font-medium text-muted-foreground flex items-center gap-2">
+                      <Clock className="h-3 w-3" />
+                      Recent Searches
+                    </div>
+                    {recentSearches.map((q, i) => (
+                      <button
+                        key={q}
+                        onClick={() => handleSuggestionClick(`/products?q=${encodeURIComponent(q)}`, q)}
+                        className={cn(
+                          "w-full text-left px-3 py-2 text-sm rounded-md hover:bg-muted flex items-center justify-between",
+                          selectedIndex === i && "bg-muted"
+                        )}
+                      >
+                        <span>{q}</span>
+                      </button>
+                    ))}
+                    {recentSearches.length > 0 && (
+                      <button
+                        onClick={() => { setRecentSearches([]); localStorage.removeItem("ponnaloy_recent_searches"); }}
+                        className="w-full text-left px-3 py-1 text-xs text-muted-foreground hover:text-foreground mt-1"
+                      >
+                        Clear recent
+                      </button>
+                    )}
+                  </div>
+                )}
+                {(suggestions.categories.length > 0 || suggestions.products.length > 0) && (
+                  <>
+                    {suggestions.categories.length > 0 && (
+                      <div className="p-2 border-b">
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground flex items-center gap-2">
+                          <TrendingUp className="h-3 w-3" />
+                          Categories
+                        </div>
+                        {suggestions.categories.map((c, i) => {
+                          const idx = (recentSearches.length > 0 && !searchQuery.trim()) ? 999 : i;
+                          return (
+                            <button
+                              key={c.id}
+                              onClick={() => handleSuggestionClick(`/products?category=${c.slug}`)}
+                              className={cn(
+                                "w-full text-left px-3 py-2 text-sm rounded-md hover:bg-muted flex items-center gap-2",
+                                selectedIndex === i && "bg-muted"
+                              )}
+                            >
+                              <Search className="h-3 w-3 text-muted-foreground" />
+                              <span>{c.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {suggestions.products.length > 0 && (
+                      <div className="p-2">
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Products</div>
+                        {suggestions.products.map((p, i) => {
+                          const offset = suggestions.categories.length;
+                          return (
+                            <button
+                              key={p.id}
+                              onClick={() => handleSuggestionClick(`/product/${p.slug}`)}
+                              className={cn(
+                                "w-full text-left px-3 py-2 text-sm rounded-md hover:bg-muted flex items-center gap-3",
+                                selectedIndex === offset + i && "bg-muted"
+                              )}
+                            >
+                              {p.image && (
+                                <div className="relative w-8 h-8 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                                  <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="truncate font-medium">{p.name}</p>
+                                <p className="text-xs text-muted-foreground">${p.price.toFixed(2)}</p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Right Actions */}
           <div className="flex items-center gap-1 sm:gap-1.5">
@@ -265,6 +475,7 @@ export function Header() {
                       className="pl-10"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setShowSuggestions(recentSearches.length > 0 || searchQuery.trim().length > 0)}
                     />
                   </form>
                   <div className="pt-4 border-t space-y-2">

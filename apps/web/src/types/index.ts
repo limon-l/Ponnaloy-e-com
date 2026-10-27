@@ -14,6 +14,7 @@ export interface Product {
   isTrending: boolean;
   isNewArrival: boolean;
   weight?: number | null;
+  stock?: number;
   avgRating: number;
   reviewCount: number;
   totalSold: number;

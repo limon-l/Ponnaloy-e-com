@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,6 +25,7 @@ import type { Product } from "@/types";
 
 export default function ProductDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params.slug as string;
   const { isAuthenticated } = useAuth();
 
@@ -100,6 +101,12 @@ export default function ProductDetailPage() {
       });
       setAddingToCart(false);
     }, 500);
+  };
+
+  const handleBuyNow = () => {
+    addItem(product, quantity, selectedVariantData || null);
+    const redirect = isAuthenticated ? "/checkout" : "/sign-in?redirect=/checkout";
+    router.push(redirect);
   };
 
   const handleToggleWishlist = () => {
@@ -250,14 +257,17 @@ export default function ProductDetailPage() {
                 <span className="w-12 text-center text-sm font-medium tabular-nums">{quantity}</span>
                 <Button
                   variant="ghost"
-                  size="icon-sm"
+                  size="icon"
                   className="rounded-none hover:bg-muted"
-                  onClick={() => setQuantity(quantity + 1)}
+                  onClick={() => setQuantity(Math.min(quantity + 1, product.stock ?? 99))}
+                  disabled={quantity >= (product.stock ?? 99)}
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <span className="text-sm text-muted-foreground">In stock</span>
+              <span className="text-sm text-muted-foreground">
+                {(product.stock ?? 0) > 0 ? ((product.stock ?? 0) < 10 ? `Only ${product.stock} left in stock` : "In stock") : "Out of stock"}
+              </span>
             </div>
           </div>
 
@@ -267,11 +277,11 @@ export default function ProductDetailPage() {
               size="lg"
               className="flex-1"
               onClick={handleAddToCart}
-              disabled={addingToCart}
+              disabled={addingToCart || (product.stock ?? 0) === 0}
               loading={addingToCart}
             >
               <ShoppingBag className="h-4 w-4" />
-              Add to Cart
+              {(product.stock ?? 0) === 0 ? "Out of Stock" : "Add to Cart"}
             </Button>
             <Button
               size="lg"
@@ -287,16 +297,15 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Buy Now */}
-          <Button
-            size="xl"
-            variant="default"
-            className="w-full"
-            asChild
-          >
-            <Link href={isAuthenticated ? "/checkout" : "/sign-in?redirect=/checkout"}>
+            <Button
+              size="xl"
+              variant="default"
+              className="w-full"
+              onClick={handleBuyNow}
+              disabled={(product.stock ?? 0) === 0}
+            >
               Buy Now
-            </Link>
-          </Button>
+            </Button>
 
           {/* Trust signals */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
