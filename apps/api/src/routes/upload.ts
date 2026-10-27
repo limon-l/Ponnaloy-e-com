@@ -1,8 +1,11 @@
 import { FastifyPluginAsync } from "fastify";
-import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requireAdmin } from "../middleware/auth";
+import { isAllowedUpload, saveUpload } from "../lib/storage";
+
+const ALLOWED_LABEL = "JPEG, PNG, WebP, GIF, MP4";
 
 export const uploadRoutes: FastifyPluginAsync = async (app) => {
-  // Upload file (admin only)
+  // Upload a single file (admin only)
   app.post("/", { preHandler: [requireAdmin] }, async (request, reply) => {
     const data = await request.file();
 
@@ -13,73 +16,84 @@ export const uploadRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-      "video/mp4",
-    ];
-
-    if (!allowedTypes.includes(data.mimetype)) {
-      return reply.code(400).send({
+    if (!isAllowedUpload(data.mimetype)) {
+      // Drain the stream so the connection can be reused.
+      await data.toBuffer().catch(() => undefined);
+      return reply.code(415).send({
         success: false,
-        error: "File type not allowed. Supported: JPEG, PNG, WebP, GIF, MP4",
+        error: `File type not allowed. Supported: ${ALLOWED_LABEL}`,
       });
     }
 
-    // For now, return a placeholder URL
-    // In production, upload to R2/S3
-    const filename = `${Date.now()}-${data.filename}`;
-    const url = `/uploads/${filename}`;
-
-    return {
-      success: true,
-      data: {
-        url,
-        filename,
-        mimetype: data.mimetype,
-        size: data.file.bytesRead,
-      },
-    };
+    try {
+      const buffer = await data.toBuffer();
+      const stored = await saveUpload(buffer, data.mimetype);
+      return {
+        success: true,
+        data: {
+          url: stored.url,
+          path: stored.path,
+          filename: stored.filename,
+          originalName: data.filename,
+          mimetype: stored.mimetype,
+          size: stored.size,
+        },
+      };
+    } catch (error) {
+      app.log.error({ err: error }, "Upload failed");
+      return reply.code(400).send({
+        success: false,
+        error: error instanceof Error ? error.message : "Upload failed",
+      });
+    }
   });
 
-  // Upload multiple files
+  // Upload multiple files (admin only)
   app.post("/multiple", { preHandler: [requireAdmin] }, async (request, reply) => {
-    const files = await request.files();
+    const uploaded: Array<{
+      url: string;
+      path: string;
+      filename: string;
+      originalName: string;
+      mimetype: string;
+      size: number;
+    }> = [];
+    const rejected: string[] = [];
 
-    if (!files || files.length === 0) {
-      return reply.code(400).send({
-        success: false,
-        error: "No files uploaded",
-      });
-    }
-
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-    ];
-
-    const uploaded = [];
-
-    for await (const file of files) {
-      if (!allowedTypes.includes(file.mimetype)) {
+    for await (const file of request.files()) {
+      if (!isAllowedUpload(file.mimetype)) {
+        rejected.push(file.filename);
+        await file.toBuffer().catch(() => undefined);
         continue;
       }
+      try {
+        const stored = await saveUpload(await file.toBuffer(), file.mimetype);
+        uploaded.push({
+          url: stored.url,
+          path: stored.path,
+          filename: stored.filename,
+          originalName: file.filename,
+          mimetype: stored.mimetype,
+          size: stored.size,
+        });
+      } catch (error) {
+        rejected.push(file.filename);
+        app.log.error({ err: error }, "Upload failed for one file");
+      }
+    }
 
-      const filename = `${Date.now()}-${file.filename}`;
-      uploaded.push({
-        url: `/uploads/${filename}`,
-        filename,
-        mimetype: file.mimetype,
+    if (uploaded.length === 0) {
+      return reply.code(400).send({
+        success: false,
+        error: `No valid files uploaded. Supported: ${ALLOWED_LABEL}`,
+        rejected,
       });
     }
 
     return {
       success: true,
       data: uploaded,
+      ...(rejected.length > 0 && { rejected }),
     };
   });
 };

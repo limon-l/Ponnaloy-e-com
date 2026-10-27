@@ -1,5 +1,18 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+/**
+ * Absolute URL for a media value returned by the API. Local uploads are stored
+ * as `/uploads/<file>` and served by the API origin, while external CDN URLs
+ * are returned unchanged.
+ */
+export function resolveMediaUrl(
+  url?: string | null
+): string | undefined {
+  if (!url) return undefined;
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 interface RequestOptions extends RequestInit {
   token?: string;
 }
@@ -59,6 +72,28 @@ export const api = {
 
   delete: <T>(endpoint: string, token?: string) =>
     request<T>(endpoint, { method: "DELETE", token }),
+
+  /**
+   * Multipart upload (admin media). The browser sets the multipart boundary,
+   * so no Content-Type header is supplied here.
+   */
+  upload: async <T>(endpoint: string, formData: FormData): Promise<T> => {
+    const token = getToken();
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        (data as { error?: string }).error || "Upload failed"
+      );
+    }
+    return data as T;
+  },
 };
 
 export type ApiResponse<T> = {

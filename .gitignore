@@ -16,6 +16,12 @@ out/
 *.db
 *.db-journal
 
+# local uploads (served at /uploads/*)
+uploads/
+
+# scratch verification files
+.tmp-mongo-uri
+
 # turbo
 .turbo/
 

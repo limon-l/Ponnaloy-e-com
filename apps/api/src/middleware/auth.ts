@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import prisma from "../lib/prisma";
+import { config } from "../config/env";
 import { verifyJWT } from "../routes/auth";
 
 export interface AuthUser {
@@ -41,10 +42,13 @@ async function authenticateToken(token: string): Promise<AuthUser | null> {
     return null;
   }
 
-  // Fallback to Clerk token verification
+  // Fallback to Clerk token verification (only when Clerk is configured).
+  if (!config.clerk.secretKey) return null;
   try {
     const { verifyToken } = await import("@clerk/fastify");
-    const clerkPayload = await verifyToken(token);
+    const clerkPayload = await verifyToken(token, {
+      secretKey: config.clerk.secretKey,
+    });
     if (!clerkPayload || !clerkPayload.sub) return null;
 
     let user = await prisma.user.findUnique({

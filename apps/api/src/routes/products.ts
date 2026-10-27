@@ -356,6 +356,8 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
         costPrice: data.costPrice,
         barcode: data.barcode,
         status: data.status,
+        // Product-level stock is used when the product has no variants.
+        stock: data.stock,
         isFeatured: data.isFeatured,
         isTrending: data.isTrending,
         isNewArrival: data.isNewArrival,
@@ -433,17 +435,30 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
-    for (const key of [
+    const updatableKeys = [
       "description", "shortDescription", "sku", "price", "compareAtPrice",
       "costPrice", "barcode", "status", "isFeatured", "isTrending",
       "isNewArrival", "weight", "categoryId", "brandId", "metaTitle", "metaDescription",
-    ]) {
-      if (data[key] !== undefined) {
-        updateData[key] = data[key];
+      "stock",
+    ] as const;
+
+    for (const key of updatableKeys) {
+      const value = data[key];
+      if (value !== undefined) {
+        updateData[key] = value;
       }
     }
 
     if (data.slug) updateData.slug = data.slug;
+
+    // Replace the image set when the client sends one, so the admin editor can
+    // add, remove, and reorder images in a single request.
+    if (data.images !== undefined) {
+      updateData.images = {
+        deleteMany: {},
+        create: data.images,
+      };
+    }
 
     const product = await prisma.product.update({
       where: { id },
@@ -481,6 +496,10 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Delete product (admin)
+  //
+  // Products that are referenced by orders or reviews are archived instead of
+  // deleted: removing them would break historical order rendering and orphan
+  // customer content. Only unreferenced products are physically removed.
   app.delete("/:id", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -489,10 +508,41 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(404).send({ success: false, error: "Product not found" });
     }
 
-    await prisma.product.delete({ where: { id } });
+    const [orderReferences, reviewReferences] = await Promise.all([
+      prisma.orderItem.count({ where: { productId: id } }),
+      prisma.review.count({ where: { productId: id } }),
+    ]);
+
+    if (orderReferences > 0 || reviewReferences > 0) {
+      await prisma.product.update({
+        where: { id },
+        data: { status: "ARCHIVED" },
+      });
+      await invalidateProductCache();
+
+      return {
+        success: true,
+        archived: true,
+        message:
+          "Product archived because it is referenced by existing orders or reviews.",
+      };
+    }
+
+    await prisma.$transaction([
+      prisma.cartItem.deleteMany({ where: { productId: id } }),
+      prisma.wishlist.deleteMany({ where: { productId: id } }),
+      prisma.productRelation.deleteMany({
+        where: { OR: [{ sourceId: id }, { targetId: id }] },
+      }),
+      prisma.productImage.deleteMany({ where: { productId: id } }),
+      prisma.productVariant.deleteMany({ where: { productId: id } }),
+      prisma.productSpec.deleteMany({ where: { productId: id } }),
+      prisma.product.delete({ where: { id } }),
+    ]);
+
     await removeProduct(id);
     await invalidateProductCache();
 
-    return { success: true, message: "Product deleted" };
+    return { success: true, archived: false, message: "Product deleted" };
   });
 };

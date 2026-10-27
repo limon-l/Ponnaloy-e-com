@@ -2,8 +2,9 @@ import { FastifyPluginAsync } from "fastify";
 import prisma from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { createOrderSchema } from "../validators";
-import { generateOrderNumber, DEFAULT_SHIPPING_FEE, FREE_SHIPPING_THRESHOLD } from "@ponnaloy/shared";
+import { generateOrderNumber } from "@ponnaloy/shared";
 import { config } from "../config/env";
+import { computeOrderTotals } from "../services/pricing";
 
 type PaymentMethodValue =
   | "STRIPE"
@@ -277,22 +278,16 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
       }
 
       // ── Totals are always recomputed from persisted prices ──
-      let subtotal = 0;
       const orderItems = cart.items.map((item) => {
         const unitPrice = item.variant?.price || item.product.price;
-        const lineTotal = unitPrice * item.quantity;
-        subtotal += lineTotal;
         return {
           productId: item.product.id,
           variantId: item.variantId,
           quantity: item.quantity,
           unitPrice,
-          total: lineTotal,
+          total: unitPrice * item.quantity,
         };
       });
-
-      let shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_FEE;
-      let discount = 0;
 
       // ── Coupon revalidation against the database (never trust cart snapshot) ──
       const couponKey = couponCode?.trim().toUpperCase() || cart.coupon?.code;
@@ -303,44 +298,28 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
+      let coupon = null;
       if (couponKey) {
-        const coupon = await prisma.coupon.findUnique({ where: { code: couponKey } });
-        if (!coupon || !coupon.isActive) {
-          return reply.code(400).send({ success: false, error: "This coupon is no longer valid." });
-        }
-
-        const now = new Date();
-        if (coupon.startDate && coupon.startDate > now) {
-          return reply.code(400).send({ success: false, error: "This coupon is not active yet." });
-        }
-        if (coupon.endDate && coupon.endDate < now) {
-          return reply.code(400).send({ success: false, error: "This coupon has expired." });
-        }
-        if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
-          return reply.code(400).send({ success: false, error: "This coupon has reached its usage limit." });
-        }
-        if (coupon.minOrderAmount !== null && subtotal < coupon.minOrderAmount) {
+        coupon = await prisma.coupon.findUnique({ where: { code: couponKey } });
+        if (!coupon) {
           return reply.code(400).send({
             success: false,
-            error: `This coupon requires a minimum order of $${(coupon.minOrderAmount / 100).toFixed(2)}.`,
+            error: "This coupon is no longer valid.",
+            code: "COUPON_INVALID",
           });
         }
-
-        if (coupon.discountType === "FREE_SHIPPING") {
-          shippingFee = 0;
-        } else if (coupon.discountType === "PERCENTAGE") {
-          discount = Math.floor((subtotal * coupon.discountValue) / 100);
-        } else {
-          discount = coupon.discountValue;
-        }
-
-        if (coupon.maxDiscountAmount !== null) {
-          discount = Math.min(discount, coupon.maxDiscountAmount);
-        }
-        discount = Math.max(0, Math.min(discount, subtotal));
       }
 
-      const total = subtotal + shippingFee - discount;
+      const pricing = computeOrderTotals(orderItems, coupon, new Date());
+      if (!pricing.ok) {
+        return reply.code(400).send({
+          success: false,
+          error: pricing.error,
+          code: pricing.code,
+        });
+      }
+
+      const { subtotal, shippingFee, discount, total } = pricing.totals;
 
       app.log.info(
         { userId, itemCount: cart.items.length, subtotal, shippingFee, discount, total },
@@ -525,19 +504,47 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (!["PENDING", "CONFIRMED"].includes(order.status)) {
-        return reply.code(400).send({
+        return reply.code(409).send({
           success: false,
           error: `Order cannot be cancelled. Current status: ${order.status}`,
+          code: "ORDER_NOT_CANCELLABLE",
         });
       }
 
-      await prisma.order.update({
-        where: { id: orderId },
-        data: { status: "CANCELLED" },
+      // Conditional transition: concurrent cancellation attempts (or a
+      // simultaneous admin update) can only win once, so stock is restocked
+      // exactly once.
+      const transition = await prisma.order.updateMany({
+        where: {
+          id: orderId,
+          userId,
+          status: { in: ["PENDING", "CONFIRMED"] },
+        },
+        data: { status: "CANCELLED", restockedAt: new Date() },
       });
 
+      if (transition.count === 0) {
+        const current = await prisma.order.findFirst({
+          where: { id: orderId, userId },
+          select: { status: true },
+        });
+        return reply.code(409).send({
+          success: false,
+          error: current
+            ? `Order cannot be cancelled. Current status: ${current.status}`
+            : "Order not found",
+          code: "ORDER_NOT_CANCELLABLE",
+        });
+      }
+
       await prisma.orderStatusLog.create({
-        data: { orderId, status: "CANCELLED", note: "Cancelled by customer" },
+        data: {
+          orderId,
+          status: "CANCELLED",
+          note: "Cancelled by customer",
+          actorId: userId,
+          actorRole: request.user!.role,
+        },
       });
 
       for (const item of order.items) {

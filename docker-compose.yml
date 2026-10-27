@@ -1,21 +1,43 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: ponnaloy-db
+  # The active API uses MongoDB via Prisma. Prisma wraps writes in
+  # transactions, so MongoDB must run as a replica set even in development.
+  mongo:
+    image: mongo:7
+    container_name: ponnaloy-mongo
     restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: ponnaloy
-      POSTGRES_PASSWORD: ponnaloy_secret
-      POSTGRES_DB: ponnaloy
+      - "27017:27017"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongo_data:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ponnaloy"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 20
+
+  # One-shot initialiser: creates the single-node replica set the first time.
+  mongo-init:
+    image: mongo:7
+    container_name: ponnaloy-mongo-init
+    restart: "no"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint:
+      - mongosh
+      - --host
+      - mongo:27017
+      - --quiet
+      - --eval
+      - |
+        try {
+          rs.status();
+          print("replica set already initialised");
+        } catch (e) {
+          rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] });
+          print("replica set initialised");
+        }
 
   redis:
     image: redis:7-alpine
@@ -44,6 +66,6 @@ services:
       - meili_data:/meili_data
 
 volumes:
-  postgres_data:
+  mongo_data:
   redis_data:
   meili_data:

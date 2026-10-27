@@ -24,6 +24,7 @@ if (config.nodeEnv !== "production") {
 }
 
 export async function getCache<T>(key: string): Promise<T | null> {
+  if (!config.redis.enabled) return null;
   try {
     const data = await redis.get(key);
     return data ? JSON.parse(data) : null;
@@ -37,6 +38,7 @@ export async function setCache(
   value: unknown,
   ttl: number = CACHE_TTL.MEDIUM
 ): Promise<void> {
+  if (!config.redis.enabled) return;
   try {
     await redis.set(key, JSON.stringify(value), "EX", ttl);
   } catch {
@@ -45,6 +47,7 @@ export async function setCache(
 }
 
 export async function deleteCache(pattern: string): Promise<void> {
+  if (!config.redis.enabled) return;
   try {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {

@@ -233,6 +233,9 @@ model Order {
   // enforced through IdempotencyRecord (a required primary key), because a
   // unique index on an optional MongoDB field has unreliable null semantics.
   idempotencyKey  String?
+  // Set when inventory has been returned to stock, so cancellations and
+  // returns can never restock the same order twice.
+  restockedAt     DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -272,6 +275,9 @@ model OrderStatusLog {
   id        String      @id @default(auto()) @map("_id") @db.ObjectId
   status    OrderStatus
   note      String?
+  // Who caused the transition. Optional because historical rows predate it.
+  actorId   String?     @db.ObjectId
+  actorRole String?
   createdAt DateTime    @default(now())
   orderId   String      @db.ObjectId
   order     Order       @relation(fields: [orderId], references: [id], onUpdate: NoAction, onDelete: NoAction)

@@ -13,7 +13,7 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
     if (cached) return cached;
 
     const categories = await prisma.category.findMany({
-      where: { isActive: true },
+      where: { isActive: true, parentId: null },
       include: {
         children: {
           where: { isActive: true },
@@ -27,7 +27,6 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
         },
         _count: { select: { products: true } },
       },
-      where: { parentId: null },
       orderBy: { position: "asc" },
     });
 

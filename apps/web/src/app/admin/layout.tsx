@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Package,
@@ -10,13 +11,15 @@ import {
   Tag,
   Image,
   Settings,
-  Bell,
   BarChart3,
   ChevronLeft,
   Menu,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 
 const sidebarLinks = [
@@ -36,6 +39,61 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  const isAdmin =
+    user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+
+  useEffect(() => {
+    if (!loading && !isAdmin) {
+      router.replace("/sign-in?next=%2Fadmin");
+    }
+  }, [loading, isAdmin, router]);
+
+  // The API enforces the admin role on every request. This guard prevents
+  // customers from seeing an empty shell and being redirected mid-action.
+  if (loading) {
+    return (
+      <div className="flex min-h-screen">
+        <div className="hidden w-64 border-r bg-muted/50 p-6 lg:block">
+          <Skeleton className="mb-8 h-6 w-40" />
+          <div className="space-y-3">
+            {Array.from({ length: 7 }).map((_, index) => (
+              <Skeleton key={index} className="h-9 w-full" />
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 p-8">
+          <Skeleton className="mb-4 h-9 w-56" />
+          <Skeleton className="mb-8 h-4 w-80" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-28 w-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="max-w-md text-center">
+          <ShieldAlert className="mx-auto mb-4 h-10 w-10 text-destructive" />
+          <h1 className="text-2xl font-bold">Administrator access required</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sign in with an administrator account to open the management
+            workspace.
+          </p>
+          <Button asChild className="mt-6">
+            <Link href="/sign-in?next=%2Fadmin">Sign in</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -50,7 +108,9 @@ export default function AdminLayout({
 
         <nav className="flex-1 px-4 space-y-1">
           {sidebarLinks.map((link) => {
-            const isActive = pathname === link.href;
+            const isActive =
+              pathname === link.href ||
+              (link.href !== "/admin" && pathname.startsWith(link.href));
             return (
               <Link
                 key={link.href}
@@ -83,7 +143,12 @@ export default function AdminLayout({
       {/* Mobile Sidebar */}
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="lg:hidden fixed top-4 left-4 z-50">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden fixed top-4 left-4 z-50"
+            aria-label="Open admin navigation"
+          >
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
@@ -96,7 +161,9 @@ export default function AdminLayout({
           </div>
           <nav className="flex-1 px-4 space-y-1">
             {sidebarLinks.map((link) => {
-              const isActive = pathname === link.href;
+              const isActive =
+                pathname === link.href ||
+                (link.href !== "/admin" && pathname.startsWith(link.href));
               return (
                 <Link
                   key={link.href}
@@ -119,9 +186,7 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <div className="p-8">
-          {children}
-        </div>
+        <div className="px-4 pb-10 pt-16 sm:px-6 lg:p-8">{children}</div>
       </main>
     </div>
   );

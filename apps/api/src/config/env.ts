@@ -58,6 +58,15 @@ export const config = {
 
   redis: {
     url: process.env.REDIS_URL || "redis://localhost:6379",
+    // Set REDIS_ENABLED=false for isolated test runs or single-process
+    // deployments where no cache is available.
+    enabled: process.env.REDIS_ENABLED !== "false",
+  },
+
+  uploads: {
+    // Local disk driver. Object storage (R2/S3) is a separate adapter and is
+    // not enabled until its credentials and public URL are configured.
+    dir: process.env.UPLOAD_DIR || "uploads",
   },
 
   meilisearch: {

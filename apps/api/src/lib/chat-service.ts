@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { openai, chatTools, executeTool, buildSystemPrompt, type ChatProduct } from "./openai";
 import prisma from "./prisma";
 
@@ -117,7 +118,7 @@ export async function* streamChat(
 
     const stream = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: apiMessages as OpenAI.ChatCompletionMessageParam[],
+      messages: apiMessages as ChatCompletionMessageParam[],
       tools: chatTools,
       stream: true,
       temperature: 0.7,

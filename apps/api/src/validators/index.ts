@@ -7,6 +7,29 @@ export const paginationSchema = z.object({
   order: z.enum(["asc", "desc"]).default("desc"),
 });
 
+/**
+ * Product/media URLs may be absolute (CDN, object storage) or a path produced
+ * by the local upload driver (`/uploads/<file>`). Relative upload paths are
+ * real, server-served assets and must be accepted by product CRUD.
+ */
+export const imageUrlSchema = z
+  .string()
+  .min(1)
+  .max(2048)
+  .refine(
+    (value) => value.startsWith("/uploads/") || /^https?:\/\//i.test(value),
+    "Image URL must be an absolute http(s) URL or an uploaded /uploads/ path"
+  );
+
+export const linkUrlSchema = z
+  .string()
+  .min(1)
+  .max(2048)
+  .refine(
+    (value) => value.startsWith("/") || /^https?:\/\//i.test(value),
+    "Link must be an internal path or an absolute http(s) URL"
+  );
+
 export const productFilterSchema = z.object({
   q: z.string().optional(),
   categoryId: z.string().optional(),
@@ -38,14 +61,14 @@ export const createProductSchema = z.object({
   isTrending: z.boolean().default(false),
   isNewArrival: z.boolean().default(false),
   weight: z.number().min(0).optional(),
-  categoryId: z.string().optional(),
+  categoryId: z.string().nullable().optional(),
   brandId: z.string().optional(),
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
   images: z
     .array(
       z.object({
-        url: z.string().url(),
+        url: imageUrlSchema,
         alt: z.string().optional(),
         position: z.number().int().min(0).default(0),
       })
@@ -58,7 +81,7 @@ export const createProductSchema = z.object({
         sku: z.string().optional(),
         price: z.number().int().min(0),
         stock: z.number().int().min(0).default(0),
-        image: z.string().optional(),
+        image: imageUrlSchema.optional(),
         options: z.record(z.string()).default({}),
       })
     )
@@ -116,7 +139,7 @@ export const createReviewSchema = z.object({
   rating: z.number().int().min(1).max(5),
   title: z.string().max(200).optional(),
   comment: z.string().max(2000).optional(),
-  images: z.array(z.string().url()).max(5).optional(),
+  images: z.array(imageUrlSchema).max(5).optional(),
 });
 
 export const createAddressSchema = z.object({
@@ -152,7 +175,7 @@ export const createCategorySchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().optional(),
   description: z.string().max(500).optional(),
-  image: z.string().url().optional(),
+  image: imageUrlSchema.optional(),
   isActive: z.boolean().default(true),
   parentId: z.string().optional(),
   position: z.number().int().min(0).default(0),
@@ -161,7 +184,7 @@ export const createCategorySchema = z.object({
 export const createBrandSchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().optional(),
-  logo: z.string().url().optional(),
+  logo: imageUrlSchema.optional(),
   description: z.string().max(500).optional(),
   website: z.string().url().optional(),
   isActive: z.boolean().default(true),
@@ -170,8 +193,8 @@ export const createBrandSchema = z.object({
 export const createBannerSchema = z.object({
   title: z.string().min(1).max(200),
   subtitle: z.string().max(500).optional(),
-  image: z.string().url(),
-  link: z.string().url().optional(),
+  image: imageUrlSchema,
+  link: linkUrlSchema.optional(),
   position: z.enum(["HERO", "SIDEBAR", "PROMO"]).default("HERO"),
   isActive: z.boolean().default(true),
   positionOrder: z.number().int().min(0).default(0),

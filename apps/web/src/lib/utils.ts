@@ -12,6 +12,29 @@ export function formatPrice(cents: number): string {
   }).format(cents / 100);
 }
 
+export function formatDate(
+  value: string | Date,
+  options: Intl.DateTimeFormatOptions = {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }
+): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", options).format(date);
+}
+
+export function formatDateTime(value: string | Date): string {
+  return formatDate(value, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function calculateDiscount(price: number, compareAtPrice?: number | null): number {
   if (!compareAtPrice || compareAtPrice <= price) return 0;
   return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);

@@ -2,6 +2,7 @@ import { FastifyPluginAsync } from "fastify";
 import prisma from "../lib/prisma";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { createCouponSchema } from "../validators";
+import { evaluateCoupon } from "../services/pricing";
 
 export const couponRoutes: FastifyPluginAsync = async (app) => {
   // Validate coupon (authenticated)
@@ -20,33 +21,15 @@ export const couponRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(404).send({ success: false, error: "Invalid coupon code" });
     }
 
-    if (!coupon.isActive) {
-      return reply.code(400).send({ success: false, error: "Coupon is inactive" });
-    }
-
-    if (coupon.endDate && new Date(coupon.endDate) < new Date()) {
-      return reply.code(400).send({ success: false, error: "Coupon has expired" });
-    }
-
-    if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
-      return reply.code(400).send({ success: false, error: "Coupon usage limit reached" });
-    }
-
-    if (coupon.minOrderAmount && subtotal < coupon.minOrderAmount) {
+    // Preview and checkout share one evaluator so the displayed discount is
+    // exactly the discount applied to the order.
+    const evaluation = evaluateCoupon(coupon, subtotal, new Date());
+    if (!evaluation.ok) {
       return reply.code(400).send({
         success: false,
-        error: `Minimum order amount is $${(coupon.minOrderAmount / 100).toFixed(2)}`,
+        error: evaluation.error,
+        code: evaluation.code,
       });
-    }
-
-    let discount = 0;
-    if (coupon.discountType === "PERCENTAGE") {
-      discount = Math.round((subtotal * coupon.discountValue) / 100);
-      if (coupon.maxDiscountAmount) {
-        discount = Math.min(discount, coupon.maxDiscountAmount);
-      }
-    } else if (coupon.discountType === "FIXED") {
-      discount = coupon.discountValue;
     }
 
     return {
@@ -55,7 +38,8 @@ export const couponRoutes: FastifyPluginAsync = async (app) => {
         code: coupon.code,
         discountType: coupon.discountType,
         discountValue: coupon.discountValue,
-        discount,
+        discount: evaluation.discount,
+        freeShipping: evaluation.freeShipping,
         description: coupon.description,
       },
     };
