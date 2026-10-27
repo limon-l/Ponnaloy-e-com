@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -12,11 +12,12 @@ import { StaggerGrid } from "@/components/ui/stagger-grid";
 import { api } from "@/lib/api";
 import type { Product } from "@/types";
 
+// Only claims the platform actually honours today.
 const features = [
   { icon: Truck, title: "Free Shipping", description: "On orders over $150" },
-  { icon: Shield, title: "Secure Payment", description: "256-bit SSL encryption" },
-  { icon: CreditCard, title: "Easy Returns", description: "30-day return policy" },
-  { icon: Headphones, title: "24/7 Support", description: "Dedicated customer care" },
+  { icon: Shield, title: "Server-Validated Checkout", description: "Prices and stock confirmed at order time" },
+  { icon: CreditCard, title: "Cash on Delivery", description: "Pay when your order arrives" },
+  { icon: Headphones, title: "Order Tracking", description: "Follow every order from your account" },
 ];
 
 function ProductGridSkeleton() {
@@ -49,6 +50,30 @@ export default function HomePage() {
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; image: string; slug: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [newsletterMessage, setNewsletterMessage] = useState("");
+
+  const handleSubscribe = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!newsletterEmail.trim() || newsletterStatus === "loading") return;
+
+    setNewsletterStatus("loading");
+    try {
+      const response = await api.post<{ success: boolean; message?: string }>("/api/newsletter", {
+        email: newsletterEmail.trim(),
+        source: "homepage",
+      });
+      setNewsletterStatus("success");
+      setNewsletterMessage(response.message ?? "You're subscribed.");
+      setNewsletterEmail("");
+    } catch (error) {
+      setNewsletterStatus("error");
+      setNewsletterMessage(
+        error instanceof Error ? error.message : "Subscription failed. Please try again."
+      );
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -282,15 +307,28 @@ export default function HomePage() {
           <p className="text-muted-foreground mt-2 mb-6 text-sm">
             Subscribe for exclusive deals, new arrivals, and more.
           </p>
-          <form className="flex gap-2" onSubmit={(e) => e.preventDefault()}>
+          <form className="flex gap-2" onSubmit={handleSubscribe}>
             <Input
               type="email"
+              required
               placeholder="Enter your email"
               className="flex-1"
+              value={newsletterEmail}
+              onChange={(event) => setNewsletterEmail(event.target.value)}
               icon={<Send className="h-4 w-4" />}
             />
-            <Button type="submit">Subscribe</Button>
+            <Button type="submit" loading={newsletterStatus === "loading"}>
+              Subscribe
+            </Button>
           </form>
+          {newsletterMessage && (
+            <p
+              role="status"
+              className={`text-sm mt-3 ${newsletterStatus === "error" ? "text-destructive" : "text-success"}`}
+            >
+              {newsletterMessage}
+            </p>
+          )}
         </div>
       </motion.section>
     </div>

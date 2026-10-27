@@ -64,6 +64,8 @@ model Product {
   avgRating       Float         @default(0)
   reviewCount     Int           @default(0)
   totalSold       Int           @default(0)
+  // Product-level inventory used when the product has no variants.
+  stock           Int           @default(0)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -227,6 +229,10 @@ model Order {
   total           Int
   currency        String        @default("USD")
   notes           String?
+  // Client-supplied key that makes order creation safe to retry. Uniqueness is
+  // enforced through IdempotencyRecord (a required primary key), because a
+  // unique index on an optional MongoDB field has unreliable null semantics.
+  idempotencyKey  String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -501,6 +507,29 @@ enum DiscountType {
   PERCENTAGE
   FIXED
   FREE_SHIPPING
+}
+
+// ─── Idempotency ─────────────────────────────────────────────
+
+model IdempotencyRecord {
+  id        String   @id @map("_id")
+  scope     String   @default("order")
+  userId    String
+  orderId   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─── Newsletter ──────────────────────────────────────────────
+
+model NewsletterSubscriber {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  source    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // ─── Notifications ───────────────────────────────────────────

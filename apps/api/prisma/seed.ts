@@ -86,6 +86,7 @@ interface ProductInput {
   description: string;
   shortDescription: string;
   price: number; // in cents
+  stock?: number;
   compareAtPrice?: number;
   costPrice?: number;
   sku: string;
@@ -836,6 +837,7 @@ async function main() {
         avgRating: product.avgRating,
         reviewCount: product.reviewCount,
         totalSold: product.totalSold,
+        stock: product.stock ?? 50,
         weight: product.weight ?? null,
         categoryId,
         brandId,
@@ -856,6 +858,7 @@ async function main() {
         avgRating: product.avgRating,
         reviewCount: product.reviewCount,
         totalSold: product.totalSold,
+        stock: product.stock ?? 50,
         weight: product.weight ?? null,
         categoryId,
         brandId,

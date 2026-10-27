@@ -66,7 +66,16 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
     }
 
     if (inStock) {
-      where.variants = { some: { stock: { gt: 0 } } };
+      // Simple products track inventory on Product.stock; variant products on
+      // ProductVariant.stock. Either source counts as available.
+      where.AND = [
+        {
+          OR: [
+            { stock: { gt: 0 } },
+            { variants: { some: { stock: { gt: 0 } } } },
+          ],
+        },
+      ];
     }
 
     if (q) {

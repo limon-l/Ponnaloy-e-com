@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Check, CreditCard, Truck, Lock, Loader2 } from "lucide-react";
+import { Banknote, Check, CreditCard, Truck, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,17 +25,42 @@ const steps = [
 interface ShippingInfo {
   firstName: string; lastName: string; email: string; phone: string;
   address: string; address2: string; city: string; state: string; zip: string;
+  country: string;
+}
+
+interface PaymentMethodOption {
+  id: string;
+  label: string;
+  description: string;
+  requiresRedirect: boolean;
 }
 
 const emptyShipping: ShippingInfo = {
-  firstName: "", lastName: "", email: "", phone: "", address: "", address2: "", city: "", state: "", zip: "",
+  firstName: "", lastName: "", email: "", phone: "", address: "", address2: "", city: "", state: "", zip: "", country: "US",
 };
+
+const FALLBACK_METHODS: PaymentMethodOption[] = [
+  {
+    id: "COD",
+    label: "Cash on Delivery",
+    description: "Pay in cash when your order arrives.",
+    requiresRedirect: false,
+  },
+];
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [paymentMethod, setPaymentMethod] = useState("COD");
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(FALLBACK_METHODS);
+  const [methodsLoading, setMethodsLoading] = useState(true);
+  // Stable for this checkout attempt so retries cannot create duplicate orders.
+  const idempotencyKey = useRef<string>(
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `ck-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
   const [shipping, setShipping] = useState<ShippingInfo>({
     ...emptyShipping,
     firstName: user?.firstName || "",
@@ -49,6 +74,35 @@ export default function CheckoutPage() {
   const { items, subtotal, discount, couponCode, clearCart } = useCart();
   const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_FEE;
   const total = Math.max(0, subtotal + shippingFee - (discount || 0));
+
+  // Only render payment methods the server can actually process.
+  useEffect(() => {
+    let cancelled = false;
+
+    api
+      .get<{ success: boolean; data: { methods: PaymentMethodOption[] } }>("/api/payments/methods")
+      .then((response) => {
+        if (cancelled || !response.success) return;
+        const methods = response.data.methods.length > 0 ? response.data.methods : FALLBACK_METHODS;
+        setPaymentMethods(methods);
+        setPaymentMethod((current) =>
+          methods.some((method) => method.id === current) ? current : methods[0].id
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setPaymentMethods(FALLBACK_METHODS);
+      })
+      .finally(() => {
+        if (!cancelled) setMethodsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectedPaymentMethod =
+    paymentMethods.find((method) => method.id === paymentMethod) ?? paymentMethods[0];
 
   if (!isAuthenticated) {
     return (
@@ -100,7 +154,7 @@ export default function CheckoutPage() {
     city: shipping.city,
     state: shipping.state,
     zipCode: shipping.zip,
-    country: "US",
+    country: shipping.country || "US",
   });
 
   return (
@@ -258,6 +312,17 @@ export default function CheckoutPage() {
                     />
                     {shippingErrors.zip && <p className="text-xs text-destructive">{shippingErrors.zip}</p>}
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Input
+                      id="country"
+                      placeholder="US"
+                      value={shipping.country}
+                      onChange={(e) => updateShipping("country", e.target.value.toUpperCase())}
+                      maxLength={2}
+                    />
+                    <p className="text-xs text-muted-foreground">ISO country code, e.g. US</p>
+                  </div>
                 </div>
                 <Button onClick={handleShippingContinue} className="w-full" size="lg">
                   Continue to Payment
@@ -268,32 +333,29 @@ export default function CheckoutPage() {
             {currentStep === 2 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold">Payment Method</h2>
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
-                  <label className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all duration-200 ${paymentMethod === "stripe" ? "border-primary bg-primary/5 shadow-sm" : "border hover:border-primary/30"}`}>
-                    <RadioGroupItem value="stripe" />
-                    <CreditCard className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium text-sm">Credit / Debit Card</p>
-                      <p className="text-xs text-muted-foreground">Pay securely with Stripe</p>
-                    </div>
-                  </label>
-                  <label className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all duration-200 ${paymentMethod === "paypal" ? "border-primary bg-primary/5 shadow-sm" : "border hover:border-primary/30"}`}>
-                    <RadioGroupItem value="paypal" />
-                    <div className="h-5 w-5 bg-blue-600 rounded text-white flex items-center justify-center text-2xs font-bold">PP</div>
-                    <div>
-                      <p className="font-medium text-sm">PayPal</p>
-                      <p className="text-xs text-muted-foreground">Pay with your PayPal account</p>
-                    </div>
-                  </label>
-                  <label className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all duration-200 ${paymentMethod === "cod" ? "border-primary bg-primary/5 shadow-sm" : "border hover:border-primary/30"}`}>
-                    <RadioGroupItem value="cod" />
-                    <div className="h-5 w-5 bg-success rounded text-white flex items-center justify-center text-2xs font-bold">$</div>
-                    <div>
-                      <p className="font-medium text-sm">Cash on Delivery</p>
-                      <p className="text-xs text-muted-foreground">Pay when you receive your order</p>
-                    </div>
-                  </label>
-                </RadioGroup>
+                {methodsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading payment methods…</p>
+                ) : (
+                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
+                    {paymentMethods.map((method) => (
+                      <label
+                        key={method.id}
+                        className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all duration-200 ${paymentMethod === method.id ? "border-primary bg-primary/5 shadow-sm" : "border hover:border-primary/30"}`}
+                      >
+                        <RadioGroupItem value={method.id} />
+                        {method.id === "COD" ? (
+                          <Banknote className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <CreditCard className="h-5 w-5 text-muted-foreground" />
+                        )}
+                        <div>
+                          <p className="font-medium text-sm">{method.label}</p>
+                          <p className="text-xs text-muted-foreground">{method.description}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </RadioGroup>
+                )}
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={() => setCurrentStep(1)}>Back</Button>
                   <Button onClick={() => setCurrentStep(3)} className="flex-1" size="lg">Review Order</Button>
@@ -320,8 +382,8 @@ export default function CheckoutPage() {
                     <h3 className="font-medium text-sm">Payment Method</h3>
                     <Button variant="ghost" size="sm" onClick={() => setCurrentStep(2)}>Edit</Button>
                   </div>
-                  <p className="text-sm text-muted-foreground capitalize">
-                    {paymentMethod === "stripe" ? "Credit / Debit Card" : paymentMethod === "paypal" ? "PayPal" : "Cash on Delivery"}
+                  <p className="text-sm text-muted-foreground">
+                    {selectedPaymentMethod?.label ?? "Cash on Delivery"}
                   </p>
                 </div>
                 <div className="border rounded-xl p-4">
@@ -354,13 +416,23 @@ export default function CheckoutPage() {
                       setOrderError(null);
                       try {
                         const address = buildAddressObject();
-                        await api.post("/api/orders", {
+                        const response = await api.post<{
+                          success: boolean;
+                          data: { id: string; orderNumber: string };
+                          checkoutUrl?: string;
+                        }>("/api/orders", {
                           shippingAddress: address,
                           billingAddress: address,
-                          paymentMethod: paymentMethod.toUpperCase(),
+                          paymentMethod,
                           couponCode: couponCode || undefined,
-                          notes: undefined,
+                          idempotencyKey: idempotencyKey.current,
                         });
+
+                        if (response.checkoutUrl) {
+                          window.location.href = response.checkoutUrl;
+                          return;
+                        }
+
                         clearCart();
                         router.push("/orders?created=true");
                       } catch (err: unknown) {

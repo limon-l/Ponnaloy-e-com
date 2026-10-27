@@ -40,6 +40,14 @@ export default function ProductDetailPage() {
   const { toggleItem, hasItem } = useWishlist();
   const { toast } = useToast();
 
+  // Inventory lives on the selected variant, or on the product itself when it
+  // has no variants. Never fall back to "unlimited" for a missing value.
+  const totalAvailableStock = product
+    ? product.variants && product.variants.length > 0
+      ? product.variants.reduce((sum, variant) => sum + variant.stock, 0)
+      : product.stock ?? 0
+    : 0;
+
   useEffect(() => {
     async function fetchProduct() {
       try {
@@ -87,6 +95,7 @@ export default function ProductDetailPage() {
 
   const discount = calculateDiscount(product.price, product.compareAtPrice);
   const selectedVariantData = product.variants?.find((v) => v.id === selectedVariant);
+  const availableStock = selectedVariantData ? selectedVariantData.stock : totalAvailableStock;
   const currentPrice = selectedVariantData?.price ?? product.price;
   const isWishlisted = hasItem(product.id);
 
@@ -259,14 +268,18 @@ export default function ProductDetailPage() {
                   variant="ghost"
                   size="icon"
                   className="rounded-none hover:bg-muted"
-                  onClick={() => setQuantity(Math.min(quantity + 1, product.stock ?? 99))}
-                  disabled={quantity >= (product.stock ?? 99)}
+                  onClick={() => setQuantity(Math.min(quantity + 1, Math.max(availableStock, 1)))}
+                  disabled={quantity >= availableStock}
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </Button>
               </div>
               <span className="text-sm text-muted-foreground">
-                {(product.stock ?? 0) > 0 ? ((product.stock ?? 0) < 10 ? `Only ${product.stock} left in stock` : "In stock") : "Out of stock"}
+                {availableStock > 0
+                  ? availableStock < 10
+                    ? `Only ${availableStock} left in stock`
+                    : "In stock"
+                  : "Out of stock"}
               </span>
             </div>
           </div>
@@ -277,11 +290,11 @@ export default function ProductDetailPage() {
               size="lg"
               className="flex-1"
               onClick={handleAddToCart}
-              disabled={addingToCart || (product.stock ?? 0) === 0}
+              disabled={addingToCart || availableStock === 0}
               loading={addingToCart}
             >
               <ShoppingBag className="h-4 w-4" />
-              {(product.stock ?? 0) === 0 ? "Out of Stock" : "Add to Cart"}
+              {availableStock === 0 ? "Out of Stock" : "Add to Cart"}
             </Button>
             <Button
               size="lg"
@@ -302,7 +315,7 @@ export default function ProductDetailPage() {
               variant="default"
               className="w-full"
               onClick={handleBuyNow}
-              disabled={(product.stock ?? 0) === 0}
+              disabled={availableStock === 0}
             >
               Buy Now
             </Button>

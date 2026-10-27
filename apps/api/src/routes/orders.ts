@@ -3,8 +3,67 @@ import prisma from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { createOrderSchema } from "../validators";
 import { generateOrderNumber, DEFAULT_SHIPPING_FEE, FREE_SHIPPING_THRESHOLD } from "@ponnaloy/shared";
+import { config } from "../config/env";
+
+type PaymentMethodValue =
+  | "STRIPE"
+  | "PAYPAL"
+  | "SSLCOMMERZ"
+  | "RAZORPAY"
+  | "COD"
+  | "BANK_TRANSFER";
+
+type Reservation = {
+  kind: "variant" | "product";
+  id: string;
+  quantity: number;
+};
+
+/**
+ * Payment methods the server can genuinely fulfil today.
+ * Card/PayPal/etc. are intentionally rejected until a real gateway integration
+ * (session creation + verified webhook) is enabled through configuration.
+ */
+function isPaymentMethodEnabled(method: PaymentMethodValue): boolean {
+  if (method === "COD" || method === "BANK_TRANSFER") return true;
+  if (method === "STRIPE") return config.features.stripe;
+  return false;
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: string }).code === "P2002"
+  );
+}
 
 export const orderRoutes: FastifyPluginAsync = async (app) => {
+  /** Return reserved inventory after a failed checkout attempt. */
+  async function releaseReservations(reservations: Reservation[], orderId?: string) {
+    for (const reservation of reservations) {
+      try {
+        if (reservation.kind === "variant") {
+          await prisma.productVariant.updateMany({
+            where: { id: reservation.id },
+            data: { stock: { increment: reservation.quantity } },
+          });
+        } else {
+          await prisma.product.updateMany({
+            where: { id: reservation.id },
+            data: { stock: { increment: reservation.quantity } },
+          });
+        }
+      } catch (error) {
+        app.log.error(
+          { err: error, reservation, orderId },
+          "Failed to release reserved inventory"
+        );
+      }
+    }
+    reservations.length = 0;
+  }
+
   // Get user orders
   app.get("/", { preHandler: [requireAuth] }, async (request, reply) => {
     const userId = request.user!.id;
@@ -31,8 +90,8 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
                 },
               },
             },
-            payments: { orderBy: { createdAt: "desc" } },
-            shipments: { orderBy: { createdAt: "desc" } },
+            payments: true,
+            shipments: true,
           },
           orderBy: { createdAt: "desc" },
           skip: (page - 1) * limit,
@@ -41,19 +100,9 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         prisma.order.count({ where }),
       ]);
 
-      const orders = rawOrders.map((o) => ({
-        ...o,
-        items: o.items.map((i) => ({
-          ...i,
-          product: i.product ? { ...i.product, images: i.product.images.slice(0, 1) } : i.product,
-        })),
-        payments: o.payments.slice(0, 1),
-        shipments: o.shipments.slice(0, 1),
-      }));
-
       return {
         success: true,
-        data: orders,
+        data: rawOrders,
         pagination: {
           page,
           limit,
@@ -125,10 +174,56 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
-    const { shippingAddress, billingAddress, paymentMethod, couponCode, notes } = parsed.data;
+    const {
+      shippingAddress,
+      billingAddress,
+      paymentMethod,
+      couponCode,
+      notes,
+      idempotencyKey,
+    } = parsed.data;
+
+    const method = paymentMethod as PaymentMethodValue;
+
+    if (!isPaymentMethodEnabled(method)) {
+      return reply.code(409).send({
+        success: false,
+        error: `The ${method} payment method is not available yet. Please choose Cash on Delivery or Bank Transfer.`,
+        code: "PAYMENT_METHOD_UNAVAILABLE",
+      });
+    }
+
+    const headerKey = request.headers["idempotency-key"];
+    const key = idempotencyKey || (typeof headerKey === "string" ? headerKey : undefined);
+
+    // Idempotent replay: return the original order instead of charging/shipping twice.
+    if (key) {
+      const existing = await prisma.order.findFirst({
+        where: { idempotencyKey: key, userId },
+        include: { items: true, payments: true, statusHistory: true },
+      });
+      if (existing) {
+        return reply.code(200).send({ success: true, data: existing, idempotent: true });
+      }
+    }
+
+    const reservations: Reservation[] = [];
+    let claimedId: string | null = null;
+    let orderCommitted = false;
+
+    /** Allow a later retry after a checkout attempt fails before the order exists. */
+    async function releaseClaim() {
+      if (!claimedId) return;
+      const id = claimedId;
+      claimedId = null;
+      try {
+        await prisma.idempotencyRecord.delete({ where: { id } });
+      } catch (error) {
+        app.log.error({ err: error, id }, "Failed to release idempotency claim");
+      }
+    }
 
     try {
-      // Get cart with items
       const cart = await prisma.cart.findUnique({
         where: { userId },
         include: {
@@ -149,115 +244,227 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      // Validate stock
+      // ── Validate line items (quantity, product state, variant ownership) ──
       for (const item of cart.items) {
-        if (item.variant) {
-          if (item.variant.stock < item.quantity) {
-            return reply.code(400).send({
-              success: false,
-              error: `${item.product.name} (${item.variant.name}) has insufficient stock. Available: ${item.variant.stock}, requested: ${item.quantity}`,
-            });
-          }
-        } else {
-          const variantCount = await prisma.productVariant.count({
-            where: { productId: item.product.id },
+        if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 999) {
+          return reply.code(400).send({
+            success: false,
+            error: `Invalid quantity for ${item.product.name}.`,
           });
-          if (variantCount > 0) {
-            const totalStock = await prisma.productVariant.aggregate({
-              where: { productId: item.product.id },
-              _sum: { stock: true },
-            });
-            const stock = totalStock._sum.stock || 0;
-            if (stock < item.quantity) {
-              return reply.code(400).send({
-                success: false,
-                error: `${item.product.name} is out of stock. Available: ${stock}, requested: ${item.quantity}`,
-              });
-            }
-          }
+        }
+        if (item.product.status !== "ACTIVE") {
+          return reply.code(409).send({
+            success: false,
+            error: `${item.product.name} is no longer available. Please remove it from your cart.`,
+          });
+        }
+        if (item.variant && item.variant.productId !== item.product.id) {
+          return reply.code(409).send({
+            success: false,
+            error: `The selected variant for ${item.product.name} is invalid.`,
+          });
+        }
+
+        const available = item.variant ? item.variant.stock : item.product.stock;
+        if (available < item.quantity) {
+          const variantLabel = item.variant ? ` (${item.variant.name})` : "";
+          return reply.code(409).send({
+            success: false,
+            error: `${item.product.name}${variantLabel} has insufficient stock. Available: ${available}, requested: ${item.quantity}.`,
+            code: "INSUFFICIENT_STOCK",
+          });
         }
       }
 
-      // Calculate totals server-side (never trust frontend totals)
+      // ── Totals are always recomputed from persisted prices ──
       let subtotal = 0;
       const orderItems = cart.items.map((item) => {
-        const price = item.variant?.price || item.product.price;
-        const total = price * item.quantity;
-        subtotal += total;
+        const unitPrice = item.variant?.price || item.product.price;
+        const lineTotal = unitPrice * item.quantity;
+        subtotal += lineTotal;
         return {
           productId: item.product.id,
           variantId: item.variantId,
           quantity: item.quantity,
-          unitPrice: price,
-          total,
+          unitPrice,
+          total: lineTotal,
         };
       });
 
-      const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_FEE;
-
-      // Apply coupon discount
+      let shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_FEE;
       let discount = 0;
-      if (cart.coupon) {
-        discount = cart.coupon.discount;
+
+      // ── Coupon revalidation against the database (never trust cart snapshot) ──
+      const couponKey = couponCode?.trim().toUpperCase() || cart.coupon?.code;
+      if (couponCode && cart.coupon && cart.coupon.code !== couponCode.toUpperCase()) {
+        return reply.code(400).send({
+          success: false,
+          error: "Coupon code does not match the applied coupon.",
+        });
+      }
+
+      if (couponKey) {
+        const coupon = await prisma.coupon.findUnique({ where: { code: couponKey } });
+        if (!coupon || !coupon.isActive) {
+          return reply.code(400).send({ success: false, error: "This coupon is no longer valid." });
+        }
+
+        const now = new Date();
+        if (coupon.startDate && coupon.startDate > now) {
+          return reply.code(400).send({ success: false, error: "This coupon is not active yet." });
+        }
+        if (coupon.endDate && coupon.endDate < now) {
+          return reply.code(400).send({ success: false, error: "This coupon has expired." });
+        }
+        if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+          return reply.code(400).send({ success: false, error: "This coupon has reached its usage limit." });
+        }
+        if (coupon.minOrderAmount !== null && subtotal < coupon.minOrderAmount) {
+          return reply.code(400).send({
+            success: false,
+            error: `This coupon requires a minimum order of $${(coupon.minOrderAmount / 100).toFixed(2)}.`,
+          });
+        }
+
+        if (coupon.discountType === "FREE_SHIPPING") {
+          shippingFee = 0;
+        } else if (coupon.discountType === "PERCENTAGE") {
+          discount = Math.floor((subtotal * coupon.discountValue) / 100);
+        } else {
+          discount = coupon.discountValue;
+        }
+
+        if (coupon.maxDiscountAmount !== null) {
+          discount = Math.min(discount, coupon.maxDiscountAmount);
+        }
+        discount = Math.max(0, Math.min(discount, subtotal));
       }
 
       const total = subtotal + shippingFee - discount;
 
-      // Verify coupon code matches if provided
-      if (couponCode && (!cart.coupon || cart.coupon.code !== couponCode.toUpperCase())) {
-        return reply.code(400).send({
-          success: false,
-          error: "Coupon code does not match the applied coupon",
+      app.log.info(
+        { userId, itemCount: cart.items.length, subtotal, shippingFee, discount, total },
+        "Creating order"
+      );
+
+      // ── Claim the idempotency key before mutating inventory ──
+      if (key) {
+        const recordId = `${userId}:${key}`;
+        try {
+          await prisma.idempotencyRecord.create({ data: { id: recordId, userId } });
+          claimedId = recordId;
+        } catch (error) {
+          if (!isUniqueConstraintError(error)) throw error;
+
+          const record = await prisma.idempotencyRecord.findUnique({ where: { id: recordId } });
+          if (record?.orderId) {
+            const existingOrder = await prisma.order.findFirst({
+              where: { id: record.orderId, userId },
+              include: { items: true, payments: true, statusHistory: true },
+            });
+            if (existingOrder) {
+              return reply
+                .code(200)
+                .send({ success: true, data: existingOrder, idempotent: true });
+            }
+          }
+
+          return reply.code(409).send({
+            success: false,
+            error:
+              "A previous checkout attempt is still being processed. Please wait a moment and try again.",
+            code: "ORDER_IN_PROGRESS",
+          });
+        }
+      }
+
+      // ── Reserve inventory atomically per document (MongoDB has no cross-document transactions here) ──
+      for (const item of cart.items) {
+        const filter = {
+          id: item.variant ? item.variant.id : item.product.id,
+          stock: { gte: item.quantity },
+        };
+
+        const result = item.variant
+          ? await prisma.productVariant.updateMany({
+              where: filter,
+              data: { stock: { decrement: item.quantity } },
+            })
+          : await prisma.product.updateMany({
+              where: filter,
+              data: { stock: { decrement: item.quantity } },
+            });
+
+        if (result.count === 0) {
+          await releaseReservations(reservations);
+          await releaseClaim();
+          return reply.code(409).send({
+            success: false,
+            error: `${item.product.name} just sold out or changed availability. Please review your cart.`,
+            code: "STOCK_RESERVATION_FAILED",
+          });
+        }
+
+        reservations.push({
+          kind: item.variant ? "variant" : "product",
+          id: filter.id,
+          quantity: item.quantity,
         });
       }
 
-      app.log.info({ userId, itemCount: cart.items.length, total }, "Creating order");
-
-      // Create order with nested relations (single Prisma call — atomic on MongoDB)
+      // ── Persist the order (failures roll back stock and the claim in the outer catch) ──
       const order = await prisma.order.create({
-        data: {
-          orderNumber: generateOrderNumber(),
-          userId,
-          subtotal,
-          shippingFee,
-          discount,
-          total,
-          shippingAddress,
-          billingAddress: billingAddress || undefined,
-          notes: notes || undefined,
-          items: {
-            create: orderItems,
-          },
-          payments: {
-            create: {
-              amount: total,
-              method: paymentMethod as "STRIPE" | "PAYPAL" | "COD" | "BANK_TRANSFER",
-              status: paymentMethod === "COD" ? "PENDING" : "PROCESSING",
+          data: {
+            orderNumber: generateOrderNumber(),
+            userId,
+            subtotal,
+            shippingFee,
+            tax: 0,
+            discount,
+            total,
+            shippingAddress,
+            billingAddress: billingAddress ?? undefined,
+            notes: notes || undefined,
+            idempotencyKey: key,
+            items: { create: orderItems },
+            payments: {
+              create: {
+                amount: total,
+                method,
+                status: "PENDING",
+              },
+            },
+            statusHistory: {
+              create: { status: "PENDING", note: "Order placed" },
             },
           },
-          statusHistory: {
-            create: { status: "PENDING", note: "Order placed" },
-          },
-        },
-        include: {
-          items: true,
-          payments: true,
-          statusHistory: true,
-        },
+          include: { items: true, payments: true, statusHistory: true },
       });
 
-      // Post-order operations (non-critical — log errors but don't fail the order)
-      try {
-        for (const item of cart.items) {
-          if (item.variantId) {
-            await prisma.productVariant.update({
-              where: { id: item.variantId },
-              data: { stock: { decrement: item.quantity } },
-            });
-          }
+      orderCommitted = true;
+
+      if (claimedId) {
+        try {
+          await prisma.idempotencyRecord.update({
+            where: { id: claimedId },
+            data: { orderId: order.id },
+          });
+        } catch (error) {
+          // The claim stays in place (without orderId) so a retry receives a
+          // safe 409 instead of creating a duplicate order.
+          app.log.error(
+            { err: error, orderId: order.id },
+            "Failed to link idempotency record to order"
+          );
         }
-      } catch (stockErr) {
-        app.log.error({ err: stockErr, orderId: order.id }, "Failed to decrement stock");
+      }
+
+      // ── Post-order bookkeeping (failures are logged, never silent stock leaks) ──
+      try {
+        await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+        await prisma.cartCoupon.deleteMany({ where: { cartId: cart.id } });
+      } catch (cartErr) {
+        app.log.error({ err: cartErr, orderId: order.id }, "Failed to clear cart");
       }
 
       try {
@@ -271,17 +478,10 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         app.log.error({ err: soldErr, orderId: order.id }, "Failed to update totalSold");
       }
 
-      try {
-        await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-        await prisma.cartCoupon.deleteMany({ where: { cartId: cart.id } });
-      } catch (cartErr) {
-        app.log.error({ err: cartErr, orderId: order.id }, "Failed to clear cart");
-      }
-
-      if (cart.coupon) {
+      if (couponKey) {
         try {
           await prisma.coupon.update({
-            where: { code: cart.coupon.code },
+            where: { code: couponKey },
             data: { usedCount: { increment: 1 } },
           });
         } catch (couponErr) {
@@ -289,17 +489,22 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
-      app.log.info({ userId, orderId: order.id, orderNumber: order.orderNumber }, "Order created successfully");
+      app.log.info({ userId, orderId: order.id, orderNumber: order.orderNumber }, "Order created");
 
       return reply.code(201).send({ success: true, data: order });
     } catch (error) {
+      if (!orderCommitted) {
+        await releaseReservations(reservations);
+        await releaseClaim();
+      }
       const errMsg = error instanceof Error ? error.message : String(error);
       app.log.error({ err: error, userId }, "Failed to create order");
       return reply.code(500).send({
         success: false,
-        error: process.env.NODE_ENV === "production"
-          ? "An unexpected error occurred while creating your order. Please try again."
-          : `Order creation failed: ${errMsg}`,
+        error:
+          config.isProduction
+            ? "An unexpected error occurred while creating your order. Please try again."
+            : `Order creation failed: ${errMsg}`,
       });
     }
   });
@@ -337,8 +542,13 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
 
       for (const item of order.items) {
         if (item.variantId) {
-          await prisma.productVariant.update({
+          await prisma.productVariant.updateMany({
             where: { id: item.variantId },
+            data: { stock: { increment: item.quantity } },
+          });
+        } else {
+          await prisma.product.updateMany({
+            where: { id: item.productId },
             data: { stock: { increment: item.quantity } },
           });
         }

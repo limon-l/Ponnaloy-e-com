@@ -33,7 +33,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const isOutOfStock =
     product.variants && product.variants.length > 0
       ? product.variants.every((v) => v.stock === 0)
-      : (product as any).stock === 0;
+      : (product.stock ?? 0) <= 0;
 
   const handleAddToCart = useCallback(
     (e: React.MouseEvent) => {

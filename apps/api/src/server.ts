@@ -29,6 +29,8 @@ import { bannerRoutes } from "./routes/banners";
 import { collectionRoutes } from "./routes/collections";
 import { chatRoutes } from "./routes/chat";
 import { authRoutes } from "./routes/auth";
+import { paymentRoutes } from "./routes/payments";
+import { newsletterRoutes } from "./routes/newsletter";
 
 const server = Fastify({
   logger: {
@@ -67,8 +69,14 @@ async function registerPlugins() {
       // Allow requests with no origin (mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
-      // Allow any Vercel preview deployment (*.vercel.app)
-      if (origin.endsWith(".vercel.app")) return callback(null, true);
+      // Vercel preview origins are opt-in: allowing every *.vercel.app origin
+      // would let any third-party deployment call this API with credentials.
+      if (
+        process.env.ALLOW_VERCEL_PREVIEWS === "true" &&
+        origin.endsWith(".vercel.app")
+      ) {
+        return callback(null, true);
+      }
       callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     credentials: true,
@@ -133,6 +141,8 @@ async function registerRoutes() {
   await server.register(brandRoutes, { prefix: "/api/brands" });
   await server.register(cartRoutes, { prefix: "/api/cart" });
   await server.register(orderRoutes, { prefix: "/api/orders" });
+  await server.register(paymentRoutes, { prefix: "/api/payments" });
+  await server.register(newsletterRoutes, { prefix: "/api/newsletter" });
   await server.register(reviewRoutes, { prefix: "/api/reviews" });
   await server.register(wishlistRoutes, { prefix: "/api/wishlist" });
   await server.register(addressRoutes, { prefix: "/api/addresses" });

@@ -32,6 +32,7 @@ export const createProductSchema = z.object({
   compareAtPrice: z.number().int().min(0).optional(),
   costPrice: z.number().int().min(0).optional(),
   barcode: z.string().optional(),
+  stock: z.number().int().min(0).default(0),
   status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).default("DRAFT"),
   isFeatured: z.boolean().default(false),
   isTrending: z.boolean().default(false),
@@ -108,6 +109,7 @@ export const createOrderSchema = z.object({
   ]),
   couponCode: z.string().optional(),
   notes: z.string().optional().nullable(),
+  idempotencyKey: z.string().min(8).max(128).optional(),
 });
 
 export const createReviewSchema = z.object({

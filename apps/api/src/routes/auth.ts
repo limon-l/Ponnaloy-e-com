@@ -1,8 +1,11 @@
 import { FastifyPluginAsync } from "fastify";
 import crypto from "crypto";
 import prisma from "../lib/prisma";
+import { config } from "../config/env";
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "ponnaloy-jwt-secret-change-in-production";
+// Validated at boot in config/env.ts: production refuses to start without a
+// strong secret, so there is no insecure default to fall back to.
+const JWT_SECRET = config.auth.jwtSecret;
 
 function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -13,8 +16,10 @@ function hashPassword(password: string): string {
 function verifyPassword(password: string, stored: string): boolean {
   const [salt, hash] = stored.split(":");
   if (!salt || !hash) return false;
-  const hashToVerify = crypto.scryptSync(password, salt, 64).toString("hex");
-  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(hashToVerify, "hex"));
+  const expected = Buffer.from(hash, "hex");
+  const actual = Buffer.from(crypto.scryptSync(password, salt, 64).toString("hex"), "hex");
+  if (expected.length !== actual.length) return false;
+  return crypto.timingSafeEqual(expected, actual);
 }
 
 function createToken(payload: Record<string, unknown>): string {
@@ -29,8 +34,23 @@ export function verifyJWT(token: string): Record<string, unknown> | null {
   try {
     const [header, body, signature] = token.split(".");
     if (!header || !body || !signature) return null;
+
+    const headerJson = JSON.parse(Buffer.from(header, "base64url").toString()) as {
+      alg?: string;
+      typ?: string;
+    };
+    // Reject "alg: none" and any non-HS256 token before verifying the HMAC.
+    if (headerJson.alg !== "HS256" || headerJson.typ !== "JWT") return null;
+
     const expectedSig = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
-    if (signature !== expectedSig) return null;
+    const signatureBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expectedSig);
+    if (
+      signatureBuffer.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+    ) {
+      return null;
+    }
     const payload = JSON.parse(Buffer.from(body, "base64url").toString());
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
