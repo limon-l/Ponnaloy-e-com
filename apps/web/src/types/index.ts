@@ -29,6 +29,14 @@ export interface Product {
   brand?: Brand | null;
   reviews?: Review[];
   isWishlisted?: boolean;
+  sellerId?: string | null;
+  moderationStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
+  seller?: {
+    id: string;
+    name: string;
+    slug: string;
+    logo?: string | null;
+  } | null;
 }
 
 export interface ProductImage {

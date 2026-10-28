@@ -7,7 +7,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, Heart, ShoppingBag, ChevronRight, Minus, Plus,
-  Truck, Shield, RotateCcw, Check, Loader2,
+  Truck, Shield, RotateCcw, Check, Loader2, Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -199,6 +199,15 @@ export default function ProductDetailPage() {
           {product.brand && (
             <Link href={`/products?brand=${product.brand.slug}`} className="text-sm text-muted-foreground hover:text-primary transition-colors">
               {product.brand.name}
+            </Link>
+          )}
+          {product.seller && (
+            <Link
+              href={`/sellers/${product.seller.slug}`}
+              className="inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              <Store className="h-3.5 w-3.5" />
+              Sold by <span className="font-medium">{product.seller.name}</span>
             </Link>
           )}
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{product.name}</h1>

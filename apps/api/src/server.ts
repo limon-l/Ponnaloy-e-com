@@ -35,6 +35,9 @@ import { chatRoutes } from "./routes/chat";
 import { authRoutes } from "./routes/auth";
 import { paymentRoutes } from "./routes/payments";
 import { newsletterRoutes } from "./routes/newsletter";
+import { sellerRoutes } from "./routes/seller";
+import { sellerStorefrontRoutes } from "./routes/sellers";
+import { adminSellerRoutes } from "./routes/admin-sellers";
 
 export interface BuildServerOptions {
   /** Set to false in tests to silence logs. */
@@ -178,6 +181,11 @@ async function registerRoutes(server: FastifyInstance) {
 
   // Webhooks need the raw request body for signature verification.
   await server.register(webhookRoutes, { prefix: "/api/webhooks" });
+
+  // Marketplace: seller portal, public storefronts, platform seller admin.
+  await server.register(sellerRoutes, { prefix: "/api/seller" });
+  await server.register(sellerStorefrontRoutes, { prefix: "/api/sellers" });
+  await server.register(adminSellerRoutes, { prefix: "/api/admin/sellers" });
 
   await server.register(adminRoutes, { prefix: "/api/admin" });
 }

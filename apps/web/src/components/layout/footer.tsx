@@ -7,6 +7,7 @@ const footerLinks = {
     { label: "Trending", href: "/products?sort=trending" },
     { label: "Deals", href: "/products?sort=deals" },
     { label: "All Products", href: "/products" },
+    { label: "Sellers", href: "/sellers" },
   ],
   support: [
     { label: "Help Center", href: "/help" },
@@ -16,6 +17,7 @@ const footerLinks = {
   ],
   company: [
     { label: "About Us", href: "/about" },
+    { label: "Sell on Ponnaloy", href: "/seller/apply" },
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
   ],

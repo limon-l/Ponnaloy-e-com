@@ -9,6 +9,7 @@ import {
   updateProductSchema,
 } from "../validators";
 import { requireAuth, requireAdmin, optionalAuth } from "../middleware/auth";
+import { publicProductVisibility } from "../lib/marketplace";
 
 export const productRoutes: FastifyPluginAsync = async (app) => {
   // List products with filters
@@ -26,6 +27,7 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
       q,
       categoryId,
       brandId,
+      sellerId,
       minPrice,
       maxPrice,
       minRating,
@@ -33,7 +35,6 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
       isTrending,
       isNewArrival,
       inStock,
-      status,
       page,
       limit,
       sort,
@@ -44,16 +45,16 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
     const cached = await getCache(cacheKey);
     if (cached) return cached;
 
-    const where: Record<string, unknown> = {};
-
-    if (status) {
-      where.status = status;
-    } else {
-      where.status = "ACTIVE";
-    }
+    // The public catalogue never exposes drafts or unmoderated seller products,
+    // regardless of query parameters supplied by the client.
+    const where: Record<string, unknown> = { status: "ACTIVE" };
+    const visibilityFilters: Record<string, unknown>[] = [
+      publicProductVisibility() as Record<string, unknown>,
+    ];
 
     if (categoryId) where.categoryId = categoryId;
     if (brandId) where.brandId = brandId;
+    if (sellerId) where.sellerId = sellerId;
     if (isFeatured !== undefined) where.isFeatured = isFeatured;
     if (isTrending !== undefined) where.isTrending = isTrending;
     if (isNewArrival !== undefined) where.isNewArrival = isNewArrival;
@@ -68,14 +69,12 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
     if (inStock) {
       // Simple products track inventory on Product.stock; variant products on
       // ProductVariant.stock. Either source counts as available.
-      where.AND = [
-        {
-          OR: [
-            { stock: { gt: 0 } },
-            { variants: { some: { stock: { gt: 0 } } } },
-          ],
-        },
-      ];
+      visibilityFilters.push({
+        OR: [
+          { stock: { gt: 0 } },
+          { variants: { some: { stock: { gt: 0 } } } },
+        ],
+      });
     }
 
     if (q) {
@@ -86,6 +85,8 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
         { brand: { name: { contains: q, mode: "insensitive" } } },
       ];
     }
+
+    where.AND = visibilityFilters;
 
     const allowedSorts: Record<string, string> = {
       price: "price",
@@ -147,7 +148,7 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
     if (cached) return cached;
 
     const allProducts = await prisma.product.findMany({
-      where: { isFeatured: true, status: "ACTIVE" },
+      where: { isFeatured: true, status: "ACTIVE", ...publicProductVisibility() },
       include: {
         images: { orderBy: { position: "asc" } },
         category: { select: { id: true, name: true, slug: true } },
@@ -174,7 +175,7 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
     if (cached) return cached;
 
     const allProducts = await prisma.product.findMany({
-      where: { isTrending: true, status: "ACTIVE" },
+      where: { isTrending: true, status: "ACTIVE", ...publicProductVisibility() },
       include: {
         images: { orderBy: { position: "asc" } },
         category: { select: { id: true, name: true, slug: true } },
@@ -197,7 +198,7 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
   // Get new arrivals
   app.get("/new-arrivals", async (_request, reply) => {
     const allProducts = await prisma.product.findMany({
-      where: { isNewArrival: true, status: "ACTIVE" },
+      where: { isNewArrival: true, status: "ACTIVE", ...publicProductVisibility() },
       include: {
         images: { orderBy: { position: "asc" } },
         category: { select: { id: true, name: true, slug: true } },
@@ -225,6 +226,7 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
       where: {
         status: "ACTIVE",
         compareAtPrice: { not: null },
+        ...publicProductVisibility(),
       },
       include: {
         images: { orderBy: { position: "asc" } },
@@ -252,12 +254,15 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
     const cached = await getCache(cacheKey);
     if (cached) return cached;
 
-    const product = await prisma.product.findUnique({
-      where: { slug },
+    const product = await prisma.product.findFirst({
+      where: { slug, status: "ACTIVE", ...publicProductVisibility() },
       include: {
         images: { orderBy: { position: "asc" } },
         variants: true,
         specifications: { orderBy: { position: "asc" } },
+        seller: {
+          select: { id: true, name: true, slug: true, logo: true },
+        },
         category: { select: { id: true, name: true, slug: true } },
         brand: { select: { id: true, name: true, slug: true, logo: true } },
         reviews: {

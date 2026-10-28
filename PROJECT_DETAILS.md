@@ -48,23 +48,27 @@ Ponnaloy is a **multi-stack e-commerce codebase** that has evolved through three
 
 The **active target** is `apps/web` + `apps/api` + `packages/shared`. The legacy stack is frozen rather than deleted so that no working behaviour is lost while the modern stack reaches parity.
 
-The platform is a **single-vendor B2C storefront today**. Its data model already anticipates multi-vendor and B2B operation (sellers, tiered pricing and payouts are **not** implemented; the schema provides foundations such as brands, collections, shipments, returns and commissions-ready order structures).
+The platform is a **multi-vendor marketplace** with three server-enforced portals: customers, sellers and platform administrators. The marketplace layer is additive: platform-owned products (`sellerId: null`) keep working exactly as before, while seller-owned products are tenant-scoped, moderated before publication and fulfilled through independent seller-order partitions. B2B wholesale, payouts and dispute resolution remain future work.
 
 ### Current health at a glance
 
 | Dimension | Status | Evidence |
 |---|---|---|
-| Storefront production build | **PASS** | `next build` — 27/27 pages generated |
+| Storefront production build | **PASS** | `next build` — 36/36 pages generated |
 | Storefront type safety | **PASS** | `tsc --noEmit` |
 | API type safety | **PASS** | `tsc --noEmit` — 0 diagnostics across all modules |
-| Lint | **PASS** | ESLint flat configs; 0 errors (22 API + 55 web warnings) |
-| Automated tests | **PASS** | Vitest: 29/29 (10 pricing unit + 19 API integration) |
+| Lint | **PASS** | ESLint flat configs; 0 errors (56 web warnings) |
+| Automated tests | **PASS** | Vitest: 40/40 (10 pricing unit + 30 API integration, including 11 marketplace tests) |
 | Live order-flow E2E | **PASS** | 106/106 assertions over real HTTP against a MongoDB replica set (catalog → cart → checkout → fulfilment → return/refund) |
+| Marketplace E2E (API) | **PASS** | Seller onboarding, moderation, tenant isolation, multi-vendor checkout, independent fulfilment, suspension, commission audit |
 | API runtime (in-memory replica set) | **PASS** | Booted with `tsx`; health `200`, database `connected`, payment methods `COD`/`BANK_TRANSFER` |
 | Security headers / CSP | **PASS** | CSP emitted by the built server; verified from the HTTP response |
-| Admin workspace | **PASS** | Dashboard, products, orders and customers read/write live API data |
+| Admin workspace | **PASS** | Dashboard, products, orders, customers, sellers, moderation read/write live API data |
+| Seller portal | **PASS** | Application, dashboard, products, orders, analytics and storefront wired to live API data |
 | Production database | **BLOCKED** | Configured MongoDB SRV host does not resolve |
 | Deployment readiness | **BLOCKED** | No reachable production database; schema changes not yet pushed there |
+| Docker Compose | **NOT RUN** | Docker is not installed in this environment |
+| Playwright / axe | **NOT RUN** | Not installed; installation not yet attempted |
 
 ---
 
@@ -78,10 +82,10 @@ A premium, secure, conversion-oriented commerce platform that begins as a discip
 
 | Audience | Needs served today | Needs served later |
 |---|---|---|
-| Consumers | Discover, compare, cart, checkout, track orders, manage account | Personalisation, loyalty, faster checkout, multi-currency |
-| Store operators | Catalog/order/customer administration | Campaigns, settlements, performance analytics |
+| Consumers | Discover, compare, cart, checkout, track orders, manage account, shop multiple sellers in one order | Personalisation, loyalty, faster checkout, multi-currency |
+| Store operators | Catalog/order/customer administration, seller approvals, catalogue moderation, commissions | Campaigns, settlements, performance analytics |
+| Third-party sellers | Onboarding, tenant-isolated catalogue, seller-order fulfilment, storefront, analytics | Payouts, disputes, promoted listings |
 | Business buyers | — | Company accounts, MOQ, tier pricing, quotations, approvals |
-| Third-party sellers | — | Onboarding, storefronts, inventory, payouts, disputes |
 
 ### 2.3 Engineering principles
 
@@ -96,9 +100,9 @@ A premium, secure, conversion-oriented commerce platform that begins as a discip
 
 | Horizon | Scope |
 |---|---|
-| **Now** | Single-vendor B2C: catalog, variants, cart, checkout (offline payment), orders, reviews, wishlist, addresses, accounts, real admin workspace, AI shopping assistant |
-| **Next** | Production database cutover, CI pipeline, object storage, email delivery, card payments, account recovery |
-| **Later** | Seller marketplace, B2B wholesale/RFQ, payouts, disputes, internationalisation |
+| **Now** | Multi-vendor marketplace: catalog, variants, cart, checkout (offline payment), multi-vendor orders, seller onboarding/moderation/fulfilment, commissions, reviews, wishlist, addresses, accounts, admin workspace, seller portal, AI shopping assistant |
+| **Next** | Production database cutover, CI pipeline, object storage, email delivery, card payments, account recovery, seller payouts |
+| **Later** | B2B wholesale/RFQ, disputes, internationalisation, promoted listings |
 
 ---
 
@@ -134,7 +138,9 @@ Status legend: **Implemented** = works end-to-end · **Partial** = server or UI 
 | Reviews moderation | **Partial** | API supports deletion by owner/admin |
 | Returns/refunds workflow | **Partial** | Models exist; no customer or admin workflow |
 | Multi-currency / i18n | **Planned** | USD only |
-| Seller storefronts | **Planned** | — |
+| Multi-vendor checkout | Implemented | Cart is grouped by seller; one parent order with independent seller partitions |
+| Seller storefronts | Implemented | Public directory and per-seller storefront with moderated products |
+| Seller attribution on product detail | Implemented | Links to the seller's public storefront |
 | B2B / RFQ / quotes | **Planned** | — |
 
 ### 3.2 Administration
@@ -148,8 +154,11 @@ Status legend: **Implemented** = works end-to-end · **Partial** = server or UI 
 | Customer listing, role change, activation toggle | Implemented | Search/role filters, self-action protection, last-super-admin protection |
 | Category / brand / banner / collection management | Implemented (API) | Admin screens for categories and banners are still "coming soon" placeholders; categories are consumed by the product editor |
 | Coupon management | Implemented (API) | No dedicated admin screen yet |
-| Audit trail | Implemented (partial) | `OrderStatusLog` records actor and role; `ActivityLog` is defined but not yet written by routes |
-| Commission and settlement management | **Planned** | — |
+| Seller application review | Implemented | Queue with approve/reject and reviewer notes; approval activates the organization |
+| Seller directory and suspension | Implemented | Search/filter, suspend/reinstate, commission-rate dialog |
+| Catalogue moderation queue | Implemented | Pending/approved/rejected queues with mandatory rejection notes |
+| Audit trail | Implemented (partial) | `OrderStatusLog` and `SellerOrderStatusLog` record actor and role; `ActivityLog` records seller, moderation and commission changes |
+| Commission and settlement management | **Partial** | Commission rates and accrued commission are managed; payout execution and ledger reconciliation are **not implemented** |
 | Dispute management | **Planned** | — |
 
 ### 3.3 Platform capabilities
@@ -167,7 +176,7 @@ Status legend: **Implemented** = works end-to-end · **Partial** = server or UI 
 | Webhooks | Implemented | Stripe and Clerk signature verification with raw-body preservation |
 | Idempotent order creation | Implemented | Batch 01 claim record |
 | OpenAPI documentation | **Planned** | Swagger packages installed but not registered |
-| Automated tests | Implemented | 29 Vitest tests: pricing units and API integration against an in-memory MongoDB replica set |
+| Automated tests | Implemented | 40 Vitest tests: pricing units, commerce API integration and marketplace integration against an in-memory MongoDB replica set |
 | CI pipeline | **Planned** | No workflow definitions |
 
 ---
@@ -179,13 +188,13 @@ Ponnaloy-e-com/
 ├── apps/
 │   ├── api/                     # Fastify + Prisma backend (active)
 │   │   ├── prisma/
-│   │   │   ├── schema.prisma    # 31 models, 9 enums (MongoDB)
+│   │   │   ├── schema.prisma    # 36 models, 13 enums (MongoDB)
 │   │   │   └── seed.ts          # 8 categories, 46 products, brands, images
 │   │   ├── src/
 │   │   │   ├── config/env.ts    # Boot-time configuration validation
-│   │   │   ├── lib/             # prisma, redis, meili, openai, chat, storage
-│   │   │   ├── middleware/auth.ts
-│   │   │   ├── routes/          # 21 route modules
+│   │   │   ├── lib/             # prisma, redis, meili, openai, chat, storage, permissions, marketplace
+│   │   │   ├── middleware/      # auth, seller membership/permission guards
+│   │   │   ├── routes/          # 24 route modules
 │   │   │   ├── services/        # shared pricing/coupon evaluator
 │   │   │   ├── validators/      # Zod schemas
 │   │   │   └── server.ts        # Exported `buildServer()` + bootstrap
@@ -364,25 +373,29 @@ Optional external services: Stripe (card payments, inactive), Clerk (identity we
 
 ## 7. Data Model
 
-### 7.1 Prisma models (31)
+### 7.1 Prisma models (36)
 
 | Domain | Models |
 |---|---|
 | Identity | `User` |
 | Catalog | `Product`, `ProductImage`, `ProductVariant`, `ProductSpec`, `ProductRelation`, `Category`, `Brand`, `Collection`, `ProductCollection` |
 | Commerce | `Cart`, `CartItem`, `CartCoupon`, `Order`, `OrderItem`, `OrderStatusLog`, `Payment`, `Shipment`, `ReturnRequest`, `Coupon` |
+| Marketplace | `SellerOrganization`, `SellerMembership`, `SellerApplication`, `SellerOrder`, `SellerOrderStatusLog` |
 | Customer | `Address`, `Wishlist`, `Review`, `ReviewVote`, `Notification` |
 | Content | `Banner`, `StoreSetting` |
 | Platform | `ActivityLog`, `SearchDocument`, `IdempotencyRecord`, `NewsletterSubscriber` |
 
 Batch 03 fields: `Order.restockedAt` (idempotent inventory return) and `OrderStatusLog.actorId` / `actorRole` (staff attribution). Both are optional so historical rows remain valid.
 
-### 7.2 Enumerations (9)
+Marketplace fields: `Product.sellerId` / `moderationStatus` / `moderationNote`, `Order.sellerOrders`, `OrderItem.sellerOrderId` and `Shipment.sellerOrderId`. Platform-owned products keep `sellerId: null`; seller-created products start as `DRAFT` with `moderationStatus: PENDING`.
+
+### 7.2 Enumerations (13)
 
 | Enum | Values |
 |---|---|
-| `Role` | CUSTOMER, ADMIN, SUPER_ADMIN |
+| `Role` | CUSTOMER, SELLER, ADMIN, SUPER_ADMIN |
 | `ProductStatus` | DRAFT, ACTIVE, ARCHIVED |
+| `ModerationStatus` | PENDING, APPROVED, REJECTED |
 | `OrderStatus` | PENDING, CONFIRMED, PROCESSING, SHIPPED, OUT_FOR_DELIVERY, DELIVERED, CANCELLED, RETURNED, REFUNDED |
 | `PaymentStatus` | PENDING, PROCESSING, SUCCEEDED, FAILED, REFUNDED, PARTIALLY_REFUNDED |
 | `PaymentMethod` | STRIPE, PAYPAL, SSLCOMMERZ, RAZORPAY, COD, BANK_TRANSFER |
@@ -390,6 +403,9 @@ Batch 03 fields: `Order.restockedAt` (idempotent inventory return) and `OrderSta
 | `ReturnStatus` | Model-defined return lifecycle |
 | `NotificationType` | ORDER, PAYMENT, SHIPPING, REFUND, PROMOTION, SYSTEM |
 | `BannerPosition` | HERO, SIDEBAR, PROMO |
+| `SellerStatus` | PENDING, APPROVED, REJECTED, SUSPENDED |
+| `SellerMemberRole` | OWNER, MANAGER, STAFF |
+| `SellerApplicationStatus` | SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED, CHANGES_REQUESTED |
 
 ### 7.3 Key entity relationships
 
@@ -405,6 +421,12 @@ Product 1─* ProductImage / ProductSpec
 Category 1─* Product        Brand 1─* Product
 User 1─* Address / Review / Wishlist / Notification
 Coupon 1─? CartCoupon
+User 1─* SellerMembership *─1 SellerOrganization 1─* Product
+SellerOrganization 1─* SellerApplication
+Order 1─* SellerOrder *─1 SellerOrganization
+SellerOrder 1─* OrderItem (via OrderItem.sellerOrderId)
+SellerOrder 1─* SellerOrderStatusLog
+SellerOrder 1─* Shipment (optional partition link)
 ```
 
 ### 7.4 Inventory and pricing rules
@@ -424,8 +446,14 @@ Coupon 1─? CartCoupon
 | Idempotency | `IdempotencyRecord` with a required primary key `userId:key` |
 | Cancellation | Customer cancellation uses a conditional atomic update; only `PENDING`/`CONFIRMED` can cancel; a second attempt returns `409 ORDER_NOT_CANCELLABLE` |
 | Admin status changes | Explicit transition map; conditional atomic update; retry on Mongo write conflict; forced overrides require a note |
-| Restocking | Only `CANCELLED`/`RETURNED`; guarded by `Order.restockedAt`, so repeated or forced transitions cannot double-restock |
+| Restocking | Only `CANCELLED`/`RETURNED`; guarded by `Order.restockedAt` and `SellerOrder.restockedAt`, so repeated or forced transitions cannot double-restock |
 | Product deletion | Referenced products are archived; unreferenced products are removed with dependents in one transaction |
+| Seller visibility | Public catalogue requires `Product.status = ACTIVE`, `moderationStatus = APPROVED` and an `APPROVED` seller (or a platform product) |
+| Seller product lifecycle | Seller-created/edited listings start or return to `DRAFT` + `PENDING`; admin approval publishes them |
+| Multi-vendor partitioning | Cart lines are grouped by seller; each group becomes a `SellerOrder` with proportional shipping/discount allocation that sums exactly to the parent totals |
+| Commission | Basis points on the seller item subtotal (`1000 = 10%`); shipping and discounts are excluded from the commission base |
+| Seller fulfilment | `PENDING→CONFIRMED|CANCELLED`, `CONFIRMED→PROCESSING|CANCELLED`, `PROCESSING→SHIPPED|CANCELLED`, `SHIPPED→OUT_FOR_DELIVERY|DELIVERED`, `OUT_FOR_DELIVERY→DELIVERED` |
+| Parent aggregation | Only when every item belongs to a seller partition; cancelled partitions are ignored while remaining partitions progress, and mixed platform/seller orders stay admin-controlled |
 
 ### 7.5 Legacy SQLite schema (frozen)
 
@@ -522,18 +550,54 @@ All routes require `ADMIN` or `SUPER_ADMIN`; authorization is enforced server-si
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/stats` | Revenue (cancelled excluded), counts, pending fulfilment, recent orders, low stock, 30-day daily revenue |
-| GET | `/products` | Paginated/searchable admin product list with effective stock |
-| GET | `/orders` | Paginated/searchable order list with customer, items, payments, shipments |
-| GET | `/orders/:id` | Full order detail including addresses, payments, shipments and status history |
-| PUT | `/orders/:id` | Status transition (state machine), carrier/tracking on shipment, forced override + note |
+| GET | `/stats` | Revenue (cancelled excluded), counts, pending fulfilment, recent orders, low stock, 30-day daily revenue, seller/application counts, seller GMV and commission |
+| GET | `/products` | Paginated/searchable admin product list with effective stock, moderation status and seller attribution |
+| PUT | `/products/:id/moderation` | Approve/reject a seller listing; rejection requires a note and unpublishes the product |
+| GET | `/orders` | Paginated/searchable order list with customer, items, payments, shipments and seller partitions |
+| GET | `/orders/:id` | Full order detail including addresses, payments, shipments, status history and seller partitions |
+| PUT | `/orders/:id` | Status transition (state machine), carrier/tracking on shipment, forced override + note, propagation to seller partitions |
+| GET | `/sellers` | Paginated/searchable seller directory with product counts and sales/commission metrics |
+| GET | `/sellers/applications` | Seller application queue with applicant, store and reviewer data |
+| PUT | `/sellers/applications/:id/review` | Approve/reject an application; approval activates the store and owner membership |
+| GET | `/sellers/:id` | Seller detail: memberships, applications, product counts, sales, commission and recent orders |
+| PUT | `/sellers/:id/status` | Approve/suspend/reject/reinstate a seller; suspension removes listings from search |
+| PUT | `/sellers/:id/commission` | Update commission basis points with an audit record |
 | GET | `/users` | Paginated/searchable customer listing with role and order counts |
 | PUT | `/users/:id/role` | Role change; rejects self-demotion and last-super-admin demotion |
 | PUT | `/users/:id/toggle` | Activate/deactivate; rejects self-deactivation |
 
 Order transitions: `PENDING→CONFIRMED|CANCELLED`, `CONFIRMED→PROCESSING|CANCELLED`, `PROCESSING→SHIPPED|CANCELLED`, `SHIPPED→OUT_FOR_DELIVERY|DELIVERED|RETURNED`, `OUT_FOR_DELIVERY→DELIVERED|RETURNED`, `DELIVERED→RETURNED|REFUNDED`, `RETURNED→REFUNDED`. Any other change requires `force: true` and a note. Conflict codes: `409 INVALID_TRANSITION`, `409 CONCURRENT_UPDATE`, `400 SAME_STATUS`, `400 NOTE_REQUIRED`.
 
-### 8.9 Platform
+### 8.9 Seller portal — `/api/seller` (authenticated seller membership)
+
+Seller tenant scope is resolved from `SellerMembership`, not from the global `Role`. A user with multiple memberships selects one with the `x-seller-id` header; selecting an organization the user does not belong to returns `403 SELLER_ACCESS_DENIED`. Pending/suspended sellers can read their own context but cannot operate the store.
+
+| Method | Path | Permission | Description |
+|---|---|---|---|
+| POST | `/apply` | authenticated | Create organization + owner membership + application transactionally |
+| GET | `/application` | authenticated | Latest application for the current user |
+| GET | `/me` | authenticated | Active memberships and applications for the web shell |
+| GET | `/context` | membership (unapproved allowed) | Selected seller context and status |
+| GET | `/dashboard` | approved seller | Sales, commission, orders, product and fulfilment metrics from the seller's own data |
+| GET | `/analytics` | `analytics:read:own` | 30-day revenue, status counts and best-selling products |
+| GET | `/products` | `product:read:own` | Tenant-scoped product list with moderation filters |
+| POST | `/products` | `product:create:own` | Create a draft listing pending moderation |
+| PUT | `/products/:id` | `product:update:own` | Update own product; material changes return it to moderation |
+| DELETE | `/products/:id` | `product:delete:own` | Archive if referenced by orders, otherwise delete |
+| GET | `/orders` | `order:read:assigned` | Only seller partitions assigned to the selected organization |
+| GET | `/orders/:id` | `order:read:assigned` | Own partition detail; cross-tenant IDs return `404` |
+| PUT | `/orders/:id/status` | `order:fulfill:assigned` | Validated partition transition with shipment and restock handling |
+| GET | `/storefront` | approved seller | Own storefront record |
+| PUT | `/storefront` | `storefront:update:own` | Update public store identity and policies |
+
+### 8.10 Public marketplace — `/api/sellers`
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/` | Paginated approved-seller directory with moderated product counts |
+| GET | `/:slug` | Approved storefront with its approved, active products; `404` otherwise |
+
+### 8.11 Platform
 
 | Method | Path | Description |
 |---|---|---|
@@ -544,7 +608,7 @@ Order transitions: `PENDING→CONFIRMED|CANCELLED`, `CONFIRMED→PROCESSING|CANC
 | POST | `/api/webhooks/clerk` | Signed Clerk events (503 when unconfigured) |
 | POST | `/api/upload` · `/api/upload/multiple` | Admin media upload to local disk; returns real `/uploads/*` URLs |
 
-### 8.10 Legacy API (frozen) — `/api`
+### 8.12 Legacy API (frozen) — `/api`
 
 Mounted modules: `health`, `auth` (session-based: register/login/logout), `products`, `orders`, `chat`, `reviews`, `wishlist`, `addresses`, `user`, `admin`. The legacy API uses cookie sessions, not JWTs, and a different response/error convention.
 
@@ -552,7 +616,7 @@ Mounted modules: `health`, `auth` (session-based: register/login/logout), `produ
 
 ## 9. Frontend Application
 
-### 9.1 Route map (26 application routes; 27 pages generated including not-found)
+### 9.1 Route map (35 application routes; 36 pages generated including not-found)
 
 **Storefront `(shop)`**
 
@@ -565,6 +629,8 @@ Mounted modules: `health`, `auth` (session-based: register/login/logout), `produ
 | `/checkout` | Three-step shipping → payment → review |
 | `/orders` | Order history, tracking and cancellation |
 | `/account` | Profile, orders, wishlist, addresses |
+| `/sellers` | Approved seller directory with search |
+| `/sellers/[slug]` | Public seller storefront with moderated products |
 | `/about`, `/contact`, `/help` | Informational pages |
 | `/privacy`, `/terms`, `/returns`, `/shipping` | Policy pages |
 
@@ -584,10 +650,23 @@ Mounted modules: `health`, `auth` (session-based: register/login/logout), `produ
 | `/admin/products` | Product list/search/filter, create/edit dialog, image upload, archive/delete |
 | `/admin/orders` | Order list/search/filter, full detail, status transitions, carrier/tracking, audit history |
 | `/admin/customers` | Customer list/search/filter, inline role changes, activate/deactivate |
+| `/admin/sellers` | Seller directory, application queue, approve/reject, suspend/reinstate, commission dialog |
+| `/admin/moderation` | Seller listing moderation queue with approve/reject and notes |
 | `/admin/categories` | Placeholder screen; category API exists but no management UI yet |
 | `/admin/banners` | Placeholder screen; banner API exists but no management UI yet |
 | `/admin/analytics` | Static shell; not yet wired to live metrics |
 | `/admin/settings` | Static shell; not yet wired |
+
+**Seller portal `/seller`**
+
+| Route | Purpose |
+|---|---|
+| `/seller` | Seller dashboard: sales, commission, fulfilment queue, 14-day revenue |
+| `/seller/products` | Tenant-scoped product list, create/edit, moderation status, archive/delete |
+| `/seller/orders` | Assigned seller orders, detail, status transitions, carrier/tracking |
+| `/seller/analytics` | 30-day revenue, order status counts, best-selling products |
+| `/seller/storefront` | Public store identity and policy editor |
+| `/seller/apply` | Seller application and status view |
 
 ### 9.2 Application shell
 
@@ -609,6 +688,13 @@ Admin shell (/admin)
     ├── Auth guard (ADMIN / SUPER_ADMIN; loading skeleton + access-denied state)
     ├── Desktop sidebar / mobile sheet with active-route highlighting
     └── Page content (all data fetched from /api/admin/*)
+
+Seller shell (/seller)
+└── SellerLayout → SellerProvider
+    ├── Auth guard + membership resolution (/api/seller/me)
+    ├── Store switcher when the user belongs to multiple organizations
+    ├── Status banner for pending/suspended stores
+    └── Page content (all data fetched with x-seller-id from /api/seller/*)
 ```
 
 ### 9.3 State management
@@ -618,6 +704,7 @@ Admin shell (/admin)
 | Auth | `localStorage` (`ponnaloy_token`, `ponnaloy_user`) | Hydrates from storage, validates with `/api/auth/me`, clears on 401 |
 | Cart | `localStorage` + server cart | Guest cart merges on sign-in; server is authoritative for signed-in users |
 | Wishlist | Context + API | Optimistic toggling |
+| Seller context | `localStorage` (`ponnaloy_seller_id`) | Memberships from `/api/seller/me`; selected store drives `x-seller-id` |
 | Theme | `next-themes` | System default, class-based dark mode |
 | Server data | Component-level `fetch` via `lib/api.ts`; React Query available | — |
 
@@ -697,7 +784,10 @@ Guest carts live in `localStorage`. After sign-in, the cart provider reconciles 
 | Password storage | scrypt with per-password salt; timing-safe comparison |
 | Session token | HS256 JWT, 7-day expiry, algorithm pinned on verification |
 | Secret management | Production refuses to start without a ≥32-character JWT secret; development uses an ephemeral random secret |
-| Authorization | Route-level auth guards; admin role checks; per-user order ownership checks |
+| Authorization | Route-level auth guards; admin role checks; per-user order ownership checks; deny-by-default RBAC permission catalogue; seller tenant scope resolved from `SellerMembership`; cross-tenant resources return `404` |
+| Seller tenant isolation | Every seller query is scoped by the resolved `sellerId`; `x-seller-id` selection is validated against the user's active memberships |
+| Product visibility | Public endpoints enforce active + moderated + approved-seller visibility server-side; client status filters cannot widen it |
+| Audit trail | `OrderStatusLog`, `SellerOrderStatusLog` and `ActivityLog` capture actor/role for admin and seller transitions, moderation, approval and commission changes |
 | Input validation | Zod schemas on write endpoints |
 | SQL/NoSQL injection | Parameterised Prisma access; no string-concatenated queries |
 | CORS | Explicit origin allow-list; preview wildcard opted in via `ALLOW_VERCEL_PREVIEWS` |
@@ -718,8 +808,9 @@ Guest carts live in `localStorage`. After sign-in, the cart provider reconciles 
 | **Medium** | Local uploads validate MIME/size and randomise filenames, but there is no malware scan or durable object storage |
 | **Medium** | No email verification, so addresses are not proven |
 | **Medium** | `forgot-password` performs no work |
-| **Low** | Some endpoints rely on route-level guards rather than a central permission matrix |
-| **Low** | `ActivityLog` is defined but not written; order audit exists, broader admin audit does not |
+| **Medium** | Seller payouts and a settlement ledger are not implemented; commission is accrued but not disbursed |
+| **Low** | Seller `Role` exists globally, but authorization always uses `SellerMembership`; keep it that way when adding staff invitations |
+| **Low** | `ActivityLog` covers seller/moderation/commission actions; some legacy admin mutations still lack broad audit coverage |
 
 ---
 
@@ -754,8 +845,10 @@ The active web app runs on port 3000 and the API on port 3001. `.env.example` an
 
 ```bash
 pnpm --filter @ponnaloy/api db:generate   # regenerate Prisma Client
-pnpm --filter @ponnaloy/api db:push       # apply additive schema (Product.stock,
-                                          # Order.idempotencyKey, Order.restockedAt,
+pnpm --filter @ponnaloy/api db:push       # apply additive schema (marketplace models,
+                                          # Product.stock/sellerId/moderation*,
+                                          # Order.idempotencyKey/restockedAt/sellerOrders,
+                                          # OrderItem.sellerOrderId, Shipment.sellerOrderId,
                                           # OrderStatusLog.actorId/actorRole,
                                           # IdempotencyRecord, NewsletterSubscriber)
 pnpm --filter @ponnaloy/api db:seed       # seed catalog + inventory
@@ -840,16 +933,17 @@ Integration tests use `MongoMemoryReplSet` and Fastify `inject`; they do not req
 | Check | Result | Detail |
 |---|---|---|
 | `pnpm typecheck` | **PASS** | 3/3 workspaces, 0 diagnostics |
-| `pnpm lint` | **PASS** | 2/2 tasks, 0 errors (22 API + 55 web warnings) |
-| `pnpm --filter @ponnaloy/api test` | **PASS** | 2 files, 29/29 tests |
+| `pnpm lint` | **PASS** | 2/2 tasks, 0 errors (56 web warnings) |
+| `pnpm --filter @ponnaloy/api test` | **PASS** | 3 files, 40/40 tests |
 | Live order-flow E2E | **PASS** | 106/106 assertions over real HTTP against a single-node replica set: catalog (46 products), cart maths, coupon discount, checkout, idempotent replay, ownership isolation, cancellation, admin state machine, shipment tracking, return/refund, restock-once, insufficient-stock rejection |
-| `pnpm --filter @ponnaloy/web build` | **PASS** | Compiled; 27/27 static pages generated |
-| `pnpm --filter @ponnaloy/api db:generate` | **PASS** | Prisma Client 6.19.3 generated |
+| Marketplace API integration | **PASS** | 11 tests: onboarding approval, no-membership denial, cross-tenant selection denial, moderation visibility, rejection notes, product ownership, staff delete denial, multi-vendor partitioning/allocation/commission, independent fulfilment and parent aggregation, suspension effects, commission audit and scoped metrics |
+| `pnpm --filter @ponnaloy/web build` | **PASS** | Compiled; 36/36 pages generated |
+| `pnpm --filter @ponnaloy/api db:generate` | **PASS** | Prisma Client generated from the marketplace schema |
 | API runtime (in-memory replica set) | **PASS** | `tsx src/server.ts`; `/api/health` 200 with `database: connected`; payment methods `["COD","BANK_TRANSFER"]` |
 | Security headers | **PASS** | Built Next.js server returned the full header set and CSP (inspected over HTTP) |
 | API runtime (configured production database) | **BLOCKED** | Mongo SRV host returns NXDOMAIN |
 | `docker compose up` | **NOT RUN** | Docker is not installed in this environment |
-| Accessibility audit | **NOT RUN** | No automated tooling in repo |
+| Playwright / axe | **NOT RUN** | Not installed; automated browser and accessibility execution not performed |
 | Performance benchmarks | **NOT RUN** | Only build output observed (`/` = 167 kB first-load JS) |
 
 ### 15.2 Build evidence
@@ -857,14 +951,18 @@ Integration tests use `MongoMemoryReplSet` and Fastify `inject`; they do not req
 ```
 Route (app)                                 Size  First Load JS
 ┌ ○ /                                    5.02 kB         167 kB
-├ ○ /admin                               6.19 kB         119 kB
-├ ○ /admin/customers                     5.60 kB         151 kB
-├ ○ /admin/orders                        7.30 kB         152 kB
-├ ○ /admin/products                      9.38 kB         154 kB
+├ ○ /admin                               2.76 kB         119 kB
+├ ○ /admin/moderation                    5.48 kB         154 kB
+├ ○ /admin/sellers                       6.49 kB         151 kB
+├ ○ /seller                              4.75 kB         121 kB
+├ ○ /seller/orders                       7.32 kB         152 kB
+├ ○ /seller/products                     8.07 kB         153 kB
+├ ○ /sellers                             5.71 kB         124 kB
+├ ƒ /sellers/[slug]                      4.32 kB         130 kB
 ├ ○ /checkout                            9.67 kB         137 kB
 ├ ○ /account                             10.6 kB         135 kB
-├ ƒ /product/[slug]                      8.28 kB         176 kB
-└ ... (27 pages total)
+├ ƒ /product/[slug]                      8.57 kB         176 kB
+└ ... (36 pages total)
 ```
 
 ### 15.3 Test coverage implemented
@@ -873,9 +971,10 @@ Route (app)                                 Size  First Load JS
 |---|---|---|
 | Unit | Vitest | 10 tests: coupon types, date/usage/minimum rules, clamping, shipping and total maths |
 | API integration | Vitest + Fastify `inject` + `MongoMemoryReplSet` | 19 tests: auth, cart, checkout, idempotent replay, stock reservation/rollback, customer cancellation, admin authorization, admin pagination, product create/archive, full order lifecycle with tracking and single restock, concurrent admin cancellation, stats revenue/low stock, role guards |
+| Marketplace integration | Vitest + Fastify `inject` + `MongoMemoryReplSet` | 11 tests: seller onboarding/approval, membership denial, tenant selection, moderation and visibility, rejection notes, product ownership, staff permissions, multi-vendor checkout allocation/commission, independent fulfilment and parent aggregation, suspension, commission audit and scoped metrics |
 | E2E | Manual Node script over real HTTP | **PASS** — 106 assertions executed against a live API and replica set (catalog, cart, coupon, checkout, idempotency, cancellation, fulfilment, tracking, return/refund, restock-once, insufficient stock). The temporary harness was removed after the run |
-| E2E (repeatable) | Playwright | **Planned** — browse → cart → checkout → order → cancel |
-| Non-functional | Lighthouse/axe | **Planned** — Core Web Vitals, WCAG 2.2 AA |
+| E2E (repeatable) | Playwright | **NOT RUN** — not installed |
+| Non-functional | Lighthouse/axe | **NOT RUN** — not installed |
 
 ---
 
@@ -886,9 +985,9 @@ Route (app)                                 Size  First Load JS
 | R1 | Prisma MongoDB transactions require a replica set; a standalone MongoDB cannot complete writes | High | Checkout and admin transitions fail | Docker compose and the test harness use replica sets; production Atlas must be a replica set. A PostgreSQL migration remains an option for heavier financial workloads |
 | R2 | Configured production database host is unreachable | Critical | No runtime verification against real data | Replace with a reachable cluster; local runtime is verified against an in-memory replica set |
 | R3 | API type errors | **Resolved** | Weak CI signal | `pnpm typecheck` now passes 3/3 |
-| R4 | Automated coverage is partial | Medium | Regressions in untested paths | 29 unit/integration tests plus a 106-assertion live E2E run pass; repeatable Playwright and accessibility suites still missing |
+| R4 | Automated coverage is partial | Medium | Regressions in untested paths | 40 unit/integration tests including 11 marketplace tests plus a 106-assertion live E2E run pass; repeatable Playwright and accessibility suites still missing |
 | R5 | No ESLint configuration | **Resolved** | Inconsistent code quality | Flat configs added for both apps; 0 errors |
-| R6 | Admin UI renders mock data | **Resolved** | Operators may act on false information | Dashboard, products, orders and customers now use live API data |
+| R6 | Admin UI renders mock data | **Resolved** | Operators may act on false information | Dashboard, products, orders, customers, sellers and moderation now use live API data |
 | R7 | Legacy stored XSS | Critical (legacy only) | Account compromise on legacy deployment | Retire or patch the legacy frontend |
 | R8 | Uploaded media durability | Medium | Broken media if disk is lost or multiple API instances run | Local disk driver works for single-instance deployments; R2/S3 adapter still required for scale |
 | R9 | Password reset does not send email | Medium | Users cannot recover accounts | Token flow + email provider |
@@ -898,6 +997,9 @@ Route (app)                                 Size  First Load JS
 | R13 | Tax constant is not applied to orders | Medium | Incorrect totals where tax is required | Implement tax calculation or remove the claim |
 | R14 | JWT in localStorage | High | Token theft via XSS | Move to httpOnly cookies with CSRF protection |
 | R15 | CSP allows inline scripts | Medium | Reduced XSS mitigation depth | Add nonce-based policy through Next.js middleware |
+| R16 | Seller payouts and settlement ledger are absent | High | Sellers accrue commission but cannot be paid through the platform | Add a settlement ledger, payout states and reconciliation before operating commercially |
+| R17 | Seller staff invitations are schema-only | Medium | Stores cannot safely add team members through the UI | Add invitation flow with role assignment and revocation |
+| R18 | Search index and database can diverge after moderation/suspension | Medium | Stale search results | Moderation and seller-status routes remove/reindex affected products; a periodic reconciliation job is still recommended |
 
 ---
 
@@ -906,16 +1008,18 @@ Route (app)                                 Size  First Load JS
 | Priority | Workstream | Scope | Exit criteria | Status |
 |---|---|---|---|---|
 | **P0** | Production runtime unblock | Reachable replica-set database, `db:push`, `db:seed`, API boot, manual checkout | Order created, stock decremented, cancel restocks | **Blocked** — local replica-set runtime verified; production host unreachable |
-| **P0** | Verification harness | Vitest + Fastify inject; ESLint flat configs; Playwright smoke | CI green on typecheck, lint, tests | **Partial** — 29 tests, 106-assertion live E2E, lint and typecheck pass; Playwright and CI missing |
+| **P0** | Verification harness | Vitest + Fastify inject; ESLint flat configs; Playwright smoke | CI green on typecheck, lint, tests | **Partial** — 40 tests, 106-assertion live E2E, lint and typecheck pass; Playwright and CI missing |
 | **P0** | API type baseline | Resolve existing diagnostics | `pnpm typecheck` passes workspace-wide | **Done** |
-| **P1** | Real admin | Replace mock arrays with `/api/admin/*` | Admin CRUD persists | **Done** for dashboard, products, orders, customers |
+| **P1** | Real admin | Replace mock arrays with `/api/admin/*` | Admin CRUD persists | **Done** for dashboard, products, orders, customers, sellers, moderation |
+| **P1** | Seller marketplace foundation | Onboarding, tenant isolation, moderation, multi-vendor orders, commissions | Seller E2E + tenant isolation | **Done**; payouts, disputes and staff invitations remain |
 | **P1** | Media storage | Validated uploads, MIME/size enforcement; durable object storage | Upload → serve round trip | **Partial** — local disk driver done; R2/S3 pending |
 | **P1** | Account recovery | Reset tokens, expiry, single use, email delivery; email verification | Reset and verification E2E | **Planned** |
 | **P1** | Payment gateway | Stripe Checkout Session + verified webhook + refunds | Test-mode card payment and refund | **Planned** |
+| **P1** | Seller settlements | Commission ledger, payout states, reconciliation | Seller payout E2E | **Planned** |
 | **P1** | Legacy retirement | Archive legacy stack, update README/scripts | One documented runtime | **Planned** |
 | **P2** | CI/CD | GitHub Actions: install, typecheck, lint, test, build | Required checks on every PR | **Planned** |
 | **P2** | PostgreSQL migration | Port schema, backfill, cutover, reconciliation | Transactional order integrity at scale | **Planned** |
-| **P2** | Seller marketplace | Onboarding/KYC, storefronts, commissions, payouts, disputes | Seller E2E + ledger reconciliation | **Planned** |
+| **P2** | Seller team management | Staff invitations, role assignment, revocation | Invite → accept → scoped access E2E | **Planned** |
 | **P2** | B2B wholesale | Company accounts, MOQ, tier pricing, RFQ, quotes, approvals | RFQ → quote → order E2E | **Planned** |
 | **P3** | Growth & intelligence | SEO/structured data, recommendations, campaigns, abandoned cart | Measured conversion uplift | **Planned** |
 | **P3** | Internationalisation | Locale routing, currency, regional tax/shipping | Multi-region checkout | **Planned** |
@@ -1011,17 +1115,40 @@ Route (app)                                 Size  First Load JS
 | Fixes found | No product defects in the order system; two verification expectations were corrected (actual order-number format is `PNyymmdd-XXXXXX`; catalog totals only count `ACTIVE` products) |
 | Verification | `pnpm typecheck` 3/3, `pnpm lint` 0 errors, 29/29 tests, 27/27 pages built, live E2E 106/106 |
 
+### Batch 05 — Multi-vendor marketplace foundation
+
+| Area | Change |
+|---|---|
+| Schema | Added `SellerOrganization`, `SellerMembership`, `SellerApplication`, `SellerOrder`, `SellerOrderStatusLog`, `ModerationStatus`, `SellerStatus`, `SellerMemberRole`, `SellerApplicationStatus`; added `Product.sellerId` / `moderationStatus` / `moderationNote`, `Order.sellerOrders`, `OrderItem.sellerOrderId`, `Shipment.sellerOrderId`; `Role` gains `SELLER`. 36 models, 13 enums |
+| Authorization | New permission catalogue (`resource:action:scope`) with deny-by-default role and staff permission sets; `requireSellerMembership` / `requireSeller` / `requireSellerPermission` guards; tenant scope resolved from `SellerMembership`, not the global role |
+| Tenant isolation | Every seller query scoped by the resolved `sellerId`; multi-organization selection via validated `x-seller-id`; cross-tenant IDs return `404`; only `APPROVED` stores can operate |
+| Onboarding | `POST /api/seller/apply` creates organization + owner membership + application transactionally; admin review queue approves/rejects with reviewer notes |
+| Catalogue moderation | Seller-created/edited listings start `DRAFT` + `PENDING`; admin approve/reject endpoint with mandatory rejection note; public catalogue and search require `ACTIVE` + `APPROVED` + approved seller |
+| Multi-vendor checkout | Cart grouped by seller; atomic parent order plus `SellerOrder` partitions; shipping and discount allocated proportionally with exact cent reconciliation; commission stored in basis points on the seller subtotal |
+| Fulfilment | Independent seller partition state machine with carrier/tracking and per-partition restock guard; parent status aggregated only when every item belongs to a partition; customer cancellation blocked once fulfilment starts (`ORDER_FULFILMENT_STARTED`) |
+| Admin | Seller directory, application queue, status transitions (suspend/reinstate), commission updates, seller GMV/commission metrics, moderation queue; suspension removes listings from Meilisearch and reinstatement reindexes them |
+| Public marketplace | Approved-seller directory and storefront pages; seller attribution on product detail |
+| Seller portal | Dashboard, products, orders, analytics and storefront editor wired to tenant-scoped API data with store switcher and status banner |
+| Reliability | Exhausted Mongo write conflicts now return `409 CONCURRENT_UPDATE` instead of `500` |
+| Tests | 11 marketplace integration tests (onboarding, isolation, moderation, staff permissions, multi-vendor allocation, independent fulfilment, suspension, commission audit, scoped metrics); suite total 40/40 |
+| Verification | `pnpm typecheck` 3/3, `pnpm lint` 0 errors, 40/40 tests, 36/36 pages built |
+
 ### Verification
 
-- Storefront type check and production build: **PASS**.
-- API type check, lint and 29 automated tests: **PASS**.
-- API runtime against an in-memory MongoDB replica set: **PASS**.
+- Workspace type check: **PASS** — `pnpm typecheck`, 3/3 workspaces, 0 diagnostics.
+- Lint: **PASS** — `pnpm lint`, 0 errors (warnings only).
+- API tests: **PASS** — 3 files, 40/40 tests (10 pricing unit + 19 commerce integration + 11 marketplace integration) against an in-memory MongoDB replica set.
+- Storefront production build: **PASS** — 36/36 pages generated.
 - Live order-flow E2E over real HTTP: **PASS** — 106/106 assertions, including checkout, cancellation, fulfilment, tracking, return/refund and restock-once.
+- Marketplace API integration: **PASS** — onboarding/approval, membership denial, cross-tenant denial, moderation visibility, product ownership, staff permissions, multi-vendor partitioning and commission, independent fulfilment and parent aggregation, suspension effects, commission audit, scoped metrics.
+- API runtime against an in-memory MongoDB replica set: **PASS** — health `200`, database connected, payment methods `COD`/`BANK_TRANSFER`.
 - Seeded catalog: **PASS** — 8 categories, 10 brands, 46 distinct products.
-- API runtime against the configured production database: **BLOCKED** by DNS resolution.
-- Docker Compose: **NOT RUN** (Docker unavailable here).
-- Repeatable Playwright E2E and accessibility audits: **NOT RUN / PLANNED**; the manual harness is not committed.
-- No performance or accessibility claims are made; neither audit has been run.
+- API runtime against the configured production database: **BLOCKED** by DNS resolution (`NXDOMAIN`).
+- Docker Compose: **NOT RUN** — Docker is not installed in this environment.
+- Repeatable Playwright E2E and axe accessibility audits: **NOT RUN** — not installed; installation and browser execution not performed.
+- Performance benchmarks: **NOT RUN** — only build output observed.
+- Seller payouts, settlement ledger, staff invitations and dispute management: **NOT IMPLEMENTED**.
+- No production-ready claim is made: production database, deployment, card payments and email delivery remain unverified.
 
 ---
 

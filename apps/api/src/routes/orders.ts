@@ -5,6 +5,7 @@ import { createOrderSchema } from "../validators";
 import { generateOrderNumber } from "@ponnaloy/shared";
 import { config } from "../config/env";
 import { computeOrderTotals } from "../services/pricing";
+import { allocateAmount, commissionFor } from "../lib/marketplace";
 
 type PaymentMethodValue =
   | "STRIPE"
@@ -289,6 +290,71 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         };
       });
 
+      // ── Seller validation (ABAC: seller status + moderation) ──
+      // A cart line may reference a seller product whose store was suspended or
+      // whose listing lost approval after it was added to the cart.
+      const sellerIds = Array.from(
+        new Set(
+          cart.items
+            .map((item) => item.product.sellerId)
+            .filter((value): value is string => Boolean(value))
+        )
+      );
+      const sellerRecords = sellerIds.length
+        ? await prisma.sellerOrganization.findMany({
+            where: { id: { in: sellerIds } },
+            select: { id: true, status: true, commissionRate: true, name: true },
+          })
+        : [];
+      const sellerMap = new Map(sellerRecords.map((seller) => [seller.id, seller]));
+
+      for (const item of cart.items) {
+        if (!item.product.sellerId) continue;
+        const seller = sellerMap.get(item.product.sellerId);
+        if (!seller || seller.status !== "APPROVED") {
+          return reply.code(409).send({
+            success: false,
+            error: `${item.product.name} is no longer available because the seller cannot accept orders.`,
+            code: "SELLER_UNAVAILABLE",
+          });
+        }
+        if (item.product.moderationStatus !== "APPROVED") {
+          return reply.code(409).send({
+            success: false,
+            error: `${item.product.name} is awaiting catalogue approval and cannot be purchased yet.`,
+            code: "PRODUCT_NOT_APPROVED",
+          });
+        }
+      }
+
+      // Group lines by seller so each partition can be fulfilled independently.
+      type SellerGroup = {
+        sellerId: string | null;
+        productIds: string[];
+        subtotal: number;
+        commissionRate: number;
+      };
+      const groupsBySeller = new Map<string, SellerGroup>();
+      for (const item of cart.items) {
+        const sellerId = item.product.sellerId ?? null;
+        const key = sellerId ?? "platform";
+        const group = groupsBySeller.get(key) ?? {
+          sellerId,
+          productIds: [],
+          subtotal: 0,
+          commissionRate: sellerId
+            ? (sellerMap.get(sellerId)?.commissionRate ?? 0)
+            : 0,
+        };
+        if (!group.productIds.includes(item.product.id)) {
+          group.productIds.push(item.product.id);
+        }
+        const unitPrice = item.variant?.price || item.product.price;
+        group.subtotal += unitPrice * item.quantity;
+        groupsBySeller.set(key, group);
+      }
+      const sellerGroups = Array.from(groupsBySeller.values());
+
       // ── Coupon revalidation against the database (never trust cart snapshot) ──
       const couponKey = couponCode?.trim().toUpperCase() || cart.coupon?.code;
       if (couponCode && cart.coupon && cart.coupon.code !== couponCode.toUpperCase()) {
@@ -320,6 +386,12 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const { subtotal, shippingFee, discount, total } = pricing.totals;
+
+      // Order-level shipping and discount are allocated to seller partitions in
+      // proportion to their subtotal; the allocation always sums exactly.
+      const groupWeights = sellerGroups.map((group) => group.subtotal);
+      const shippingByGroup = allocateAmount(shippingFee, groupWeights);
+      const discountByGroup = allocateAmount(discount, groupWeights);
 
       app.log.info(
         { userId, itemCount: cart.items.length, subtotal, shippingFee, discount, total },
@@ -391,8 +463,9 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      // ── Persist the order (failures roll back stock and the claim in the outer catch) ──
-      const order = await prisma.order.create({
+      // ── Persist the order and seller partitions atomically ──
+      const order = await prisma.$transaction(async (tx) => {
+        const created = await tx.order.create({
           data: {
             orderNumber: generateOrderNumber(),
             userId,
@@ -417,8 +490,59 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
               create: { status: "PENDING", note: "Order placed" },
             },
           },
-          include: { items: true, payments: true, statusHistory: true },
+        });
+
+        for (let index = 0; index < sellerGroups.length; index += 1) {
+          const group = sellerGroups[index];
+          if (!group.sellerId) continue;
+
+          const sellerOrder = await tx.sellerOrder.create({
+            data: {
+              orderId: created.id,
+              sellerId: group.sellerId,
+              status: "PENDING",
+              subtotal: group.subtotal,
+              shippingFee: shippingByGroup[index],
+              discount: discountByGroup[index],
+              total:
+                group.subtotal + shippingByGroup[index] - discountByGroup[index],
+              commissionAmount: commissionFor(
+                group.subtotal,
+                group.commissionRate
+              ),
+            },
+          });
+
+          await tx.orderItem.updateMany({
+            where: {
+              orderId: created.id,
+              productId: { in: group.productIds },
+            },
+            data: { sellerOrderId: sellerOrder.id },
+          });
+
+          await tx.sellerOrderStatusLog.create({
+            data: {
+              sellerOrderId: sellerOrder.id,
+              status: "PENDING",
+              note: "Order placed",
+            },
+          });
+        }
+
+        return created;
       });
+
+      const fullOrder = await prisma.order.findUnique({
+        where: { id: order.id },
+        include: {
+          items: true,
+          payments: true,
+          statusHistory: true,
+          sellerOrders: true,
+        },
+      });
+      const persistedOrder = fullOrder ?? order;
 
       orderCommitted = true;
 
@@ -426,13 +550,13 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         try {
           await prisma.idempotencyRecord.update({
             where: { id: claimedId },
-            data: { orderId: order.id },
+            data: { orderId: persistedOrder.id },
           });
         } catch (error) {
           // The claim stays in place (without orderId) so a retry receives a
           // safe 409 instead of creating a duplicate order.
           app.log.error(
-            { err: error, orderId: order.id },
+            { err: error, orderId: persistedOrder.id },
             "Failed to link idempotency record to order"
           );
         }
@@ -470,7 +594,7 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
 
       app.log.info({ userId, orderId: order.id, orderNumber: order.orderNumber }, "Order created");
 
-      return reply.code(201).send({ success: true, data: order });
+      return reply.code(201).send({ success: true, data: persistedOrder });
     } catch (error) {
       if (!orderCommitted) {
         await releaseReservations(reservations);
@@ -496,7 +620,12 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
     try {
       const order = await prisma.order.findFirst({
         where: { id: orderId, userId },
-        include: { items: true },
+        include: {
+          items: {
+            include: { sellerOrder: { select: { restockedAt: true } } },
+          },
+          sellerOrders: { select: { status: true } },
+        },
       });
 
       if (!order) {
@@ -508,6 +637,21 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
           success: false,
           error: `Order cannot be cancelled. Current status: ${order.status}`,
           code: "ORDER_NOT_CANCELLABLE",
+        });
+      }
+
+      // A seller partition that has entered fulfilment cannot be cancelled by
+      // the customer. Checking every partition keeps the parent order and its
+      // seller partitions consistent.
+      const startedFulfilment = order.sellerOrders.some(
+        (partition) => !["PENDING", "CONFIRMED"].includes(partition.status)
+      );
+      if (startedFulfilment) {
+        return reply.code(409).send({
+          success: false,
+          error:
+            "Some items are already being prepared by the seller and can no longer be cancelled.",
+          code: "ORDER_FULFILMENT_STARTED",
         });
       }
 
@@ -547,7 +691,34 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         },
       });
 
+      // Cancel the seller partitions that have not started fulfilment. Their
+      // `restockedAt` marker prevents a later admin action from restocking the
+      // same items twice.
+      const openSellerOrders = await prisma.sellerOrder.findMany({
+        where: { orderId, status: { in: ["PENDING", "CONFIRMED"] } },
+        select: { id: true },
+      });
+      if (openSellerOrders.length > 0) {
+        const cancelledAt = new Date();
+        await prisma.sellerOrder.updateMany({
+          where: { orderId, status: { in: ["PENDING", "CONFIRMED"] } },
+          data: { status: "CANCELLED", restockedAt: cancelledAt },
+        });
+        for (const sellerOrder of openSellerOrders) {
+          await prisma.sellerOrderStatusLog.create({
+            data: {
+              sellerOrderId: sellerOrder.id,
+              status: "CANCELLED",
+              note: "Cancelled by customer",
+              actorId: userId,
+              actorRole: request.user!.role,
+            },
+          });
+        }
+      }
+
       for (const item of order.items) {
+        if (item.sellerOrder?.restockedAt) continue;
         if (item.variantId) {
           await prisma.productVariant.updateMany({
             where: { id: item.variantId },

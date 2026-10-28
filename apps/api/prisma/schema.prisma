@@ -25,17 +25,22 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  orders        Order[]
-  reviews       Review[]
-  wishlist      Wishlist[]
-  addresses     Address[]
-  cart          Cart?
-  notifications Notification[]
-  activityLogs  ActivityLog[]
+  orders                     Order[]
+  reviews                    Review[]
+  wishlist                   Wishlist[]
+  addresses                  Address[]
+  cart                       Cart?
+  notifications              Notification[]
+  activityLogs               ActivityLog[]
+  sellerMemberships          SellerMembership[]
+  sellerApplications         SellerApplication[]  @relation("SellerApplicant")
+  reviewedSellerApplications SellerApplication[]  @relation("SellerApplicationReviewer")
+  ownedSellers               SellerOrganization[] @relation("SellerOwner")
 }
 
 enum Role {
   CUSTOMER
+  SELLER
   ADMIN
   SUPER_ADMIN
 }
@@ -43,36 +48,42 @@ enum Role {
 // ─── Products ────────────────────────────────────────────────
 
 model Product {
-  id              String        @id @default(auto()) @map("_id") @db.ObjectId
-  name            String
-  slug            String        @unique
-  description     String?
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  slug             String            @unique
+  description      String?
   shortDescription String?
-  sku             String?       @unique
-  price           Int
-  compareAtPrice  Int?
-  costPrice       Int?
-  barcode         String?
-  status          ProductStatus @default(DRAFT)
-  isFeatured      Boolean       @default(false)
-  isTrending      Boolean       @default(false)
-  isNewArrival    Boolean       @default(false)
-  weight          Float?
-  weightUnit      String?       @default("g")
-  metaTitle       String?
-  metaDescription String?
-  avgRating       Float         @default(0)
-  reviewCount     Int           @default(0)
-  totalSold       Int           @default(0)
+  sku              String?           @unique
+  price            Int
+  compareAtPrice   Int?
+  costPrice        Int?
+  barcode          String?
+  status           ProductStatus     @default(DRAFT)
+  isFeatured       Boolean           @default(false)
+  isTrending       Boolean           @default(false)
+  isNewArrival     Boolean           @default(false)
+  weight           Float?
+  weightUnit       String?           @default("g")
+  metaTitle        String?
+  metaDescription  String?
+  avgRating        Float             @default(0)
+  reviewCount      Int               @default(0)
+  totalSold        Int               @default(0)
   // Product-level inventory used when the product has no variants.
-  stock           Int           @default(0)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  stock            Int               @default(0)
+  // Seller-owned products carry a sellerId. Platform-owned catalog rows keep
+  // this null, so existing data remains valid.
+  sellerId         String?           @db.ObjectId
+  moderationStatus ModerationStatus?
+  moderationNote   String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
-  category        Category?     @relation(fields: [categoryId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  categoryId      String?       @db.ObjectId
-  brand           Brand?        @relation(fields: [brandId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  brandId         String?       @db.ObjectId
+  seller     SellerOrganization? @relation(fields: [sellerId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  category   Category?           @relation(fields: [categoryId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  categoryId String?             @db.ObjectId
+  brand      Brand?              @relation(fields: [brandId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  brandId    String?             @db.ObjectId
 
   images          ProductImage[]
   variants        ProductVariant[]
@@ -82,13 +93,15 @@ model Product {
   orderItems      OrderItem[]
   cartItems       CartItem[]
   collections     ProductCollection[]
-  relatedProducts ProductRelation[] @relation("source")
-  relatedTo       ProductRelation[] @relation("target")
+  relatedProducts ProductRelation[]   @relation("source")
+  relatedTo       ProductRelation[]   @relation("target")
   searchDocuments SearchDocument?
 
   @@index([categoryId])
   @@index([brandId])
   @@index([status])
+  @@index([sellerId])
+  @@index([moderationStatus])
   @@index([isFeatured])
   @@index([isTrending])
   @@index([price])
@@ -99,6 +112,12 @@ enum ProductStatus {
   DRAFT
   ACTIVE
   ARCHIVED
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model ProductImage {
@@ -113,15 +132,15 @@ model ProductImage {
 }
 
 model ProductVariant {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
   name      String
-  sku       String? @unique
+  sku       String?    @unique
   price     Int
-  stock     Int     @default(0)
+  stock     Int        @default(0)
   image     String?
   options   Json
-  productId String  @db.ObjectId
-  product   Product @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  productId String     @db.ObjectId
+  product   Product    @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   cartItems CartItem[]
 
   @@index([productId])
@@ -139,12 +158,12 @@ model ProductSpec {
 }
 
 model ProductRelation {
-  id              String  @id @default(auto()) @map("_id") @db.ObjectId
-  sourceId        String  @db.ObjectId
-  targetId        String  @db.ObjectId
-  type            String  @default("related")
-  source          Product @relation("source", fields: [sourceId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  target          Product @relation("target", fields: [targetId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  sourceId String  @db.ObjectId
+  targetId String  @db.ObjectId
+  type     String  @default("related")
+  source   Product @relation("source", fields: [sourceId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  target   Product @relation("target", fields: [targetId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@unique([sourceId, targetId, type])
   @@index([sourceId])
@@ -154,36 +173,36 @@ model ProductRelation {
 // ─── Categories & Brands ─────────────────────────────────────
 
 model Category {
-  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String
-  slug        String     @unique
+  slug        String   @unique
   description String?
   image       String?
-  isActive    Boolean    @default(true)
-  position    Int        @default(0)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  isActive    Boolean  @default(true)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  parentId    String?    @db.ObjectId
-  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  children    Category[] @relation("CategoryTree")
-  products    Product[]
+  parentId String?    @db.ObjectId
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  children Category[] @relation("CategoryTree")
+  products Product[]
 
   @@index([parentId])
 }
 
 model Brand {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String
-  slug        String    @unique
+  slug        String   @unique
   logo        String?
   description String?
   website     String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  products    Product[]
+  products Product[]
 }
 
 // ─── Collections ─────────────────────────────────────────────
@@ -201,7 +220,7 @@ model Collection {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  products    ProductCollection[]
+  products ProductCollection[]
 }
 
 model ProductCollection {
@@ -219,37 +238,38 @@ model ProductCollection {
 // ─── Orders ──────────────────────────────────────────────────
 
 model Order {
-  id              String        @id @default(auto()) @map("_id") @db.ObjectId
-  orderNumber     String        @unique
-  status          OrderStatus   @default(PENDING)
-  subtotal        Int
-  shippingFee     Int           @default(0)
-  tax             Int           @default(0)
-  discount        Int           @default(0)
-  total           Int
-  currency        String        @default("USD")
-  notes           String?
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber    String      @unique
+  status         OrderStatus @default(PENDING)
+  subtotal       Int
+  shippingFee    Int         @default(0)
+  tax            Int         @default(0)
+  discount       Int         @default(0)
+  total          Int
+  currency       String      @default("USD")
+  notes          String?
   // Client-supplied key that makes order creation safe to retry. Uniqueness is
   // enforced through IdempotencyRecord (a required primary key), because a
   // unique index on an optional MongoDB field has unreliable null semantics.
-  idempotencyKey  String?
+  idempotencyKey String?
   // Set when inventory has been returned to stock, so cancellations and
   // returns can never restock the same order twice.
-  restockedAt     DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  restockedAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
-  userId          String        @db.ObjectId
-  user            User          @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   shippingAddress Json
   billingAddress  Json?
 
-  items           OrderItem[]
-  payments        Payment[]
-  shipments       Shipment[]
-  statusHistory   OrderStatusLog[]
-  returnRequest   ReturnRequest?
+  items         OrderItem[]
+  payments      Payment[]
+  shipments     Shipment[]
+  statusHistory OrderStatusLog[]
+  returnRequest ReturnRequest?
+  sellerOrders  SellerOrder[]
 
   @@index([userId])
   @@index([status])
@@ -257,18 +277,21 @@ model Order {
 }
 
 model OrderItem {
-  id         String  @id @default(auto()) @map("_id") @db.ObjectId
-  quantity   Int
-  unitPrice  Int
-  total      Int
-  productId  String  @db.ObjectId
-  variantId  String? @db.ObjectId
-  orderId    String  @db.ObjectId
-  product    Product @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  order      Order   @relation(fields: [orderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  quantity      Int
+  unitPrice     Int
+  total         Int
+  productId     String       @db.ObjectId
+  variantId     String?      @db.ObjectId
+  orderId       String       @db.ObjectId
+  sellerOrderId String?      @db.ObjectId
+  product       Product      @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  order         Order        @relation(fields: [orderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  sellerOrder   SellerOrder? @relation(fields: [sellerOrderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@index([orderId])
   @@index([productId])
+  @@index([sellerOrderId])
 }
 
 model OrderStatusLog {
@@ -300,8 +323,8 @@ model Payment {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  orderId         String        @db.ObjectId
-  order           Order         @relation(fields: [orderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  orderId String @db.ObjectId
+  order   Order  @relation(fields: [orderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@index([orderId])
   @@index([transactionId])
@@ -340,34 +363,37 @@ enum OrderStatus {
 // ─── Shipping ────────────────────────────────────────────────
 
 model Shipment {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  carrier         String?
-  trackingNumber  String?
-  method          String?
-  status          String    @default("pending")
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  carrier           String?
+  trackingNumber    String?
+  method            String?
+  status            String    @default("pending")
   estimatedDelivery DateTime?
-  actualDelivery  DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  actualDelivery    DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  orderId         String    @db.ObjectId
-  order           Order     @relation(fields: [orderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  orderId       String       @db.ObjectId
+  sellerOrderId String?      @db.ObjectId
+  order         Order        @relation(fields: [orderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  sellerOrder   SellerOrder? @relation(fields: [sellerOrderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@index([orderId])
+  @@index([sellerOrderId])
 }
 
 // ─── Returns ──────────────────────────────────────────────
 
 model ReturnRequest {
-  id          String       @id @default(auto()) @map("_id") @db.ObjectId
-  reason      String
-  status      ReturnStatus @default(PENDING)
-  notes       String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  reason    String
+  status    ReturnStatus @default(PENDING)
+  notes     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  orderId     String       @db.ObjectId @unique
-  order       Order        @relation(fields: [orderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  orderId String @unique @db.ObjectId
+  order   Order  @relation(fields: [orderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 }
 
 enum ReturnStatus {
@@ -380,20 +406,20 @@ enum ReturnStatus {
 // ─── Reviews ─────────────────────────────────────────────────
 
 model Review {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  rating    Int
-  title     String?
-  comment   String?
-  images    String[]
-  isVerified Boolean @default(false)
-  isVisible  Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  rating     Int
+  title      String?
+  comment    String?
+  images     String[]
+  isVerified Boolean  @default(false)
+  isVisible  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  productId String   @db.ObjectId
-  product   Product  @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  userId    String       @db.ObjectId
+  user      User         @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  productId String       @db.ObjectId
+  product   Product      @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   votes     ReviewVote[]
 
   @@unique([userId, productId])
@@ -402,11 +428,11 @@ model Review {
 }
 
 model ReviewVote {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  helpful   Int     @default(0)
-  userId    String  @db.ObjectId
-  reviewId  String  @db.ObjectId
-  review    Review  @relation(fields: [reviewId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  helpful  Int    @default(0)
+  userId   String @db.ObjectId
+  reviewId String @db.ObjectId
+  review   Review @relation(fields: [reviewId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@unique([userId, reviewId])
 }
@@ -417,10 +443,10 @@ model Wishlist {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   createdAt DateTime @default(now())
 
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  productId String   @db.ObjectId
-  product   Product  @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  userId    String  @db.ObjectId
+  user      User    @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  productId String  @db.ObjectId
+  product   Product @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@unique([userId, productId])
   @@index([userId])
@@ -429,27 +455,27 @@ model Wishlist {
 // ─── Cart ────────────────────────────────────────────────────
 
 model Cart {
-  id        String     @id @default(auto()) @map("_id") @db.ObjectId
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  userId    String     @db.ObjectId @unique
-  user      User       @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  items     CartItem[]
-  coupon    CartCoupon?
+  userId String      @unique @db.ObjectId
+  user   User        @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  items  CartItem[]
+  coupon CartCoupon?
 }
 
 model CartItem {
-  id        String        @id @default(auto()) @map("_id") @db.ObjectId
-  quantity  Int           @default(1)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  cartId    String        @db.ObjectId
-  cart      Cart          @relation(fields: [cartId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  productId String        @db.ObjectId
-  product   Product       @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  variantId String?       @db.ObjectId
+  cartId    String          @db.ObjectId
+  cart      Cart            @relation(fields: [cartId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  productId String          @db.ObjectId
+  product   Product         @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  variantId String?         @db.ObjectId
   variant   ProductVariant? @relation(fields: [variantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@unique([cartId, productId, variantId])
@@ -460,29 +486,29 @@ model CartCoupon {
   id       String @id @default(auto()) @map("_id") @db.ObjectId
   code     String
   discount Int
-  cartId   String @db.ObjectId @unique
+  cartId   String @unique @db.ObjectId
   cart     Cart   @relation(fields: [cartId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 }
 
 // ─── Addresses ───────────────────────────────────────────────
 
 model Address {
-  id          String  @id @default(auto()) @map("_id") @db.ObjectId
-  label       String  @default("Home")
-  fullName    String
-  phone       String?
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  label        String   @default("Home")
+  fullName     String
+  phone        String?
   addressLine1 String
   addressLine2 String?
-  city        String
-  state       String
-  zipCode     String
-  country     String  @default("US")
-  isDefault   Boolean @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  city         String
+  state        String
+  zipCode      String
+  country      String   @default("US")
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  userId      String  @db.ObjectId
-  user        User    @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@index([userId])
 }
@@ -490,21 +516,21 @@ model Address {
 // ─── Coupons ─────────────────────────────────────────────────
 
 model Coupon {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  code        String      @unique
-  description String?
-  discountType DiscountType
-  discountValue Int
-  minOrderAmount Int?
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  code              String       @unique
+  description       String?
+  discountType      DiscountType
+  discountValue     Int
+  minOrderAmount    Int?
   maxDiscountAmount Int?
-  usageLimit  Int?
-  usedCount   Int         @default(0)
-  perUserLimit Int?
-  isActive    Boolean     @default(true)
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  usageLimit        Int?
+  usedCount         Int          @default(0)
+  perUserLimit      Int?
+  isActive          Boolean      @default(true)
+  startDate         DateTime?
+  endDate           DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   @@index([isActive])
 }
@@ -550,8 +576,8 @@ model Notification {
   metadata  Json?
   createdAt DateTime         @default(now())
 
-  userId    String           @db.ObjectId
-  user      User             @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@index([userId])
   @@index([isRead])
@@ -569,18 +595,18 @@ enum NotificationType {
 // ─── Banners ─────────────────────────────────────────────────
 
 model Banner {
-  id          String         @id @default(auto()) @map("_id") @db.ObjectId
-  title       String
-  subtitle    String?
-  image       String
-  link        String?
-  position    BannerPosition @default(HERO)
-  isActive    Boolean        @default(true)
-  positionOrder Int          @default(0)
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  subtitle      String?
+  image         String
+  link          String?
+  position      BannerPosition @default(HERO)
+  isActive      Boolean        @default(true)
+  positionOrder Int            @default(0)
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([position])
   @@index([isActive])
@@ -604,8 +630,8 @@ model ActivityLog {
   userAgent String?
   createdAt DateTime @default(now())
 
-  userId    String?  @db.ObjectId
-  user      User?    @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  userId String? @db.ObjectId
+  user   User?   @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@index([userId])
   @@index([entity])
@@ -615,7 +641,7 @@ model ActivityLog {
 // ─── Search ──────────────────────────────────────────────────
 
 model SearchDocument {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   type      String
   entityId  String
   title     String
@@ -626,7 +652,7 @@ model SearchDocument {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  productId String? @db.ObjectId @unique
+  productId String?  @unique @db.ObjectId
   product   Product? @relation(fields: [productId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@index([type])
@@ -642,4 +668,146 @@ model StoreSetting {
   group String @default("general")
 
   @@index([group])
+}
+
+// ── Marketplace: sellers, memberships, applications ─────────────────────────
+
+enum SellerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum SellerMemberRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum SellerApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+model SellerOrganization {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  slug            String       @unique
+  description     String?
+  logo            String?
+  banner          String?
+  status          SellerStatus @default(PENDING)
+  commissionRate  Int          @default(1000) // basis points; 1000 = 10%
+  supportEmail    String?
+  supportPhone    String?
+  businessAddress Json?
+  policies        Json?
+  approvedAt      DateTime?
+  suspendedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  ownerId String @db.ObjectId
+  owner   User   @relation("SellerOwner", fields: [ownerId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  memberships  SellerMembership[]
+  applications SellerApplication[]
+  products     Product[]
+  sellerOrders SellerOrder[]
+
+  @@index([status])
+  @@index([ownerId])
+}
+
+model SellerMembership {
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  role      SellerMemberRole @default(OWNER)
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  sellerId String             @db.ObjectId
+  userId   String             @db.ObjectId
+  seller   SellerOrganization @relation(fields: [sellerId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  user     User               @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  @@unique([sellerId, userId])
+  @@index([userId])
+}
+
+model SellerApplication {
+  id                 String                  @id @default(auto()) @map("_id") @db.ObjectId
+  businessName       String
+  businessType       String?
+  registrationNumber String?
+  taxId              String?
+  contactEmail       String
+  contactPhone       String?
+  address            Json
+  description        String?
+  status             SellerApplicationStatus @default(SUBMITTED)
+  reviewNote         String?
+  submittedAt        DateTime                @default(now())
+  reviewedAt         DateTime?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  userId       String  @db.ObjectId
+  sellerId     String? @db.ObjectId
+  reviewedById String? @db.ObjectId
+
+  user       User                @relation("SellerApplicant", fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  reviewedBy User?               @relation("SellerApplicationReviewer", fields: [reviewedById], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  seller     SellerOrganization? @relation(fields: [sellerId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  @@index([status])
+  @@index([userId])
+  @@index([sellerId])
+}
+
+// ── Marketplace: seller-scoped order partitions ─────────────────────────────
+
+model SellerOrder {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  status           OrderStatus @default(PENDING)
+  subtotal         Int
+  shippingFee      Int         @default(0)
+  discount         Int         @default(0)
+  total            Int
+  commissionAmount Int         @default(0)
+  restockedAt      DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  orderId  String             @db.ObjectId
+  sellerId String             @db.ObjectId
+  order    Order              @relation(fields: [orderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  seller   SellerOrganization @relation(fields: [sellerId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  items         OrderItem[]
+  statusHistory SellerOrderStatusLog[]
+  shipments     Shipment[]
+
+  @@unique([orderId, sellerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SellerOrderStatusLog {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  status    OrderStatus
+  note      String?
+  actorId   String?     @db.ObjectId
+  actorRole String?
+  createdAt DateTime    @default(now())
+
+  sellerOrderId String      @db.ObjectId
+  sellerOrder   SellerOrder @relation(fields: [sellerOrderId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  @@index([sellerOrderId])
 }

@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, ShoppingBag, User, Menu, Sun, Moon, Heart,
-  LogOut, ChevronDown, Package, Settings, Clock, TrendingUp,
+  LogOut, ChevronDown, Package, Settings, Clock, TrendingUp, Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ const navLinks = [
   { label: "New Arrivals", href: "/products?sort=newest" },
   { label: "Trending", href: "/products?sort=trending" },
   { label: "Deals", href: "/products?sort=deals" },
+  { label: "Sellers", href: "/sellers" },
   { label: "Categories", href: "/products" },
 ];
 
@@ -415,6 +416,12 @@ export function Header() {
                     <Link href="/account?tab=wishlist" className="cursor-pointer">
                       <Heart className="h-4 w-4 mr-2" />
                       Wishlist
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/seller" className="cursor-pointer">
+                      <Store className="h-4 w-4 mr-2" />
+                      Seller Center
                     </Link>
                   </DropdownMenuItem>
                   {user?.role === "ADMIN" && (

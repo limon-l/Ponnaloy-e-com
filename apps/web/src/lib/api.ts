@@ -56,6 +56,34 @@ export const api = {
   get: <T>(endpoint: string, token?: string) =>
     request<T>(endpoint, { method: "GET", token }),
 
+  getWithHeaders: <T>(endpoint: string, headers: Record<string, string>) =>
+    request<T>(endpoint, { method: "GET", headers }),
+
+  postWithHeaders: <T>(
+    endpoint: string,
+    body: unknown,
+    headers: Record<string, string>
+  ) =>
+    request<T>(endpoint, {
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+      headers,
+    }),
+
+  putWithHeaders: <T>(
+    endpoint: string,
+    body: unknown,
+    headers: Record<string, string>
+  ) =>
+    request<T>(endpoint, {
+      method: "PUT",
+      body: body ? JSON.stringify(body) : undefined,
+      headers,
+    }),
+
+  deleteWithHeaders: <T>(endpoint: string, headers: Record<string, string>) =>
+    request<T>(endpoint, { method: "DELETE", headers }),
+
   post: <T>(endpoint: string, body?: unknown, token?: string) =>
     request<T>(endpoint, {
       method: "POST",

@@ -3,6 +3,8 @@ import prisma from "../lib/prisma";
 import { requireAdmin } from "../middleware/auth";
 import { paginationSchema } from "../validators";
 import { invalidateProductCache } from "../lib/redis";
+import { indexProduct, removeProduct } from "../lib/meili";
+import { productModerationSchema } from "../validators";
 
 const ORDER_STATUSES = [
   "PENDING",
@@ -95,6 +97,9 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       lowStockCandidates,
       pendingFulfillment,
       chartOrders,
+      sellerStatusCounts,
+      pendingSellerApplications,
+      sellerOrderAggregate,
     ] = await Promise.all([
       prisma.product.count(),
       prisma.user.count(),
@@ -137,6 +142,18 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         },
         select: { createdAt: true, total: true },
       }),
+      prisma.sellerOrganization.groupBy({
+        by: ["status"],
+        _count: { _all: true },
+      }),
+      prisma.sellerApplication.count({
+        where: { status: { in: ["SUBMITTED", "UNDER_REVIEW"] } },
+      }),
+      prisma.sellerOrder.aggregate({
+        where: { status: { notIn: ["CANCELLED", "REFUNDED"] } },
+        _sum: { total: true, commissionAmount: true },
+        _count: { _all: true },
+      }),
     ]);
 
     const lowStockProducts = lowStockCandidates.map((product) => ({
@@ -168,6 +185,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
+    const sellerCounts = Object.fromEntries(
+      sellerStatusCounts.map((row) => [row.status, row._count._all])
+    );
+
     return {
       success: true,
       data: {
@@ -180,6 +201,22 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         recentOrders,
         lowStockProducts,
         revenueByDay: Array.from(byDay.values()),
+        sellers: {
+          total: Object.values(sellerCounts).reduce(
+            (sum, value) => sum + Number(value),
+            0
+          ),
+          approved: sellerCounts.APPROVED ?? 0,
+          pending: sellerCounts.PENDING ?? 0,
+          suspended: sellerCounts.SUSPENDED ?? 0,
+          rejected: sellerCounts.REJECTED ?? 0,
+          pendingApplications: pendingSellerApplications,
+        },
+        marketplace: {
+          sellerOrders: sellerOrderAggregate._count._all,
+          sellerGmv: sellerOrderAggregate._sum.total ?? 0,
+          commissionRevenue: sellerOrderAggregate._sum.commissionAmount ?? 0,
+        },
       },
     };
   });
@@ -187,15 +224,22 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   // ───────────────────────────── Products ──────────────────────────────
   app.get("/products", async (request) => {
     const { page, limit } = parsePagination(request.query);
-    const { search, status, categoryId } = request.query as {
+    const { search, status, categoryId, moderationStatus } = request.query as {
       search?: string;
       status?: string;
       categoryId?: string;
+      moderationStatus?: string;
     };
 
     const where: Record<string, unknown> = {};
     if (status && ["DRAFT", "ACTIVE", "ARCHIVED"].includes(status)) {
       where.status = status;
+    }
+    if (
+      moderationStatus &&
+      ["PENDING", "APPROVED", "REJECTED"].includes(moderationStatus)
+    ) {
+      where.moderationStatus = moderationStatus;
     }
     if (categoryId) where.categoryId = categoryId;
     if (search?.trim()) {
@@ -213,6 +257,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
           images: { orderBy: { position: "asc" } },
           category: { select: { id: true, name: true } },
           brand: { select: { id: true, name: true } },
+          seller: { select: { id: true, name: true, slug: true, status: true } },
           variants: { select: { id: true, name: true, stock: true } },
           _count: { select: { variants: true, reviews: true } },
         },
@@ -239,6 +284,96 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
     };
+  });
+
+  // Approve or reject a seller product. Approval publishes an active listing;
+  // rejection keeps the product as a draft with a moderation note.
+  app.put("/products/:id/moderation", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = productModerationSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        success: false,
+        error: "Invalid moderation payload",
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product) {
+      return reply.code(404).send({ success: false, error: "Product not found" });
+    }
+    if (!product.sellerId) {
+      return reply.code(400).send({
+        success: false,
+        error: "Platform products do not require seller moderation.",
+        code: "NOT_SELLER_PRODUCT",
+      });
+    }
+
+    const { status, note } = parsed.data;
+    if (status === "REJECTED" && !note?.trim()) {
+      return reply.code(400).send({
+        success: false,
+        error: "A rejection reason is required.",
+        code: "NOTE_REQUIRED",
+      });
+    }
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        moderationStatus: status,
+        moderationNote: status === "REJECTED" ? note?.trim() ?? null : null,
+        status:
+          status === "APPROVED"
+            ? product.status === "ARCHIVED"
+              ? "ARCHIVED"
+              : "ACTIVE"
+            : "DRAFT",
+      },
+      include: {
+        images: { orderBy: { position: "asc" } },
+        seller: { select: { id: true, name: true, slug: true } },
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId: request.user!.id,
+        action: `product.moderation.${status.toLowerCase()}`,
+        entity: "Product",
+        entityId: id,
+        details: { sellerId: product.sellerId, note: note ?? null },
+        ip: request.ip,
+        userAgent: request.headers["user-agent"],
+      },
+    });
+
+    if (status === "APPROVED") {
+      await indexProduct({
+        id: updated.id,
+        name: updated.name,
+        slug: updated.slug,
+        description: updated.description || "",
+        price: updated.price,
+        categoryId: updated.categoryId,
+        brandId: updated.brandId,
+        status: updated.status,
+        isFeatured: updated.isFeatured,
+        isTrending: updated.isTrending,
+        isNewArrival: updated.isNewArrival,
+        avgRating: updated.avgRating,
+        totalSold: updated.totalSold,
+        createdAt: updated.createdAt.toISOString(),
+      });
+    } else {
+      await removeProduct(id);
+    }
+
+    await invalidateProductCache();
+
+    return { success: true, data: updated };
   });
 
   // ────────────────────────────── Orders ───────────────────────────────
@@ -268,6 +403,15 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
           },
           items: { include: { product: { select: { id: true, name: true } } } },
           payments: { select: { status: true, method: true, amount: true } },
+          sellerOrders: {
+            select: {
+              id: true,
+              status: true,
+              total: true,
+              commissionAmount: true,
+              seller: { select: { id: true, name: true } },
+            },
+          },
           shipments: {
             select: {
               carrier: true,
@@ -309,6 +453,21 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         payments: true,
         shipments: true,
         statusHistory: { orderBy: { createdAt: "asc" } },
+        sellerOrders: {
+          include: {
+            seller: { select: { id: true, name: true, slug: true, status: true } },
+            statusHistory: { orderBy: { createdAt: "asc" } },
+            items: {
+              select: {
+                id: true,
+                quantity: true,
+                unitPrice: true,
+                total: true,
+                product: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -342,7 +501,11 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
     const order = await prisma.order.findUnique({
       where: { id },
-      include: { items: true },
+      include: {
+        items: {
+          include: { sellerOrder: { select: { restockedAt: true } } },
+        },
+      },
     });
     if (!order) {
       return reply.code(404).send({ success: false, error: "Order not found" });
@@ -412,6 +575,40 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
           },
         });
 
+        // Keep seller partitions consistent when an administrator cancels or
+        // returns a parent order. `restockedAt` is set here so neither the
+        // seller nor a later admin action can restock the items again.
+        if (RESTOCK_STATUSES.includes(nextStatus)) {
+          const openPartitions = await tx.sellerOrder.findMany({
+            where: {
+              orderId: id,
+              status: { notIn: ["CANCELLED", "RETURNED", "REFUNDED"] },
+            },
+            select: { id: true },
+          });
+          if (openPartitions.length > 0) {
+            const now = new Date();
+            await tx.sellerOrder.updateMany({
+              where: {
+                orderId: id,
+                status: { notIn: ["CANCELLED", "RETURNED", "REFUNDED"] },
+              },
+              data: { status: nextStatus as never, restockedAt: now },
+            });
+            for (const partition of openPartitions) {
+              await tx.sellerOrderStatusLog.create({
+                data: {
+                  sellerOrderId: partition.id,
+                  status: nextStatus as never,
+                  note: `Parent order ${nextStatus.toLowerCase()} by admin`,
+                  actorId: request.user!.id,
+                  actorRole: request.user!.role,
+                },
+              });
+            }
+          }
+        }
+
         if (nextStatus === "SHIPPED") {
           const shipment = await tx.shipment.findFirst({
             where: { orderId: id },
@@ -444,6 +641,9 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
         if (shouldRestock) {
           for (const item of order.items) {
+            // Items belonging to a seller partition that already restocked
+            // (for example a seller cancellation) must not be returned twice.
+            if (item.sellerOrder?.restockedAt) continue;
             if (item.variantId) {
               await tx.productVariant.updateMany({
                 where: { id: item.variantId },
@@ -473,8 +673,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       } catch (error) {
         if (attempt < 2 && isRetryableTransactionError(error)) continue;
 
-        // If the write conflict means another actor already moved the order,
-        // report a deterministic conflict instead of a 500.
+        // A write conflict after all retries means another actor is modifying
+        // the same order. Report a deterministic conflict instead of a 500.
+        if (isRetryableTransactionError(error)) {
+          return reply.code(409).send({
+            success: false,
+            error:
+              "The order was updated by someone else. Reload and try again.",
+            code: "CONCURRENT_UPDATE",
+          });
+        }
+
         const latest = await prisma.order.findUnique({
           where: { id },
           select: { status: true },

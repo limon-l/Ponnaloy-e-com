@@ -21,7 +21,11 @@ export const searchRoutes: FastifyPluginAsync = async (app) => {
 
     const filterArray: string[] = ["status = ACTIVE"];
     if (filters) {
-      const filterParts = filters.split(",").map((f) => f.trim());
+      const filterParts = filters
+        .split(",")
+        .map((f) => f.trim())
+        // Clients may narrow the catalogue but must not widen visibility.
+        .filter((f) => f && !/^status\s*=/i.test(f));
       filterArray.push(...filterParts);
     }
 
@@ -61,6 +65,7 @@ export const searchRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const result = await searchProducts(q, {
+      filter: ["status = ACTIVE"],
       limit: 8,
       attributesToRetrieve: ["id", "name", "slug", "price", "category"],
       attributesToHighlight: ["name"],

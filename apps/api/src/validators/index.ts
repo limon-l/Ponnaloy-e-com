@@ -34,6 +34,7 @@ export const productFilterSchema = z.object({
   q: z.string().optional(),
   categoryId: z.string().optional(),
   brandId: z.string().optional(),
+  sellerId: z.string().optional(),
   minPrice: z.coerce.number().int().min(0).optional(),
   maxPrice: z.coerce.number().int().optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
@@ -98,6 +99,74 @@ export const createProductSchema = z.object({
 });
 
 export const updateProductSchema = createProductSchema.partial();
+
+// ── Marketplace validators ──────────────────────────────────────────────────
+
+export const sellerApplicationSchema = z.object({
+  businessName: z.string().min(2).max(120),
+  businessType: z.string().max(80).optional(),
+  registrationNumber: z.string().max(80).optional(),
+  taxId: z.string().max(80).optional(),
+  contactEmail: z.string().email(),
+  contactPhone: z.string().max(40).optional(),
+  address: z.object({
+    line1: z.string().min(1).max(200),
+    line2: z.string().max(200).optional(),
+    city: z.string().min(1).max(100),
+    state: z.string().max(100).optional(),
+    postalCode: z.string().min(1).max(30),
+    country: z.string().min(2).max(2).default("US"),
+  }),
+  description: z.string().max(2000).optional(),
+});
+
+export const sellerProductSchema = createProductSchema.extend({
+  status: z.enum(["DRAFT", "ACTIVE"]).default("DRAFT"),
+});
+
+export const sellerOrderStatusSchema = z.object({
+  status: z.enum([
+    "CONFIRMED",
+    "PROCESSING",
+    "SHIPPED",
+    "OUT_FOR_DELIVERY",
+    "DELIVERED",
+    "CANCELLED",
+  ]),
+  note: z.string().max(500).optional(),
+  carrier: z.string().max(100).optional(),
+  trackingNumber: z.string().max(120).optional(),
+});
+
+export const storefrontUpdateSchema = z.object({
+  name: z.string().min(2).max(120).optional(),
+  description: z.string().max(2000).optional(),
+  logo: imageUrlSchema.optional(),
+  banner: imageUrlSchema.optional(),
+  supportEmail: z.string().email().optional(),
+  supportPhone: z.string().max(40).optional(),
+  policies: z.record(z.string()).optional(),
+});
+
+export const productModerationSchema = z.object({
+  status: z.enum(["APPROVED", "REJECTED"]),
+  note: z.string().max(500).optional(),
+});
+
+export const sellerApplicationReviewSchema = z.object({
+  status: z.enum(["UNDER_REVIEW", "APPROVED", "REJECTED", "CHANGES_REQUESTED"]),
+  note: z.string().max(1000).optional(),
+});
+
+export const sellerStatusUpdateSchema = z.object({
+  status: z.enum(["APPROVED", "SUSPENDED", "REJECTED"]),
+  note: z.string().max(500).optional(),
+});
+
+export const sellerCommissionSchema = z.object({
+  commissionRate: z.number().int().min(0).max(5000),
+  note: z.string().max(500).optional(),
+});
 
 export const createOrderSchema = z.object({
   shippingAddress: z.object({

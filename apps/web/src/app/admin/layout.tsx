@@ -15,6 +15,8 @@ import {
   ChevronLeft,
   Menu,
   ShieldAlert,
+  Store,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +28,8 @@ const sidebarLinks = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Products", href: "/admin/products", icon: Package },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
+  { label: "Sellers", href: "/admin/sellers", icon: Store },
+  { label: "Moderation", href: "/admin/moderation", icon: ShieldCheck },
   { label: "Customers", href: "/admin/customers", icon: Users },
   { label: "Categories", href: "/admin/categories", icon: Tag },
   { label: "Banners", href: "/admin/banners", icon: Image },
