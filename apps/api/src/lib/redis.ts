@@ -46,13 +46,14 @@ if (config.nodeEnv !== "production") {
 }
 
 /**
- * Small in-process cache used when Redis is absent. It only runs in production
- * (or when MEMORY_CACHE=true) so integration tests always observe fresh data,
- * and entries are capped at 30 seconds to bound staleness.
+ * Small in-process cache used when Redis is absent. It runs everywhere except
+ * tests (unless explicitly disabled with MEMORY_CACHE=false) so local
+ * development does not pay an Atlas round trip for every navigation. Entries
+ * are capped at 30 seconds to bound staleness.
  */
 const MEMORY_TTL_CAP_MS = 30_000;
 const memoryEnabled =
-  config.nodeEnv === "production" || process.env.MEMORY_CACHE === "true";
+  config.nodeEnv !== "test" && process.env.MEMORY_CACHE !== "false";
 const memory = new Map<string, { value: string; expiresAt: number }>();
 
 function memoryGet<T>(key: string): T | null {

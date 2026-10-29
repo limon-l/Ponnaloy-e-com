@@ -282,7 +282,6 @@ export function Header() {
                           Categories
                         </div>
                         {suggestions.categories.map((c, i) => {
-                          const idx = (recentSearches.length > 0 && !searchQuery.trim()) ? 999 : i;
                           return (
                             <button
                               key={c.id}

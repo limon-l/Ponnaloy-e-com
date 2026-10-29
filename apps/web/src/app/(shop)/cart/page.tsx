@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import { FREE_SHIPPING_THRESHOLD } from "@ponnaloy/shared";
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, subtotal, discount, couponCode, itemCount, applyCoupon, removeCoupon, loading: cartLoading } = useCart() as any;
+  const { items, removeItem, updateQuantity, subtotal, discount, couponCode, itemCount, applyCoupon, removeCoupon } = useCart() as any;
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -200,7 +200,7 @@ export default function CartPage() {
                         if ((removeCoupon as any)) await (removeCoupon as any)();
                         setCouponInput("");
                         toast({ title: "Coupon removed" });
-                      } catch (e) {}
+                      } catch {}
                     }}
                   >
                     Remove

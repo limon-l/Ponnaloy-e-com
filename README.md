@@ -1,66 +1,54 @@
-<p align="center">
-  <img src="frontend/public/favicon.svg" alt="Ponnaloy" width="80" />
-</p>
-
 <h1 align="center">Ponnaloy</h1>
 
 <p align="center">
-  A full-stack e-commerce platform with a dark glassmorphism UI, AI-powered shopping assistant, and admin dashboard.<br/>
-  Built with Express.js, SQLite, and vanilla JavaScript.
+  A multi-vendor e-commerce platform: Next.js storefront, Fastify API, MongoDB, and
+  server-enforced customer, seller and administrator portals.
 </p>
 
 <p align="center">
-  <a href="#live-demo">Live Demo</a> &bull;
   <a href="#features">Features</a> &bull;
   <a href="#tech-stack">Tech Stack</a> &bull;
+  <a href="#repository-layout">Repository Layout</a> &bull;
   <a href="#getting-started">Getting Started</a> &bull;
-  <a href="#deployment">Deployment</a> &bull;
-  <a href="#api-reference">API</a> &bull;
-  <a href="#license">License</a>
+  <a href="#scripts">Scripts</a> &bull;
+  <a href="#verification-status">Verification Status</a>
 </p>
-
----
-
-## Live Demo
-
-| | URL |
-|---|---|
-| **Frontend** | [ponnaloy.vercel.app](https://ponnaloy.vercel.app) |
-| **Backend API** | [ponnaloy-api.onrender.com](https://ponnaloy-api.onrender.com) |
-
-> Update these links after deployment.
 
 ---
 
 ## Features
 
-### Customer-Facing
-- **Product Catalog** — 500 seeded products across 10 categories with search, sort, and filter
-- **Product Detail Pages** — Image zoom, quantity stepper, related products, and review system
-- **Shopping Cart** — localStorage-based drawer with promo code support (WELCOME10, FREESHIP, VIP20)
-- **Checkout Flow** — Auth-gated checkout with shipping address, phone, and payment method selection
-- **Order History** — Filterable, searchable order list with expandable detail cards and status badges
-- **User Dashboard** — Profile management, password change, saved addresses, wishlist, and order summary
-- **AI Shopping Assistant** — Chat widget with OpenAI integration (falls back to local product-matching logic)
-- **Wishlist** — localStorage-based with server-side persistence per user account
-- **Newsletter** — Email subscription with server-side storage
-- **Recently Viewed** — Product history tracked in localStorage
+### Storefront
+- Product catalogue with search, category filters, sorting and pagination
+- Product detail pages with variants, specifications, reviews and seller attribution
+- Cart with optimistic updates, coupons and guest-to-account merge
+- Checkout with server-validated prices, stock and totals
+- Cash on delivery, bank transfer and optional Stripe card payments
+- Order history and tracking, wishlist, saved addresses, password reset
+- Approved-seller directory and public seller storefronts
+- AI shopping assistant (OpenAI when configured, local matching otherwise)
 
-### Admin
-- **Dashboard Overview** — Revenue, order count, user count, product count, recent activity, and low-stock alerts
-- **Product Management** — Full CRUD with image URL, category, stock, pricing, and featured flag
-- **Order Management** — View all orders, update status (placed &rarr; confirmed &rarr; shipped &rarr; delivered), and detail modal
-- **User Management** — List all users with role badges, order count, and join date
+### Seller portal
+- Seller application and onboarding
+- Tenant-scoped dashboard, product CRUD, orders and analytics
+- Storefront editor
+- Listings start `DRAFT` + `PENDING` and go live only after admin approval
 
-### UX / UI
-- **Dark Glassmorphism Theme** — Custom color palette with glass-effect panels and gradient accents
-- **GSAP Animations** — Page entrance, modal transitions, auth form shake, and cart drawer slide
-- **AOS Scroll Reveals** — Intersection Observer-based staggered reveal animations
-- **Responsive Design** — Mobile-first layout with horizontal-scroll nav on small screens
-- **Toast Notifications** — Non-intrusive feedback for all user actions
-- **Confetti Celebration** — Fires on successful order placement
-- **Animated Counters** — Stats animate on scroll into view
-- **Parallax Effects** — Subtle depth on scroll for hero sections
+### Administration
+- Dashboard and analytics
+- Product, category, brand, banner and order management
+- Seller applications, suspension and commission rates
+- Catalogue moderation queue
+- Customer management and role assignment
+- Stripe refunds for collected card payments
+
+### Platform
+- JWT authentication with password-change invalidation
+- Role- and attribute-based authorization; seller scope from `SellerMembership`
+- Idempotent Stripe webhooks (`PaymentEvent.eventId` unique)
+- Redis cache with fail-fast fallback to a bounded in-process cache
+- Meilisearch indexing with database filtering fallback
+- Prometheus metrics, Pino logging, rate limiting, helmet/CSP, compression
 
 ---
 
@@ -68,78 +56,49 @@
 
 | Layer | Technology |
 |-------|-----------|
-| **Runtime** | Node.js &ge; 18 |
-| **Server** | Express.js 4 |
-| **Database** | SQLite3 (via `sqlite3` npm package) |
-| **Session Store** | `connect-sqlite3` (SQLite-backed session persistence) |
-| **Auth** | Session-based with `bcryptjs` password hashing |
-| **Security** | Helmet.js, express-rate-limit, cookie-parser |
-| **AI** | OpenAI API (optional, falls back to local product matching) |
-| **Frontend** | Vanilla HTML / CSS / JavaScript |
-| **Styling** | Tailwind CSS 3 (custom theme, minified build) |
-| **Animations** | GSAP 3, AOS (Animate On Scroll) |
-| **Icons** | Inline SVG (no icon library dependency) |
-| **Fonts** | Space Grotesk (display), Manrope (body) via Google Fonts |
+| Monorepo | pnpm 9 workspaces + Turborepo |
+| Storefront | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Radix UI |
+| API | Fastify 5, TypeScript, Zod validation |
+| Database | MongoDB via Prisma 6 |
+| Cache | Redis (optional; in-process fallback) |
+| Search | Meilisearch (optional; database fallback) |
+| Payments | Stripe Checkout + webhooks (optional), COD, bank transfer |
+| Auth | Custom JWT, optional Clerk |
+| Email | SMTP via nodemailer, JSON capture when unconfigured |
+| Tests | Vitest + Supertest-style HTTP tests, Playwright + axe |
 
 ---
 
-## Project Structure
+## Repository Layout
 
 ```
 ponnaloy-e-com/
-├── server.js                   # Entry point (loads env + starts backend)
-├── package.json
-├── tailwind.config.js          # Custom theme (colors, fonts, radii)
-├── vercel.json                 # Vercel deployment config
-├── render.yaml                 # Render deployment config
-├── .env.example                # Required environment variables
-│
-├── backend/
-│   ├── server.js               # Express app, middleware, routes, CORS
-│   ├── config/env.js           # Environment variable loader
-│   ├── db.js                   # SQLite schema, seed data, query functions
-│   ├── middleware/
-│   │   ├── asyncHandler.js     # Async route wrapper
-│   │   ├── errorHandler.js     # Global error handler
-│   │   └── requireAuth.js      # Session auth guard
-│   ├── routes/
-│   │   ├── auth.js             # Login, register, logout, session check
-│   │   ├── products.js         # Product listing, search, detail
-│   │   ├── orders.js           # Order CRUD (auth required)
-│   │   ├── admin.js            # Admin dashboard API (admin required)
-│   │   ├── reviews.js          # Product reviews
-│   │   ├── wishlist.js         # User wishlist
-│   │   ├── addresses.js        # Saved addresses
-│   │   ├── user.js             # Profile and password management
-│   │   ├── chat.js             # AI shopping assistant
-│   │   └── health.js           # Health check endpoint
-│   └── utils/sanitize.js       # User object sanitizer
-│
-└── frontend/
-    └── public/
-        ├── index.html          # Homepage
-        ├── products.html       # Product catalog
-        ├── product.html        # Product detail
-        ├── dashboard.html      # User dashboard
-        ├── orders.html         # Order history
-        ├── admin.html          # Admin panel
-        ├── input.css           # Tailwind source (directives + components)
-        ├── styles.css          # Compiled Tailwind output (minified)
-        ├── favicon.svg
-        └── js/
-            ├── env.js          # API URL auto-detection / injection
-            ├── shared.js       # API helper, product cards, toasts, user menu
-            ├── state.js        # Shared global state object
-            ├── cart.js         # localStorage cart, promo codes, order submit
-            ├── app.js          # Homepage logic, category filters, checkout
-            ├── auth.js         # Login/register modal with GSAP
-            ├── products.js     # Catalog page
-            ├── product.js      # Product detail + reviews
-            ├── dashboard.js    # Dashboard tabs (profile, orders, wishlist, addresses)
-            ├── orders.js       # Order history page
-            ├── admin.js        # Admin panel logic
-            └── assistant.js    # AI chat widget
+├── apps/
+│   ├── api/                    # Fastify API
+│   │   ├── prisma/schema.prisma
+│   │   ├── scripts/            # seed-seller-catalog.ts
+│   │   ├── src/
+│   │   │   ├── config/         # validated environment
+│   │   │   ├── lib/            # prisma, redis, stripe, email, search, auth cache
+│   │   │   ├── middleware/     # auth, seller scope, errors
+│   │   │   ├── routes/         # auth, products, cart, orders, seller, admin, ...
+│   │   │   └── server.ts
+│   │   └── test/
+│   └── web/                    # Next.js storefront + seller/admin workspaces
+│       ├── src/app/
+│       ├── src/components/
+│       ├── src/contexts/
+│       └── e2e/                # Playwright + axe
+├── packages/shared/            # shared types, constants, pricing helpers
+├── docker-compose.yml          # local MongoDB replica set, Redis, Meilisearch
+├── render.yaml                 # API deployment descriptor
+├── pnpm-workspace.yaml
+└── turbo.json
 ```
+
+The former Express/SQLite application (`backend/`, `frontend/`, `server.js`,
+`data/`) was removed. `apps/web` + `apps/api` + `packages/shared` are the only
+runtime.
 
 ---
 
@@ -147,193 +106,105 @@ ponnaloy-e-com/
 
 ### Prerequisites
 
-- **Node.js** &ge; 18
-- **npm** &ge; 9
+- Node.js >= 20
+- pnpm 9.15 (`corepack enable`)
+- MongoDB replica set (local Docker or Atlas)
+- Optional: Redis, Meilisearch, Stripe, SMTP
 
 ### Installation
 
 ```bash
-git clone https://github.com/your-username/ponnaloy-e-com.git
-cd ponnaloy-e-com
-npm install
-```
-
-### Environment Setup
-
-```bash
+pnpm install
 cp .env.example .env
 ```
 
-Edit `.env` with your values:
+Fill in `.env` at the repository root and `apps/api/.env`. The API validates
+required variables at boot and refuses to start in production without a strong
+`JWT_SECRET`.
+
+Minimum local configuration:
 
 ```env
-PORT=3000
+# apps/api/.env
+MONGODB_URI=mongodb://localhost:27017/ponnaloy?replicaSet=rs0
+PORT=3001
 NODE_ENV=development
-SESSION_SECRET=your-random-secret-string
+JWT_SECRET=replace-with-a-long-random-string
 FRONTEND_URL=http://localhost:3000
-OPENAI_API_KEY=sk-...          # optional
+REDIS_ENABLED=false          # set true when Redis is running
 ```
 
-### Build CSS
+```env
+# apps/web/.env.local
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+### Database and seed data
 
 ```bash
-npm run build:css
+pnpm db:generate
+pnpm db:push
+pnpm db:seed                 # base catalogue and reference data
+pnpm db:seed:seller          # demo seller + in-stock catalogue (idempotent)
 ```
 
-### Start Development Server
+`db:seed:seller` creates `Ponnaloy Home Studio` (owner
+`seller@ponnaloy.local` / `PonnaloySeller#2026`) with 13 active products and
+restocks any legacy platform product that has no inventory.
+
+### Run
 
 ```bash
-npm run dev
+pnpm dev                     # web on :3000, API on :3001
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Optional services:
 
-### Default Accounts
-
-| Role | Email | Password |
-|------|-------|----------|
-| **Admin** | admin@ponnaloy.com | admin123 |
-| **Customer** | Register at `/` | — |
+```bash
+pnpm docker:up               # MongoDB replica set, Redis, Meilisearch
+pnpm docker:down
+```
 
 ---
 
-## Deployment
+## Scripts
 
-### Frontend &rarr; Vercel
-
-1. Push to GitHub
-2. Import repository on [vercel.com/new](https://vercel.com/new)
-3. Set environment variable:
-   - `PONNALOY_API_URL` = `https://your-backend.onrender.com/api`
-4. Deploy — Vercel runs `npm run build && node frontend/build.js` automatically
-
-> The `env.js` file is generated at build time with your backend URL. For local development, it auto-detects `localhost:3000`.
-
-### Backend &rarr; Render
-
-1. Create a new **Web Service** on [render.com](https://render.com)
-2. Connect your GitHub repository
-3. Configure:
-   - **Build Command:** `npm install && npm run build:css`
-   - **Start Command:** `node server.js`
-   - **Health Check Path:** `/api/health`
-4. Set environment variables:
-   - `NODE_ENV` = `production`
-   - `SESSION_SECRET` = (generate a random string)
-   - `FRONTEND_URL` = `https://your-frontend.vercel.app`
-   - `OPENAI_API_KEY` = (optional)
-5. Add a **Persistent Disk** mounted at `/opt/render/project/src/data` (1 GB) for SQLite
-
-> On first boot, the server auto-creates the SQLite database and seeds 500 products.
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Run storefront and API together via Turbo |
+| `pnpm dev:web` / `pnpm dev:api` | Run one app |
+| `pnpm build` | Build web + API |
+| `pnpm typecheck` | Type-check all workspaces |
+| `pnpm lint` | Lint all workspaces |
+| `pnpm test` | API Vitest suite (in-memory MongoDB replica set) |
+| `pnpm db:generate` / `db:push` / `db:migrate` / `db:seed` / `db:studio` | Prisma lifecycle |
+| `pnpm db:seed:seller` | Seed the demo seller catalogue and restock legacy products |
+| `pnpm docker:up` / `docker:down` | Local MongoDB, Redis, Meilisearch |
+| `pnpm --filter @ponnaloy/web e2e` | Playwright + axe suite |
 
 ---
 
-## API Reference
+## Verification Status
 
-All endpoints are prefixed with `/api`.
+Verified in this repository (2026-10-29):
 
-### Health
+- Workspace type check: **PASS** (3/3 workspaces)
+- Lint: **PASS** (0 errors; warnings remain)
+- API tests: **PASS** (54/54)
+- Storefront production build: **PASS** (37/37 pages)
+- Playwright + axe: **PASS** (18/18, desktop + Pixel 7)
+- Production MongoDB: reachable, schema applied, 45 in-stock products
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/health` | No | Server health check |
+Not verified / blocked:
 
-### Authentication
+- Real Stripe card capture: **BLOCKED** (no Stripe keys)
+- External email delivery: **BLOCKED** (no SMTP provider)
+- Docker Compose: **BLOCKED** (Docker not installed)
+- Production deployment: **BLOCKED** (no hosting credentials)
+- Redis/Meilisearch in this runtime: **NOT TESTED** (fallbacks active)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/auth/me` | No | Get current session user (or `null`) |
-| POST | `/api/auth/register` | No | Create account (`name`, `email`, `password`) |
-| POST | `/api/auth/login` | No | Sign in (`email`, `password`) |
-| POST | `/api/auth/logout` | No | Destroy session |
-| POST | `/api/auth/signout` | No | Alias for logout |
-
-### Products
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/products` | No | List all products (`?q`, `?category`, `?featured`) |
-| GET | `/api/products/trending` | No | Top-rated products |
-| GET | `/api/products/deals` | No | Products with discount |
-| GET | `/api/products/categories` | No | List all categories |
-| GET | `/api/products/:id` | No | Single product detail |
-
-### Orders
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/orders` | Yes | List user's orders |
-| GET | `/api/orders/:orderId` | Yes | Single order detail |
-| POST | `/api/orders` | Yes | Create order (`items`, `shippingAddress`, `phone`, `email`) |
-
-### Reviews
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/reviews/product/:productId` | No | List reviews + stats for a product |
-| POST | `/api/reviews` | Yes | Submit review (`productId`, `rating`, `title`, `comment`) |
-| DELETE | `/api/reviews/:reviewId` | Yes | Delete own review |
-
-### User
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/user/profile` | Yes | Get profile |
-| PUT | `/api/user/profile` | Yes | Update profile (`name`, `email`, `phone`) |
-| PUT | `/api/user/password` | Yes | Change password (`currentPassword`, `newPassword`) |
-
-### Wishlist
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/wishlist` | Yes | List wishlist items |
-| POST | `/api/wishlist/toggle` | Yes | Toggle product in wishlist (`productId`) |
-
-### Addresses
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/addresses` | Yes | List saved addresses |
-| POST | `/api/addresses` | Yes | Add address |
-| PUT | `/api/addresses/:id` | Yes | Update address |
-| DELETE | `/api/addresses/:id` | Yes | Delete address |
-
-### Chat
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/chat` | No | Send message to AI assistant (`message`) |
-
-### Newsletter
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/newsletter` | No | Subscribe (`email`) |
-
-### Admin
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/admin/stats` | Admin | Dashboard stats |
-| GET | `/api/admin/products` | Admin | All products |
-| POST | `/api/admin/products` | Admin | Create product |
-| PUT | `/api/admin/products/:id` | Admin | Update product |
-| DELETE | `/api/admin/products/:id` | Admin | Delete product |
-| GET | `/api/admin/orders` | Admin | All orders |
-| PUT | `/api/admin/orders/:id/status` | Admin | Update order status |
-| GET | `/api/admin/users` | Admin | All users |
-
----
-
-## Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `PORT` | No | `3000` | Server port |
-| `NODE_ENV` | No | `development` | `development` or `production` |
-| `SESSION_SECRET` | **Yes** | — | Secret for signing session cookies |
-| `FRONTEND_URL` | **Yes** | `http://localhost:3000` | CORS allowed origin (your Vercel URL) |
-| `OPENAI_API_KEY` | No | `null` | OpenAI API key for AI assistant |
+No production-ready claim is made. See `PROJECT_DETAILS.md` for the full
+evidence log and risk register.
 
 ---
 

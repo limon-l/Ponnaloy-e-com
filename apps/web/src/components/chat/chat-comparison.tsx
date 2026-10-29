@@ -11,7 +11,6 @@ interface ChatComparisonProps {
 export function ChatComparison({ products }: ChatComparisonProps) {
   if (products.length < 2) return null;
 
-  const allSpecs = new Set<string>();
   // We don't have specs in the basic product type, so we compare key fields
 
   return (

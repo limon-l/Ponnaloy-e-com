@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { sendChatMessage } from "@/lib/chat-api";
 import { ChatMessage } from "./chat-message";
-import type { ChatMessage as ChatMessageType, ChatProduct } from "@/types";
+import type { ChatMessage as ChatMessageType } from "@/types";
 
 function createWelcomeMessage(): ChatMessageType {
   return {
@@ -42,7 +42,6 @@ export function ChatWidget() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   // Fix welcome message timestamp after hydration to match real time
   useEffect(() => {
@@ -96,10 +95,6 @@ export function ChatWidget() {
       setIsStreaming(true);
 
       let textContent = "";
-      let products: ChatProduct[] | undefined;
-      let comparison: ChatProduct[] | undefined;
-      let suggestions: string[] | undefined;
-      let newConversationId = conversationId;
 
       try {
         await sendChatMessage(msg, conversationId, null, {
@@ -114,7 +109,6 @@ export function ChatWidget() {
             );
           },
           onProducts: (data) => {
-            products = data;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === loadingId ? { ...m, products: data } : m
@@ -122,7 +116,6 @@ export function ChatWidget() {
             );
           },
           onComparison: (data) => {
-            comparison = data;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === loadingId ? { ...m, comparison: data } : m
@@ -130,7 +123,6 @@ export function ChatWidget() {
             );
           },
           onSuggestions: (data) => {
-            suggestions = data;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === loadingId ? { ...m, suggestions: data } : m
@@ -138,7 +130,6 @@ export function ChatWidget() {
             );
           },
           onDone: (id) => {
-            newConversationId = id;
             setConversationId(id);
           },
           onError: (error) => {

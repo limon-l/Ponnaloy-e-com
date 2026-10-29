@@ -78,7 +78,9 @@ async function registerPlugins(server: FastifyInstance) {
       ) {
         return callback(null, true);
       }
-      callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+      // Deny without throwing. Passing an Error here turns an ordinary CORS
+      // rejection into a 500, which hides the cause and inflates error rates.
+      callback(null, false);
     },
     credentials: true,
     // Cache preflight responses so authenticated requests do not pay an extra
@@ -243,6 +245,26 @@ export async function buildServer(
   return server;
 }
 
+/**
+ * Populate the catalogue cache as soon as the process is listening. The first
+ * request for a Mongo-backed relation query can take seconds on a cold
+ * connection, so warming the storefront rails keeps the first page view fast.
+ */
+async function warmCatalogCache(server: FastifyInstance) {
+  const paths = [
+    "/api/products/featured",
+    "/api/products/trending",
+    "/api/products/deals",
+    "/api/products/new-arrivals",
+    "/api/products?page=1&limit=20&sort=createdAt",
+    "/api/categories",
+  ];
+  await Promise.allSettled(
+    paths.map((url) => server.inject({ method: "GET", url }))
+  );
+  server.log.info("Catalogue cache warmed");
+}
+
 async function bootstrap() {
   const server = await buildServer();
   try {
@@ -271,6 +293,9 @@ async function bootstrap() {
     await server.listen({ port: config.port, host: "0.0.0.0" });
     server.log.info(`Server running at http://localhost:${config.port}`);
     server.log.info(`Environment: ${config.nodeEnv}`);
+
+    // Warm in the background so it never delays readiness.
+    void warmCatalogCache(server);
   } catch (error) {
     server.log.error(error);
     await server.close();

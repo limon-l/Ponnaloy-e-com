@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, ShoppingBag, Star, Check, Loader2 } from "lucide-react";
+import { Heart, ShoppingBag, Star, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatPrice, calculateDiscount } from "@/lib/utils";
@@ -30,10 +30,17 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const [cartState, setCartState] = useState<AddToCartState>("idle");
   const [wishAnimating, setWishAnimating] = useState(false);
 
+  // If the API does not report inventory for a product, treat it as available
+  // and let the server validate stock at cart/checkout time. Only an explicit
+  // zero marks a product as unavailable.
+  const variants = product.variants ?? [];
+  const variantStockKnown = variants.some(
+    (v) => typeof v.stock === "number"
+  );
   const isOutOfStock =
-    product.variants && product.variants.length > 0
-      ? product.variants.every((v) => v.stock === 0)
-      : (product.stock ?? 0) <= 0;
+    variants.length > 0
+      ? variantStockKnown && variants.every((v) => (v.stock ?? 0) <= 0)
+      : typeof product.stock === "number" && product.stock <= 0;
 
   const handleAddToCart = useCallback(
     (e: React.MouseEvent) => {

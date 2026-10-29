@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Package, ChevronDown, ChevronUp, ShoppingBag,
-  Clock, CheckCircle2, Truck, MapPin, XCircle, ArrowRight,
+  Clock, CheckCircle2, Truck, XCircle,
   CreditCard, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ const filterOptions = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-function OrderTrackingTimeline({ status, statusHistory }: { status: OrderStatus; statusHistory?: Array<{ status: string; note?: string; createdAt: string }> }) {
+function OrderTrackingTimeline({ status }: { status: OrderStatus; statusHistory?: Array<{ status: string; note?: string; createdAt: string }> }) {
   const currentIdx = allStatuses.indexOf(status);
 
   return (

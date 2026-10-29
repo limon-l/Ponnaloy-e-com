@@ -22,6 +22,62 @@ function getToken(): string | null {
   return localStorage.getItem("ponnaloy_token");
 }
 
+/**
+ * Public catalogue responses change rarely. Caching them briefly in the browser
+ * removes a round trip when a shopper navigates back to a page or when several
+ * components ask for the same data. Authenticated responses are never cached.
+ */
+const PUBLIC_GET_PREFIXES = [
+  "/api/products",
+  "/api/categories",
+  "/api/brands",
+  "/api/collections",
+  "/api/sellers",
+  "/api/banners",
+  "/api/search",
+];
+const PUBLIC_MUTATION_PREFIXES = [
+  "/api/products",
+  "/api/categories",
+  "/api/brands",
+  "/api/collections",
+  "/api/sellers",
+  "/api/banners",
+  "/api/admin",
+];
+const GET_CACHE_TTL_MS = 15_000;
+const GET_CACHE_MAX_ENTRIES = 100;
+
+const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
+const inFlightRequests = new Map<string, Promise<unknown>>();
+
+function readCached<T>(key: string): T | undefined {
+  const entry = responseCache.get(key);
+  if (!entry) return undefined;
+  if (entry.expiresAt <= Date.now()) {
+    responseCache.delete(key);
+    return undefined;
+  }
+  return entry.value as T;
+}
+
+function writeCached(key: string, value: unknown): void {
+  if (responseCache.size >= GET_CACHE_MAX_ENTRIES) {
+    const oldest = responseCache.keys().next().value;
+    if (oldest) responseCache.delete(oldest);
+  }
+  responseCache.set(key, { value, expiresAt: Date.now() + GET_CACHE_TTL_MS });
+}
+
+export function clearApiCache(): void {
+  responseCache.clear();
+}
+
+function isCacheableGet(endpoint: string, method: string, token: string | null): boolean {
+  if (token || method !== "GET") return false;
+  return PUBLIC_GET_PREFIXES.some((prefix) => endpoint.startsWith(prefix));
+}
+
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { token: tokenOverride, ...fetchOptions } = options;
 
@@ -37,19 +93,49 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...fetchOptions,
-    headers,
-    credentials: "include",
-  });
+  const method = (fetchOptions.method || "GET").toUpperCase();
+  const cacheable = isCacheableGet(endpoint, method, token);
 
-  const data = await response.json();
+  if (cacheable) {
+    const cached = readCached<T>(endpoint);
+    if (cached !== undefined) return cached;
 
-  if (!response.ok) {
-    throw new Error(data.error || data.message || "Request failed");
+    // Collapse concurrent identical requests (for example, two components
+    // mounting at the same time) into a single network call.
+    const pending = inFlightRequests.get(endpoint) as Promise<T> | undefined;
+    if (pending) return pending;
   }
 
-  return data;
+  const execute = async (): Promise<T> => {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...fetchOptions,
+      headers,
+      credentials: "include",
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || data.message || "Request failed");
+    }
+
+    if (cacheable) {
+      writeCached(endpoint, data);
+    } else if (
+      method !== "GET" &&
+      PUBLIC_MUTATION_PREFIXES.some((prefix) => endpoint.startsWith(prefix))
+    ) {
+      clearApiCache();
+    }
+
+    return data as T;
+  };
+
+  if (!cacheable) return execute();
+
+  const promise = execute().finally(() => inFlightRequests.delete(endpoint));
+  inFlightRequests.set(endpoint, promise);
+  return promise;
 }
 
 export const api = {

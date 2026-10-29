@@ -25,16 +25,33 @@ export interface CartItem {
   variant?: { id: string; name: string; price: number } | null;
 }
 
+interface ServerCartPayload {
+  items: Array<{
+    id: string;
+    productId: string;
+    quantity: number;
+    product: Product;
+    variant?: ProductVariant | null;
+  }>;
+  discount?: number;
+  coupon?: { code: string; discount: number } | null;
+}
+
+interface ServerCartResponse {
+  success: boolean;
+  data: ServerCartPayload;
+}
+
 interface CartContextValue {
   items: CartItem[];
   addItem: (
     product: Product,
     quantity?: number,
     variant?: ProductVariant | null
-  ) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
-  clearCart: () => void;
+  ) => Promise<void>;
+  removeItem: (id: string) => Promise<void>;
+  updateQuantity: (id: string, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   resetCart: () => void;
   itemCount: number;
   subtotal: number;
@@ -44,6 +61,8 @@ interface CartContextValue {
   loading: boolean;
   syncCart: () => Promise<void>;
   mergeGuestToServer: () => Promise<void>;
+  applyCoupon: (code: string) => Promise<unknown>;
+  removeCoupon: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
@@ -87,10 +106,6 @@ function formatServerItem(item: {
   };
 }
 
-function getCartItemKey(item: CartItem): string {
-  return `${item.productId}-${item.variant?.id || "none"}`;
-}
-
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -113,7 +128,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (hydrated) saveCart(items);
   }, [items, hydrated]);
 
-  const recalcTotals = useCallback((serverData: any) => {
+  const recalcTotals = useCallback((serverData?: ServerCartPayload) => {
     if (serverData && typeof serverData.discount === "number") {
       setDiscount(serverData.discount);
     } else {
@@ -126,6 +141,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const applyServerCart = useCallback(
+    (data: ServerCartPayload) => {
+      const serverItems = (data.items || []).map(formatServerItem);
+      setItems(serverItems);
+      setServerMode(true);
+      recalcTotals(data);
+      saveCart(serverItems);
+    },
+    [recalcTotals]
+  );
+
   const syncCart = useCallback(async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("ponnaloy_token") : null;
     if (!token) {
@@ -135,34 +161,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     setLoading(true);
     try {
-      const result = await api.get<{
-        success: boolean;
-        data: {
-          items: Array<{
-            id: string;
-            productId: string;
-            quantity: number;
-            product: Product;
-            variant?: ProductVariant | null;
-          }>;
-          discount?: number;
-          coupon?: { code: string; discount: number } | null;
-        };
-      }>("/api/cart");
+      const result = await api.get<ServerCartResponse>("/api/cart");
 
       if (result.success && mountedRef.current) {
-        const serverItems = (result.data.items || []).map(formatServerItem);
-        setItems(serverItems);
-        setServerMode(true);
-        recalcTotals(result.data);
-        saveCart(serverItems);
+        applyServerCart(result.data);
       }
     } catch {
       // Server not available, keep local state
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [recalcTotals]);
+  }, [applyServerCart]);
 
   const mergeGuestToServer = useCallback(async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("ponnaloy_token") : null;
@@ -173,27 +182,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const guestItems = loadCart();
+      let latestCart: ServerCartPayload | null = null;
 
-      if (guestItems.length > 0) {
-        for (const guestItem of guestItems) {
-          try {
-            await api.post("/api/cart/items", {
-              productId: guestItem.productId,
-              quantity: guestItem.quantity,
-              variantId: guestItem.variant?.id || undefined,
-            });
-          } catch {}
-        }
+      for (const guestItem of guestItems) {
+        try {
+          const result = await api.post<ServerCartResponse>("/api/cart/items", {
+            productId: guestItem.productId,
+            quantity: guestItem.quantity,
+            variantId: guestItem.variant?.id || undefined,
+          });
+          if (result.success) latestCart = result.data;
+        } catch {}
       }
 
-      await syncCart();
+      if (latestCart && mountedRef.current) {
+        applyServerCart(latestCart);
+      } else {
+        await syncCart();
+      }
     } catch {
       // Fallback: just sync whatever server has
       await syncCart();
     } finally {
       mergingRef.current = false;
     }
-  }, [syncCart]);
+  }, [applyServerCart, syncCart]);
 
   const addItem = useCallback(
     async (product: Product, quantity = 1, variant?: ProductVariant | null) => {
@@ -231,18 +244,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (!serverMode) return;
 
       try {
-        await api.post("/api/cart/items", {
+        // The API returns the updated cart, so there is no need to follow the
+        // mutation with a second GET request.
+        const result = await api.post<ServerCartResponse>("/api/cart/items", {
           productId: product.id,
           quantity,
           variantId: variant?.id || undefined,
         });
-        await syncCart();
+        if (result.success && mountedRef.current) {
+          applyServerCart(result.data);
+        }
       } catch {
         // Reconcile with server truth (e.g. the item went out of stock).
         await syncCart();
       }
     },
-    [serverMode, syncCart]
+    [serverMode, applyServerCart, syncCart]
   );
 
   const removeItem = useCallback(
@@ -250,8 +267,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setItems((prev) => prev.filter((item) => item.id !== id));
       if (!serverMode) return;
       try {
+        // The local state is already correct; only reconcile if the request
+        // fails, which avoids a redundant GET after every click.
         await api.delete(`/api/cart/items/${id}`);
-        await syncCart();
       } catch {
         await syncCart();
       }
@@ -268,7 +286,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (!serverMode) return;
       try {
         await api.put(`/api/cart/items/${id}`, { quantity });
-        await syncCart();
       } catch {
         await syncCart();
       }
@@ -292,38 +309,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const applyCoupon = useCallback(
     async (code: string) => {
       if (serverMode && isAuthenticated) {
-        try {
-        const res: any = await api.post("/api/cart/coupon", { code: code.toUpperCase() });
-        await syncCart();
+        const res = await api.post<{
+          success: boolean;
+          data: { code: string; discount: number };
+        }>("/api/cart/coupon", { code: code.toUpperCase() });
+        if (res.success && res.data) {
+          setCouponCode(res.data.code);
+          setDiscount(res.data.discount);
+        }
         return res.data;
-      } catch (e) {
-        throw e;
       }
-      } else {
-        // Guest: no coupon apply via API; skip server sync path
-        setCouponCode(code.toUpperCase());
-      }
+      // Guest: no coupon apply via API; skip server sync path
+      setCouponCode(code.toUpperCase());
     },
-    [serverMode, isAuthenticated, syncCart]
+    [serverMode, isAuthenticated]
   );
 
-  const removeCoupon = useCallback(
-    async () => {
-      if (serverMode && isAuthenticated) {
-        try {
-          await api.delete("/api/cart/coupon");
-          await syncCart();
-          return;
-        } catch (e) {
-          throw e;
-        }
-      } else {
-        setCouponCode(null);
-        setDiscount(0);
-      }
-    },
-    [serverMode, isAuthenticated, syncCart]
-  );
+  const removeCoupon = useCallback(async () => {
+    if (serverMode && isAuthenticated) {
+      await api.delete("/api/cart/coupon");
+    }
+    setCouponCode(null);
+    setDiscount(0);
+  }, [serverMode, isAuthenticated]);
 
   const resetCart = useCallback(() => {
     setItems([]);
@@ -366,7 +374,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       mergeGuestToServer,
       applyCoupon,
       removeCoupon,
-    }) as any,
+    }),
     [items, addItem, removeItem, updateQuantity, clearCart, resetCart, itemCount, subtotal, discount, couponCode, total, loading, syncCart, mergeGuestToServer, applyCoupon, removeCoupon]
   );
 

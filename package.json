@@ -2,12 +2,11 @@
   "name": "ponnaloy-e-com",
   "version": "2.0.0",
   "private": true,
-  "description": "Premium B2C e-commerce platform",
+  "description": "Premium multi-vendor e-commerce platform",
   "scripts": {
     "dev": "turbo dev --filter=@ponnaloy/web --filter=@ponnaloy/api",
     "dev:web": "pnpm --filter @ponnaloy/web dev",
     "dev:api": "pnpm --filter @ponnaloy/api dev",
-    "dev:legacy": "node server.js",
     "build": "turbo build --filter=@ponnaloy/web --filter=@ponnaloy/api",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
@@ -16,6 +15,7 @@
     "db:push": "pnpm --filter @ponnaloy/api db:push",
     "db:migrate": "pnpm --filter @ponnaloy/api db:migrate",
     "db:seed": "pnpm --filter @ponnaloy/api db:seed",
+    "db:seed:seller": "pnpm --filter @ponnaloy/api seed:seller",
     "db:studio": "pnpm --filter @ponnaloy/api db:studio",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
@@ -27,18 +27,5 @@
   "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=20.0.0"
-  },
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^13.0.3",
-    "compression": "^1.8.1",
-    "connect-sqlite3": "^0.9.18",
-    "cookie-parser": "^1.4.7",
-    "dotenv": "^17.4.2",
-    "express": "^4.22.2",
-    "express-rate-limit": "^8.7.0",
-    "express-session": "^1.19.0",
-    "helmet": "^8.3.0",
-    "morgan": "^1.12.0"
   }
 }

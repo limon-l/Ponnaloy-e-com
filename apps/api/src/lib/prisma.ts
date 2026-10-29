@@ -8,10 +8,9 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log:
-      config.nodeEnv === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
+    // Query logging is intentionally excluded: it serialises every query to the
+    // console and measurably slows down request handling in development.
+    log: config.nodeEnv === "development" ? ["error", "warn"] : ["error"],
   });
 
 if (config.nodeEnv !== "production") {

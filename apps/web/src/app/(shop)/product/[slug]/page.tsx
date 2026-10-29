@@ -7,14 +7,13 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, Heart, ShoppingBag, ChevronRight, Minus, Plus,
-  Truck, Shield, RotateCcw, Check, Loader2, Store,
+  Truck, Shield, RotateCcw, Check, Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
+import { ProductCard } from "@/components/product/product-card";
 import { cn, formatPrice, calculateDiscount } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/cart-context";
@@ -42,10 +41,20 @@ export default function ProductDetailPage() {
 
   // Inventory lives on the selected variant, or on the product itself when it
   // has no variants. Never fall back to "unlimited" for a missing value.
+  // Unknown inventory (older API responses omit the field) is treated as
+  // available; the server remains authoritative at checkout.
+  const variants = product?.variants ?? [];
+  const variantStockKnown = variants.some(
+    (variant) => typeof variant.stock === "number"
+  );
   const totalAvailableStock = product
-    ? product.variants && product.variants.length > 0
-      ? product.variants.reduce((sum, variant) => sum + variant.stock, 0)
-      : product.stock ?? 0
+    ? variants.length > 0
+      ? variantStockKnown
+        ? variants.reduce((sum, variant) => sum + (variant.stock ?? 0), 0)
+        : 999
+      : typeof product.stock === "number"
+        ? product.stock
+        : 999
     : 0;
 
   useEffect(() => {
@@ -95,7 +104,11 @@ export default function ProductDetailPage() {
 
   const discount = calculateDiscount(product.price, product.compareAtPrice);
   const selectedVariantData = product.variants?.find((v) => v.id === selectedVariant);
-  const availableStock = selectedVariantData ? selectedVariantData.stock : totalAvailableStock;
+  const availableStock = selectedVariantData
+    ? typeof selectedVariantData.stock === "number"
+      ? selectedVariantData.stock
+      : 999
+    : totalAvailableStock;
   const currentPrice = selectedVariantData?.price ?? product.price;
   const isWishlisted = hasItem(product.id);
 

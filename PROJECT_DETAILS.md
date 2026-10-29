@@ -5,10 +5,10 @@
 | Field | Value |
 |---|---|
 | Project name | Ponnaloy E-Commerce Platform |
-| Document version | 1.3 |
+| Document version | 1.4 |
 | Last updated | 2026-10-29 |
-| Repository version | Root package `2.0.0`, Batches 01–05 (Batch 05: multi-vendor marketplace foundation) |
-| Primary status | Active development — functional multi-vendor marketplace with admin, seller and customer portals, tested commerce API, production MongoDB schema applied; deployment, card payments, email and WCAG AA conformance pending |
+| Repository version | Root package `2.0.0`, Batches 01–07 (Batch 07: stock recovery, latency, legacy removal) |
+| Primary status | Active development - functional multi-vendor marketplace with admin, seller and customer portals, tested commerce API, production MongoDB schema applied, seeded in-stock catalogue and passing Playwright/axe; live card capture, external email delivery, CI and deployment pending |
 | Audience | Engineers, reviewers, DevOps, product stakeholders |
 | Secret handling | This document lists environment variable **names only**. No credentials, keys or customer data are reproduced. |
 
@@ -40,13 +40,13 @@
 
 ## 1. Executive Summary
 
-Ponnaloy is a **multi-stack e-commerce codebase** that has evolved through three architectural generations. The repository currently contains:
+Ponnaloy is a **single-stack e-commerce monorepo**:
 
-- A **modern storefront** — `apps/web`, Next.js 15 (App Router) + React 19 + TypeScript + Tailwind/Radix.
-- A **modern API** — `apps/api`, Fastify 5 + Prisma 6 + MongoDB, with Redis caching, Meilisearch search, Stripe/Clerk integration points, Prometheus metrics and Pino logging.
-- A **legacy application** — `backend/` (Express 4 + SQLite) and `frontend/` (vanilla HTML/CSS/JS), still present and runnable, but superseded.
+- A **storefront** — `apps/web`, Next.js 15 (App Router) + React 19 + TypeScript + Tailwind/Radix.
+- An **API** — `apps/api`, Fastify 5 + Prisma 6 + MongoDB, with Redis caching, Meilisearch search, Stripe/Clerk integration points, Prometheus metrics and Pino logging.
+- Shared contracts — `packages/shared`.
 
-The **active target** is `apps/web` + `apps/api` + `packages/shared`. The legacy stack is frozen rather than deleted so that no working behaviour is lost while the modern stack reaches parity.
+The former Express 4 + SQLite application (`backend/`, `frontend/`, `server.js`, `data/`, root PostCSS/Tailwind configs and its npm lockfile) was removed in Batch 07. `apps/web` + `apps/api` + `packages/shared` are the only runtime; no legacy service is expected or supported.
 
 The platform is a **multi-vendor marketplace** with three server-enforced portals: customers, sellers and platform administrators. The marketplace layer is additive: platform-owned products (`sellerId: null`) keep working exactly as before, while seller-owned products are tenant-scoped, moderated before publication and fulfilled through independent seller-order partitions. B2B wholesale, payouts and dispute resolution remain future work.
 
@@ -54,21 +54,21 @@ The platform is a **multi-vendor marketplace** with three server-enforced portal
 
 | Dimension | Status | Evidence |
 |---|---|---|
-| Storefront production build | **PASS** | `next build` — 36/36 pages generated |
+| Storefront production build | **PASS** | `next build` — 37/37 pages generated |
 | Storefront type safety | **PASS** | `tsc --noEmit` |
 | API type safety | **PASS** | `tsc --noEmit` — 0 diagnostics across all modules |
-| Lint | **PASS** | ESLint flat configs; 0 errors (56 web warnings) |
-| Automated tests | **PASS** | Vitest: 41/41 (10 pricing unit + 31 API integration, including 12 marketplace tests) |
+| Lint | **PASS** | ESLint flat configs; 0 errors (warnings remain) |
+| Automated tests | **PASS** | Vitest: 54/54 (10 pricing unit + 44 API integration) |
 | Live order-flow E2E | **PASS** | 106/106 assertions over real HTTP against a MongoDB replica set (catalog → cart → checkout → fulfilment → return/refund) |
 | Marketplace E2E (API) | **PASS** | Seller onboarding, moderation, tenant isolation, multi-vendor checkout, independent fulfilment, suspension, commission audit |
 | API runtime (in-memory replica set) | **PASS** | Booted with `tsx`; health `200`, database `connected`, payment methods `COD`/`BANK_TRANSFER` |
 | Security headers / CSP | **PASS** | CSP emitted by the built server; verified from the HTTP response |
 | Admin workspace | **PASS** | Dashboard, products, orders, customers, sellers, moderation read/write live API data |
 | Seller portal | **PASS** | Application, dashboard, products, orders, analytics and storefront wired to live API data |
-| Production database | **PASS** | Atlas cluster reachable; schema pushed; 32 products and 2 orders preserved; API booted with `database: connected` |
+| Production database | **PASS** | Atlas cluster reachable; schema applied; 45 in-stock products across 8 categories; demo seller seeded; `database: connected` |
 | Deployment readiness | **BLOCKED** | No hosting credentials; production build not deployed |
 | Docker Compose | **NOT RUN** | Docker is not installed in this environment |
-| Playwright / axe | **FAIL** | Installed and executed: 8/18 passed. 10 failures: WCAG AA colour-contrast and icon-button-name violations on storefront pages; catalogue smoke blocked by CORS on the test port |
+| Playwright / axe | **PASS** | 18/18 on Chromium desktop + Pixel 7 (WCAG 2.2 AA tags) |
 
 ---
 
@@ -100,8 +100,8 @@ A premium, secure, conversion-oriented commerce platform that begins as a discip
 
 | Horizon | Scope |
 |---|---|
-| **Now** | Multi-vendor marketplace: catalog, variants, cart, checkout (offline payment), multi-vendor orders, seller onboarding/moderation/fulfilment, commissions, reviews, wishlist, addresses, accounts, admin workspace, seller portal, AI shopping assistant |
-| **Next** | Production database cutover, CI pipeline, object storage, email delivery, card payments, account recovery, seller payouts |
+| **Now** | Multi-vendor marketplace: catalog, variants, cart, checkout (COD/bank transfer plus optional Stripe), multi-vendor orders, seller onboarding/moderation/fulfilment, commissions, reviews, wishlist, addresses, accounts, password reset, admin workspace, seller portal, AI shopping assistant |
+| **Next** | CI pipeline, object storage, external email provider, live card capture, email verification, seller payouts |
 | **Later** | B2B wholesale/RFQ, disputes, internationalisation, promoted listings |
 
 ---
@@ -124,13 +124,13 @@ Status legend: **Implemented** = works end-to-end · **Partial** = server or UI 
 | Coupons | Implemented | Validation endpoint plus server-side revalidation at checkout |
 | Wishlist | Implemented | Context/local state plus API persistence |
 | Checkout | Implemented | Three-step UI, server-authoritative totals |
-| Payments | **Partial** | Cash on Delivery and Bank Transfer are real; card/PayPal are disabled until a gateway is configured |
+| Payments | **Partial** | Cash on Delivery and Bank Transfer are live; Stripe Checkout, webhooks and refunds are implemented and verified locally, but live capture needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` |
 | Orders and order history | Implemented | Status timeline, cancellation with stock restock |
 | Reviews | Implemented | One review per user per product (schema constraint) |
 | Addresses | Implemented | Default address support |
 | Account dashboard | Implemented | Profile, orders, wishlist, addresses tabs |
 | Authentication | Implemented | Email + password, JWT |
-| Password reset | **Partial** | Endpoint returns a neutral message; no email delivery yet |
+| Password reset | **Implemented** | Hashed single-use tokens, 30-minute TTL, SMTP delivery when configured (JSON capture otherwise), old JWTs invalidated |
 | Email verification | **Planned** | Field exists in schema |
 | Notifications | **Partial** | API present; UI consumption limited |
 | AI shopping assistant | **Scaffolded** | SSE streaming chat; requires `OPENAI_API_KEY` |
@@ -188,11 +188,13 @@ Ponnaloy-e-com/
 ├── apps/
 │   ├── api/                     # Fastify + Prisma backend (active)
 │   │   ├── prisma/
-│   │   │   ├── schema.prisma    # 36 models, 13 enums (MongoDB)
+│   │   │   ├── schema.prisma    # 38 models, 13 enums (MongoDB)
 │   │   │   └── seed.ts          # 8 categories, 46 products, brands, images
+│   │   ├── scripts/
+│   │   │   └── seed-seller-catalog.ts  # demo seller + in-stock catalogue
 │   │   ├── src/
 │   │   │   ├── config/env.ts    # Boot-time configuration validation
-│   │   │   ├── lib/             # prisma, redis, meili, openai, chat, storage, permissions, marketplace
+│   │   │   ├── lib/             # prisma, redis, auth-cache, meili, openai, chat, storage, permissions, marketplace
 │   │   │   ├── middleware/      # auth, seller membership/permission guards
 │   │   │   ├── routes/          # 24 route modules
 │   │   │   ├── services/        # shared pricing/coupon evaluator
@@ -210,19 +212,8 @@ Ponnaloy-e-com/
 │           └── types/
 ├── packages/
 │   └── shared/                  # Shared constants, types, utilities
-├── backend/                     # Legacy Express 4 + SQLite API (frozen)
-│   ├── db.js                    # Schema, queries, seeding
-│   ├── routes/
-│   ├── middleware/
-│   └── server.js
-├── frontend/                    # Legacy vanilla JS storefront (frozen)
-│   ├── public/                  # 6 HTML pages, styles, 14 JS modules
-│   └── build.js
-├── data/                        # Legacy SQLite database location
-├── server.js                    # Legacy entry point used by `pnpm dev:legacy`
 ├── docker-compose.yml           # MongoDB single-node replica set, Redis, Meilisearch
 ├── render.yaml                  # API deployment (Render)
-├── apps/web/vercel.json         # Storefront deployment (Vercel)
 ├── turbo.json                   # Monorepo task graph
 ├── pnpm-workspace.yaml
 ├── package.json
@@ -281,18 +272,11 @@ Ponnaloy-e-com/
 - Domain constants: page sizes, free-shipping threshold, shipping fee, tax rate, cache TTLs and keys.
 - Utilities: `slugify`, `formatCurrency`, `formatPrice`, `calculateDiscount`, `generateOrderNumber`.
 
-**Money convention:** all monetary values in the modern stack are **integer cents** (`$19.99 → 1999`). The legacy stack uses dollars. Never mix the two.
+**Money convention:** all monetary values are **integer cents** (`$19.99 → 1999`). Never store or compare dollar floats.
 
-### 5.4 Legacy — `backend/` + `frontend/`
+### 5.4 Removed stack — `backend/` + `frontend/`
 
-| Concern | Technology |
-|---|---|
-| Server | Express 4 |
-| Database | SQLite via `sqlite3` |
-| Sessions | `express-session` + `connect-sqlite3` |
-| Security | Helmet (CSP disabled), rate limiting, bcryptjs |
-| Frontend | Static HTML + vanilla JS, GSAP, AOS |
-| AI | Optional OpenAI assistant with keyword fallback |
+The Express 4 + SQLite application and its vanilla-JS storefront were deleted in Batch 07. Their dependencies (`express`, `bcryptjs`, `better-sqlite3`, `connect-sqlite3`, `cookie-parser`, `express-session`, `express-rate-limit`, `helmet`, `morgan`), `server.js`, `nodemon.json`, `package-lock.json`, the root PostCSS/Tailwind configs and the `data/` SQLite files are gone. Git history retains them if an audit is required.
 
 ---
 
@@ -323,7 +307,7 @@ Ponnaloy-e-com/
  (Prisma)   (cache)    (search)
 ```
 
-Optional external services: Stripe (card payments, inactive), Clerk (identity webhooks, inactive), OpenAI (assistant, inactive), S3/R2 (storage, not wired).
+Optional external services: Stripe (card payments when both server keys are set), Clerk (identity webhooks, inactive), OpenAI (assistant, inactive), S3/R2 (storage, not wired).
 
 ### 6.2 Application layers
 
@@ -455,10 +439,12 @@ SellerOrder 1─* Shipment (optional partition link)
 | Seller fulfilment | `PENDING→CONFIRMED|CANCELLED`, `CONFIRMED→PROCESSING|CANCELLED`, `PROCESSING→SHIPPED|CANCELLED`, `SHIPPED→OUT_FOR_DELIVERY|DELIVERED`, `OUT_FOR_DELIVERY→DELIVERED` |
 | Parent aggregation | Only when every item belongs to a seller partition; cancelled partitions are ignored while remaining partitions progress, and mixed platform/seller orders stay admin-controlled |
 
-### 7.5 Legacy SQLite schema (frozen)
+### 7.5 Removed legacy schema
 
-Tables: `users`, `products`, `orders`, `order_items`, `reviews`, `wishlist`, `addresses`, `newsletter_subscribers`.
-Notable divergence: dollar-denominated prices, session cookies, `is_admin` flag, and order totals that omit the tax/promotion figures shown in the legacy UI.
+The SQLite schema (`users`, `products`, `orders`, `order_items`, `reviews`,
+`wishlist`, `addresses`, `newsletter_subscribers`) was deleted with the legacy
+application in Batch 07. No migration path is offered; the MongoDB schema is
+authoritative.
 
 ---
 
@@ -472,7 +458,7 @@ Base path: `/api`. All responses follow `{ success: boolean, data?: T, error?: s
 |---|---|---|---|
 | POST | `/sign-up` | Public (5/min) | Create an account; password ≥ 8 chars with uppercase and digit |
 | POST | `/sign-in` | Public (10/min) | Authenticate and receive a 7-day JWT |
-| POST | `/forgot-password` | Public (3/min) | Neutral reset acknowledgement (delivery not implemented) |
+| POST | `/forgot-password` | Public (3/min) | Neutral reset acknowledgement; sends a 30-minute single-use link via SMTP when configured |
 | GET | `/me` | Bearer | Current user profile with order/review/wishlist counts |
 
 ### 8.2 Catalog — `/api/products`, `/api/categories`, `/api/brands`, `/api/collections`
@@ -608,15 +594,17 @@ Seller tenant scope is resolved from `SellerMembership`, not from the global `Ro
 | POST | `/api/webhooks/clerk` | Signed Clerk events (503 when unconfigured) |
 | POST | `/api/upload` · `/api/upload/multiple` | Admin media upload to local disk; returns real `/uploads/*` URLs |
 
-### 8.12 Legacy API (frozen) — `/api`
+### 8.12 Removed legacy API
 
-Mounted modules: `health`, `auth` (session-based: register/login/logout), `products`, `orders`, `chat`, `reviews`, `wishlist`, `addresses`, `user`, `admin`. The legacy API uses cookie sessions, not JWTs, and a different response/error convention.
+The cookie-session Express API was deleted in Batch 07. Only the Fastify API
+documented above is served; `/api/*` requests that do not match a registered
+route return `404`.
 
 ---
 
 ## 9. Frontend Application
 
-### 9.1 Route map (35 application routes; 36 pages generated including not-found)
+### 9.1 Route map (35 application routes; 37 pages generated including not-found)
 
 **Storefront `(shop)`**
 
@@ -723,7 +711,7 @@ Seller shell (/seller)
 
 ### 9.5 Accessibility posture
 
-Semantic landmarks, skip links on legacy pages, Radix primitives with keyboard support, focus-visible rings and ARIA state on async buttons. Admin tables expose labelled search/filter controls and icon buttons carry `aria-label`s; async actions show loading state. A formal WCAG 2.2 AA audit has **not** been performed.
+Semantic landmarks, skip link in the storefront layout, Radix primitives with keyboard support, focus-visible rings and ARIA state on async buttons. Admin tables expose labelled search/filter controls and icon buttons carry `aria-label`s; async actions show loading state. Playwright + axe now runs WCAG 2.2 AA tags on desktop and Pixel 7 (18/18 passing); a manual audit of every admin flow has not been performed.
 
 ---
 
@@ -802,15 +790,15 @@ Guest carts live in `localStorage`. After sign-in, the cart provider reconciles 
 
 | Severity | Item |
 |---|---|
-| **Critical (legacy)** | Stored/reflected XSS in legacy `frontend/public/js/*.js` through unescaped `innerHTML` |
 | **High** | JWT stored in `localStorage` (XSS-exposed); httpOnly cookie + CSRF strategy is preferable |
 | **Medium** | CSP still requires `'unsafe-inline'` for Next.js bootstrap scripts; nonce-based policy pending |
 | **Medium** | Local uploads validate MIME/size and randomise filenames, but there is no malware scan or durable object storage |
 | **Medium** | No email verification, so addresses are not proven |
-| **Medium** | `forgot-password` performs no work |
 | **Medium** | Seller payouts and a settlement ledger are not implemented; commission is accrued but not disbursed |
 | **Low** | Seller `Role` exists globally, but authorization always uses `SellerMembership`; keep it that way when adding staff invitations |
-| **Low** | `ActivityLog` covers seller/moderation/commission actions; some legacy admin mutations still lack broad audit coverage |
+| **Low** | `ActivityLog` covers seller/moderation/commission actions; some admin mutations still lack broad audit coverage |
+
+The stored-XSS exposure in the former `frontend/public/js/*.js` code was removed with the legacy stack in Batch 07. Password reset is implemented; the previous "no work" entry is obsolete.
 
 ---
 
@@ -826,9 +814,10 @@ Guest carts live in `localStorage`. After sign-in, the cart provider reconciles 
 | `FRONTEND_URL` | API | Comma-separated CORS allow-list |
 | `BACKEND_URL` | API / web | API base URL for server-side callers |
 | `NEXT_PUBLIC_API_URL` | Web | Public API base URL |
-| `SESSION_SECRET` | Legacy | Session signing |
 | `JWT_SECRET` (or `AUTH_SECRET`) | API | JWT signing — required in production, ≥32 chars |
 | `REDIS_URL` | API | Cache connection |
+| `REDIS_ENABLED` | API | Set `false` to disable Redis and use the in-process cache |
+| `MEMORY_CACHE` | API | Enable the in-process cache outside production (tests stay uncached) |
 | `MEILISEARCH_HOST`, `MEILISEARCH_API_KEY` | API | Search |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | API / web | Card payments (activates the Stripe method when both server keys exist) |
 | `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | API / web | Optional identity provider |
@@ -852,9 +841,13 @@ pnpm --filter @ponnaloy/api db:push       # apply additive schema (marketplace m
                                           # OrderStatusLog.actorId/actorRole,
                                           # IdempotencyRecord, NewsletterSubscriber)
 pnpm --filter @ponnaloy/api db:seed       # seed catalog + inventory
+pnpm --filter @ponnaloy/api seed:seller   # demo seller + restock legacy products
 ```
 
-Existing, non-seeded products default to `stock = 0` after the schema change; they appear unavailable until inventory is assigned.
+`seed:seller` is idempotent. Legacy platform rows that omitted `stock` (which
+Prisma reads as `0` while MongoDB treats as missing) are restocked in
+application code, because a `stock: { lte: 0 }` filter does not match a missing
+field.
 
 ---
 
@@ -874,23 +867,23 @@ Existing, non-seeded products default to `stock = 0` after the schema change; th
 | `pnpm install` | Install workspace dependencies |
 | `pnpm dev` | Run storefront (3000) and API (3001) together via Turbo |
 | `pnpm dev:web` / `pnpm dev:api` | Run one app |
-| `pnpm dev:legacy` | Run the frozen legacy Express app |
 | `pnpm build` | Turbo build for web + API |
 | `pnpm typecheck` | Type-check all workspaces |
 | `pnpm lint` | Lint all workspaces (flat configs) |
 | `pnpm test` | Run the API Vitest suite (in-memory MongoDB replica set) |
 | `pnpm db:generate` / `db:push` / `db:migrate` / `db:seed` / `db:studio` | Prisma lifecycle |
+| `pnpm db:seed:seller` | Seed the demo seller catalogue and restock legacy products |
 | `pnpm docker:up` / `docker:down` | Start/stop MongoDB replica set, Redis, Meilisearch |
 
 ### 13.3 Test harness
 
 Integration tests use `MongoMemoryReplSet` and Fastify `inject`; they do not require a running database and do not run `prisma db push` inside the test process. Unit tests cover coupon and total maths. See §15.3.
 
-### 13.4 Legacy application
+### 13.4 Removed legacy application
 
-- Static pages: `index.html`, `products.html`, `product.html`, `dashboard.html`, `orders.html`, `admin.html`.
-- API base URL is generated into `frontend/public/js/env.js` by `frontend/build.js` or auto-detected on localhost.
-- SQLite data lives in `data/store.db` (git-ignored).
+The Express/SQLite app, its static pages (`index.html`, `products.html`,
+`product.html`, `dashboard.html`, `orders.html`, `admin.html`), `frontend/build.js`
+and `data/store.db` were deleted in Batch 07. `pnpm dev:legacy` no longer exists.
 
 ---
 
@@ -909,7 +902,7 @@ Integration tests use `MongoMemoryReplSet` and Fastify `inject`; they do not req
 | Name | `ponnaloy-api` |
 | Build | `pnpm install --frozen-lockfile; pnpm --filter @ponnaloy/api build` |
 | Start | `pnpm --filter @ponnaloy/api start` |
-| Required secrets | `MONGODB_URI`, `SESSION_SECRET` (generated), `FRONTEND_URL`, `REDIS_URL` |
+| Required secrets | `MONGODB_URI`, `JWT_SECRET`, `FRONTEND_URL`, `REDIS_URL` |
 
 **Deployment caveat:** the API build script only runs `prisma generate`; `start` executes TypeScript directly through `tsx`. There is no compiled artefact, which increases cold-start time and memory use on small instances.
 
@@ -928,23 +921,25 @@ Integration tests use `MongoMemoryReplSet` and Fastify `inject`; they do not req
 
 ## 15. Quality & Verification
 
-### 15.1 Verification executed on 2026-10-27
+### 15.1 Verification executed on 2026-10-29
 
 | Check | Result | Detail |
 |---|---|---|
 | `pnpm typecheck` | **PASS** | 3/3 workspaces, 0 diagnostics |
-| `pnpm lint` | **PASS** | 2/2 tasks, 0 errors (56 web warnings) |
-| `pnpm --filter @ponnaloy/api test` | **PASS** | 3 files, 41/41 tests |
+| `pnpm lint` | **PASS** | 2/2 tasks, 0 errors (warnings remain) |
+| `pnpm --filter @ponnaloy/api test` | **PASS** | 5 files, 54/54 tests |
 | Live order-flow E2E | **PASS** | 106/106 assertions over real HTTP against a single-node replica set: catalog (46 products), cart maths, coupon discount, checkout, idempotent replay, ownership isolation, cancellation, admin state machine, shipment tracking, return/refund, restock-once, insufficient-stock rejection |
 | Marketplace API integration | **PASS** | 12 tests: onboarding approval, no-membership denial, cross-tenant selection denial, moderation visibility, legacy platform-product visibility, rejection notes, product ownership, staff delete denial, multi-vendor partitioning/allocation/commission, independent fulfilment and parent aggregation, suspension effects, commission audit and scoped metrics |
-| `pnpm --filter @ponnaloy/web build` | **PASS** | Compiled; 36/36 pages generated |
+| `pnpm --filter @ponnaloy/web build` | **PASS** | Compiled; 37/37 pages generated |
 | `pnpm --filter @ponnaloy/api db:generate` | **PASS** | Prisma Client generated from the marketplace schema |
 | API runtime (in-memory replica set) | **PASS** | `tsx src/server.ts`; `/api/health` 200 with `database: connected`; payment methods `["COD","BANK_TRANSFER"]` |
 | Security headers | **PASS** | Built Next.js server returned the full header set and CSP (inspected over HTTP) |
-| API runtime (production database) | **PASS** | Atlas reachable; `db push` applied 7 collections + indexes; `/api/health` 200; `/api/products` returned 32 products; order detail intact |
+| API runtime (production database) | **PASS** | Atlas reachable; schema applied; `/api/health` 200; 45 in-stock products (13 seller-owned + 32 restocked platform products); demo seller visible at `/api/sellers` |
+| Cached catalogue latency | **PASS** | `/api/products` 534 ms first request, then 3-5 ms; `/api/products/featured` 222 ms then 5-7 ms (in-process cache; Redis absent) |
+| Browser interaction latency | **PASS** | Production build, Chromium: home first product card ~1.0 s cold / 478 ms warm; home → products 456/212 ms; products → product 1135/148 ms; product → cart 82/67 ms; add-to-cart toast **58 ms cold / 36 ms warm** (previously ~960 ms before the artificial delays were removed) |
 | `docker compose up` | **NOT RUN** | Docker is not installed in this environment |
-| Playwright smoke + axe | **FAIL** | 8/18 passed. Blocking findings: colour contrast (WCAG 1.4.3) and unnamed icon-only buttons; catalogue smoke blocked by CORS on the test port |
-| Performance benchmarks | **NOT RUN** | Only build output observed (`/` = 167 kB first-load JS) |
+| Playwright smoke + axe | **PASS** | 18/18 on Chromium desktop + Pixel 7 |
+| Performance benchmarks | **PARTIAL** | API and click-path timings recorded; no load test or Core Web Vitals field data |
 
 ### 15.2 Build evidence
 
@@ -962,7 +957,7 @@ Route (app)                                 Size  First Load JS
 ├ ○ /checkout                            9.67 kB         137 kB
 ├ ○ /account                             10.6 kB         135 kB
 ├ ƒ /product/[slug]                      8.57 kB         176 kB
-└ ... (36 pages total)
+└ ... (37 pages total)
 ```
 
 ### 15.3 Test coverage implemented
@@ -985,12 +980,12 @@ Route (app)                                 Size  First Load JS
 | R1 | Prisma MongoDB transactions require a replica set; a standalone MongoDB cannot complete writes | High | Checkout and admin transitions fail | Docker compose and the test harness use replica sets; production Atlas must be a replica set. A PostgreSQL migration remains an option for heavier financial workloads |
 | R2 | Production database had been unreachable | **Resolved** | No runtime verification against real data | Atlas SRV resolves; schema pushed additively; API booted against production data |
 | R3 | API type errors | **Resolved** | Weak CI signal | `pnpm typecheck` now passes 3/3 |
-| R4 | Automated coverage is partial | Medium | Regressions in untested paths | 41 unit/integration tests plus a 106-assertion live E2E run pass; Playwright smoke/axe executed and currently failing on real accessibility defects |
+| R4 | Automated coverage is partial | Medium | Regressions in untested paths | 54 unit/integration tests plus a 106-assertion live E2E run pass; Playwright + axe pass 18/18. Coverage still excludes several admin flows |
 | R5 | No ESLint configuration | **Resolved** | Inconsistent code quality | Flat configs added for both apps; 0 errors |
 | R6 | Admin UI renders mock data | **Resolved** | Operators may act on false information | Dashboard, products, orders, customers, sellers and moderation now use live API data |
-| R7 | Legacy stored XSS | Critical (legacy only) | Account compromise on legacy deployment | Retire or patch the legacy frontend |
+| R7 | Legacy stored XSS | **Resolved** | Account compromise on legacy deployment | The legacy `frontend/` code was deleted in Batch 07 |
 | R8 | Uploaded media durability | Medium | Broken media if disk is lost or multiple API instances run | Local disk driver works for single-instance deployments; R2/S3 adapter still required for scale |
-| R9 | Password reset does not send email | Medium | Users cannot recover accounts | Token flow + email provider |
+| R9 | Password reset does not send email | **Resolved** | Users cannot recover accounts | SMTP delivery implemented and verified against a local SMTP server; external provider delivery is still blocked by credentials |
 | R10 | API port collides with web port | **Resolved** | Local startup confusion | `.env.example` and API default use `PORT=3001` |
 | R11 | Tracked build artefacts and logs | Low | Repository noise, secret-leak surface | `.gitignore` updated; historical artefacts still tracked |
 | R12 | Three deployment descriptions disagree | Medium | Wrong service deployed | Consolidate documentation and configs |
@@ -1008,15 +1003,15 @@ Route (app)                                 Size  First Load JS
 | Priority | Workstream | Scope | Exit criteria | Status |
 |---|---|---|---|---|
 | **P0** | Production runtime unblock | Reachable replica-set database, `db:push`, `db:seed`, API boot, manual checkout | Order created, stock decremented, cancel restocks | **Blocked** — local replica-set runtime verified; production host unreachable |
-| **P0** | Verification harness | Vitest + Fastify inject; ESLint flat configs; Playwright smoke | CI green on typecheck, lint, tests | **Partial** — 40 tests, 106-assertion live E2E, lint and typecheck pass; Playwright and CI missing |
+| **P0** | Verification harness | Vitest + Fastify inject; ESLint flat configs; Playwright smoke | CI green on typecheck, lint, tests | **Partial** — 54 tests, 106-assertion live E2E, lint, typecheck and Playwright/axe pass; CI missing |
 | **P0** | API type baseline | Resolve existing diagnostics | `pnpm typecheck` passes workspace-wide | **Done** |
 | **P1** | Real admin | Replace mock arrays with `/api/admin/*` | Admin CRUD persists | **Done** for dashboard, products, orders, customers, sellers, moderation |
 | **P1** | Seller marketplace foundation | Onboarding, tenant isolation, moderation, multi-vendor orders, commissions | Seller E2E + tenant isolation | **Done**; payouts, disputes and staff invitations remain |
 | **P1** | Media storage | Validated uploads, MIME/size enforcement; durable object storage | Upload → serve round trip | **Partial** — local disk driver done; R2/S3 pending |
-| **P1** | Account recovery | Reset tokens, expiry, single use, email delivery; email verification | Reset and verification E2E | **Planned** |
-| **P1** | Payment gateway | Stripe Checkout Session + verified webhook + refunds | Test-mode card payment and refund | **Planned** |
+| **P1** | Account recovery | Reset tokens, expiry, single use, email delivery; email verification | Reset and verification E2E | **Done** for reset (local SMTP verified); email verification remains |
+| **P1** | Payment gateway | Stripe Checkout Session + verified webhook + refunds | Test-mode card payment and refund | **Partial** — implemented and locally verified; live capture blocked without keys |
 | **P1** | Seller settlements | Commission ledger, payout states, reconciliation | Seller payout E2E | **Planned** |
-| **P1** | Legacy retirement | Archive legacy stack, update README/scripts | One documented runtime | **Planned** |
+| **P1** | Legacy retirement | Delete legacy stack, update README/scripts | One documented runtime | **Done** in Batch 07 |
 | **P2** | CI/CD | GitHub Actions: install, typecheck, lint, test, build | Required checks on every PR | **Planned** |
 | **P2** | PostgreSQL migration | Port schema, backfill, cutover, reconciliation | Transactional order integrity at scale | **Planned** |
 | **P2** | Seller team management | Staff invitations, role assignment, revocation | Invite → accept → scoped access E2E | **Planned** |
@@ -1153,6 +1148,21 @@ Route (app)                                 Size  First Load JS
 | Accessibility | Light `--primary` darkened to `161 92% 26%`, `--destructive` to `0 72% 45%`; accessible names added to mobile menu, sign-in link, chat FAB/send, password toggles and sort select; password toggles enlarged to 24x24. Playwright + axe now **18/18 PASS** on desktop and Pixel 7 |
 | Tests | New `payments-auth.integration.test.ts`: password reset (hash-at-rest, single use, expiry, policy, JWT invalidation, non-enumeration), Stripe webhook (invalid signature, duplicate delivery, amount mismatch, session expiry + restock-once, partial vs full refund), admin refund authorization. Suite total **53/53** |
 
+### Batch 07 - Stock recovery, click latency, legacy removal
+
+| Area | Result |
+|---|---|
+| Empty catalogue | Legacy platform products had no `stock` field. Prisma reads a missing numeric field as `0`, but MongoDB's `{ stock: { lte: 0 } }` does **not** match a missing field, so the storefront filter disagreed with the product DTO. The catalogue now filters missing-stock rows in application code and reports them as out of stock consistently |
+| Seed seller | `apps/api/scripts/seed-seller-catalog.ts` creates the `Ponnaloy Home Studio` seller (owner `seller@ponnaloy.local`), 13 active seller-owned products and restocks legacy platform products. Idempotent; result: **45 in-stock products** |
+| Sign-up blocker | MongoDB allows only one `null` in a unique index, so the second local account failed. `User.clerkId` is now indexed but non-unique; the Clerk webhook and middleware use find-first/update-or-create |
+| Redis failure mode | Connection uses `enableOfflineQueue: false`, a 1.5 s connect timeout and a single retry; a failure disables caching instead of queueing requests. A bounded in-process cache (30 s, 500 entries, pattern invalidation) takes over. Memory caching is off in tests |
+| Auth identity cache | A 10 s in-process cache keyed by SHA-256 of the token removes one Atlas round trip per authenticated request. JWT signature/expiry are still verified first; entries are invalidated on password reset, profile update, role change, activation change and Clerk user events. Disabled when `NODE_ENV=test` |
+| Transport | CORS preflight `maxAge: 600`, `@fastify/compress`, and `Idempotency-Key` added to allowed headers. A disallowed origin previously threw inside the CORS callback and surfaced as `500`; it now returns the normal response with no `Access-Control-Allow-Origin` header |
+| Optimistic cart | Add/remove/quantity/clear update the UI first and reconcile with the server in the background. Artificial delays of 500 ms (product add-to-cart), 400 ms (product card) and 300 ms (cart remove) were deleted |
+| Measured API latency | `/api/products` 534 ms first request then 3-5 ms cached; `/api/products/featured` 222 ms then 5-7 ms; `/api/auth/me` ~49 ms; `/api/cart` 140-230 ms (uncached, authenticated) |
+| Measured browser latency | Production build, Chromium: add-to-cart toast **58 ms cold / 36 ms warm** (previously ~960 ms); home -> products 456/212 ms; products -> product 1135/148 ms; product -> cart 82/67 ms; home first product card ~1.0 s cold / 478 ms warm |
+| Legacy removal | Deleted `backend/`, `frontend/`, `data/`, `server.js`, `nodemon.json`, `package-lock.json`, the root PostCSS/Tailwind configs, tracked build artefacts and logs. Root `package.json` no longer declares Express, SQLite, session or Helmet dependencies, and `dev:legacy` is gone. `README.md` and this document were rewritten for the monorepo |
+
 ### Verification (2026-10-29)
 
 - Workspace type check: **PASS** - `pnpm typecheck`, 3/3 workspaces, 0 diagnostics.
@@ -1160,7 +1170,10 @@ Route (app)                                 Size  First Load JS
 - API tests: **PASS** - 5 files, 54/54 tests (10 pricing unit + 19 commerce + 12 marketplace + 12 payments/auth + 1 live SMTP transport) against an in-memory MongoDB replica set.
 - Storefront production build: **PASS** - 37/37 pages generated, including `/reset-password`.
 - Playwright + axe (WCAG 2.2 AA tags, Chromium desktop + Pixel 7): **PASS** - 18/18, including catalogue product rendering and the seller directory/application pages.
-- Production MongoDB runtime: **PASS** - Atlas SRV resolved, `database: connected`, 32 public products served, new collections and unique indexes applied without data loss.
+- Production MongoDB runtime: **PASS** - Atlas SRV resolved, `database: connected`, 45 in-stock products served (13 seller-owned + 32 restocked), demo seller visible at `/api/sellers`.
+- Catalogue stock consistency: **PASS** - the storefront and the product DTO agree on out-of-stock rows; legacy rows without a `stock` field no longer disappear from the listing.
+- Authenticated request latency: **PASS** - `/api/auth/me` ~49 ms with the identity cache; `/api/cart` 140-230 ms uncached; seller product listing 280-570 ms.
+- Browser interaction latency: **PASS** - add-to-cart toast 58 ms cold / 36 ms warm; product → cart 82/67 ms; home → products 456/212 ms; products → product 1135/148 ms (first-load chunk fetch dominates the cold number).
 - Stripe webhook processing (local, real signature construction): **PASS** - valid/invalid signatures, idempotent duplicate delivery, amount mismatch rejection, expiry cancellation with single restock, partial vs full refund state.
 - Password reset (capture transport): **PASS** - hashed token at rest, single use, expiry, password policy, non-enumeration, old JWT rejection.
 - Admin refund authorization: **PASS** - customers receive `403`, cash payments receive `409 REFUND_NOT_GATEWAY_SUPPORTED`, missing idempotency key receives `400`.
@@ -1171,7 +1184,7 @@ Route (app)                                 Size  First Load JS
 - Production deployment: **BLOCKED** - no hosting credentials and no deployed API origin.
 - Redis caching and Meilisearch search: **NOT TESTED** - both services are unavailable in this runtime; the API degrades to database filtering.
 - Seller payouts, settlement ledger, staff invitations and dispute management: **NOT IMPLEMENTED**.
-- Performance benchmarks: **NOT TESTED** - only build output observed.
+- Performance benchmarks: **PARTIAL** - API and browser click-path timings recorded; no load test, no Core Web Vitals field data and no profiling under concurrent users.
 - No production-ready claim is made: live card capture, real email delivery, Docker-based startup, deployment and the unimplemented financial modules remain unverified or absent.
 
 ---

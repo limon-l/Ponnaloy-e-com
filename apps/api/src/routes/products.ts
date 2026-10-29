@@ -1,14 +1,14 @@
 import { FastifyPluginAsync } from "fastify";
 import prisma from "../lib/prisma";
 import { getCache, setCache, invalidateProductCache } from "../lib/redis";
-import { indexProduct, removeProduct, searchProducts } from "../lib/meili";
+import { indexProduct, removeProduct } from "../lib/meili";
 import { slugify, CACHE_TTL, CACHE_KEYS } from "@ponnaloy/shared";
 import {
   productFilterSchema,
   createProductSchema,
   updateProductSchema,
 } from "../validators";
-import { requireAuth, requireAdmin, optionalAuth } from "../middleware/auth";
+import { requireAdmin, optionalAuth } from "../middleware/auth";
 import { publicProductVisibility } from "../lib/marketplace";
 
 export const productRoutes: FastifyPluginAsync = async (app) => {
@@ -52,8 +52,17 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
       publicProductVisibility() as Record<string, unknown>,
     ];
 
-    if (categoryId) where.categoryId = categoryId;
-    if (brandId) where.brandId = brandId;
+    // Accept either a MongoDB ObjectId or a human-readable slug. Storefront
+    // links use slugs (`?category=electronics`) while admin filters use ids.
+    const isObjectId = (value: string) => /^[a-f0-9]{24}$/i.test(value);
+    if (categoryId) {
+      if (isObjectId(categoryId)) where.categoryId = categoryId;
+      else where.category = { slug: categoryId };
+    }
+    if (brandId) {
+      if (isObjectId(brandId)) where.brandId = brandId;
+      else where.brand = { slug: brandId };
+    }
     if (sellerId) where.sellerId = sellerId;
     if (isFeatured !== undefined) where.isFeatured = isFeatured;
     if (isTrending !== undefined) where.isTrending = isTrending;
@@ -142,7 +151,7 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Get featured products
-  app.get("/featured", async (_request, reply) => {
+  app.get("/featured", async (_request, _reply) => {
     const cacheKey = `${CACHE_KEYS.FEATURED}:list`;
     const cached = await getCache(cacheKey);
     if (cached) return cached;
@@ -169,7 +178,7 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Get trending products
-  app.get("/trending", async (_request, reply) => {
+  app.get("/trending", async (_request, _reply) => {
     const cacheKey = `${CACHE_KEYS.TRENDING}:list`;
     const cached = await getCache(cacheKey);
     if (cached) return cached;
@@ -196,7 +205,11 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Get new arrivals
-  app.get("/new-arrivals", async (_request, reply) => {
+  app.get("/new-arrivals", async (_request, _reply) => {
+    const cacheKey = `${CACHE_KEYS.PRODUCTS}:new-arrivals`;
+    const cached = await getCache(cacheKey);
+    if (cached) return cached;
+
     const allProducts = await prisma.product.findMany({
       where: { isNewArrival: true, status: "ACTIVE", ...publicProductVisibility() },
       include: {
@@ -213,11 +226,13 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
       images: p.images.slice(0, 1),
     }));
 
-    return { success: true, data: products };
+    const result = { success: true, data: products };
+    await setCache(cacheKey, result, CACHE_TTL.MEDIUM);
+    return result;
   });
 
   // Get deals (products with compareAtPrice > price)
-  app.get("/deals", async (_request, reply) => {
+  app.get("/deals", async (_request, _reply) => {
     const cacheKey = `${CACHE_KEYS.DEALS}:list`;
     const cached = await getCache(cacheKey);
     if (cached) return cached;
@@ -251,79 +266,87 @@ export const productRoutes: FastifyPluginAsync = async (app) => {
     const { slug } = request.params as { slug: string };
 
     const cacheKey = `${CACHE_KEYS.PRODUCT}:${slug}`;
-    const cached = await getCache(cacheKey);
-    if (cached) return cached;
+    let result = await getCache<{
+      success: boolean;
+      data: Record<string, unknown>;
+    }>(cacheKey);
 
-    const product = await prisma.product.findFirst({
-      where: { slug, status: "ACTIVE", ...publicProductVisibility() },
-      include: {
-        images: { orderBy: { position: "asc" } },
-        variants: true,
-        specifications: { orderBy: { position: "asc" } },
-        seller: {
-          select: { id: true, name: true, slug: true, logo: true },
-        },
-        category: { select: { id: true, name: true, slug: true } },
-        brand: { select: { id: true, name: true, slug: true, logo: true } },
-        reviews: {
-          where: { isVisible: true },
-          include: {
-            user: { select: { id: true, firstName: true, lastName: true, avatar: true } },
+    if (!result) {
+      const product = await prisma.product.findFirst({
+        where: { slug, status: "ACTIVE", ...publicProductVisibility() },
+        include: {
+          images: { orderBy: { position: "asc" } },
+          variants: true,
+          specifications: { orderBy: { position: "asc" } },
+          seller: {
+            select: { id: true, name: true, slug: true, logo: true },
           },
-          orderBy: { createdAt: "desc" },
-        },
-        relatedProducts: {
-          include: {
-            target: {
-              include: {
-                images: { orderBy: { position: "asc" } },
+          category: { select: { id: true, name: true, slug: true } },
+          brand: { select: { id: true, name: true, slug: true, logo: true } },
+          reviews: {
+            where: { isVisible: true },
+            include: {
+              user: { select: { id: true, firstName: true, lastName: true, avatar: true } },
+            },
+            orderBy: { createdAt: "desc" },
+          },
+          relatedProducts: {
+            include: {
+              target: {
+                include: {
+                  images: { orderBy: { position: "asc" } },
+                },
               },
             },
           },
         },
-      },
-    });
-
-    if (!product) {
-      return reply.code(404).send({
-        success: false,
-        error: "Product not found",
       });
+
+      if (!product) {
+        return reply.code(404).send({
+          success: false,
+          error: "Product not found",
+        });
+      }
+
+      const trimmedProduct = {
+        ...product,
+        reviews: product.reviews.slice(0, 10),
+        relatedProducts: product.relatedProducts.slice(0, 8).map((rp) => ({
+          ...rp,
+          target: {
+            ...rp.target,
+            images: rp.target.images.slice(0, 1),
+          },
+        })),
+      };
+
+      // Cache the public product only. The per-user wishlist flag is added
+      // below so one shopper's state can never leak to another.
+      result = {
+        success: true,
+        data: trimmedProduct as unknown as Record<string, unknown>,
+      };
+      await setCache(cacheKey, result, CACHE_TTL.SHORT);
     }
 
-    const trimmedProduct = {
-      ...product,
-      reviews: product.reviews.slice(0, 10),
-      relatedProducts: product.relatedProducts.slice(0, 8).map((rp) => ({
-        ...rp,
-        target: {
-          ...rp.target,
-          images: rp.target.images.slice(0, 1),
-        },
-      })),
-    };
-
-    // Check if user has wishlisted this product
     let isWishlisted = false;
     if (request.user) {
       const wishlistItem = await prisma.wishlist.findUnique({
         where: {
           userId_productId: {
             userId: request.user.id,
-            productId: product.id,
+            productId: result.data.id as string,
           },
         },
       });
       isWishlisted = !!wishlistItem;
     }
 
-    const result = {
+    return {
       success: true,
-      data: { ...trimmedProduct, isWishlisted },
+      data: { ...result.data, isWishlisted },
     };
-
-    await setCache(cacheKey, result, CACHE_TTL.SHORT);
-    return result;
   });
 
   // Create product (admin)
