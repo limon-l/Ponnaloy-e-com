@@ -441,7 +441,7 @@ export function Header() {
               </DropdownMenu>
             ) : (
               <Button variant="ghost" size="sm" asChild className="gap-1.5 px-2">
-                <Link href="/sign-in">
+                <Link href="/sign-in" aria-label="Sign in">
                   <User className="h-4 w-4" />
                   <span className="hidden sm:inline text-xs">Sign In</span>
                 </Link>
@@ -451,7 +451,12 @@ export function Header() {
             {/* Mobile Menu */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden"
+                  aria-label="Open navigation menu"
+                >
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>

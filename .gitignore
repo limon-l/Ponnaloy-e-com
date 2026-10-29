@@ -53,3 +53,7 @@ out/
 *.pem
 coverage/
 .vercel
+
+# playwright
+test-results/
+playwright-report/

@@ -5,6 +5,7 @@ import { paginationSchema } from "../validators";
 import { invalidateProductCache } from "../lib/redis";
 import { indexProduct, removeProduct } from "../lib/meili";
 import { productModerationSchema } from "../validators";
+import { createStripeRefund, isStripeConfigured } from "../lib/stripe";
 
 const ORDER_STATUSES = [
   "PENDING",
@@ -846,5 +847,190 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       success: true,
       message: `User ${user.isActive ? "deactivated" : "activated"}`,
     };
+  });
+
+  // ── Payments: gateway refunds ──────────────────────────────────────────────
+  /**
+   * Executes a card refund through Stripe for a collected payment.
+   *
+   * The amount is capped at the persisted payment amount; the caller supplies
+   * an idempotency key so a retried request cannot refund twice. Cash and bank
+   * transfer payments are intentionally rejected here because no gateway can
+   * execute them — those remain a manual finance process.
+   */
+  app.post("/payments/:id/refund", async (request, reply) => {
+    if (!isStripeConfigured()) {
+      return reply.code(503).send({
+        success: false,
+        error: "Card refunds are not configured on this platform.",
+        code: "STRIPE_NOT_CONFIGURED",
+      });
+    }
+
+    const { id } = request.params as { id: string };
+    const body = (request.body ?? {}) as {
+      amount?: number;
+      reason?: string;
+      idempotencyKey?: string;
+    };
+
+    const headerKey = request.headers["idempotency-key"];
+    const idempotencyKey =
+      body.idempotencyKey || (typeof headerKey === "string" ? headerKey : "");
+
+    if (!idempotencyKey || idempotencyKey.length < 8) {
+      return reply.code(400).send({
+        success: false,
+        error: "An idempotency key of at least 8 characters is required for refunds.",
+        code: "IDEMPOTENCY_KEY_REQUIRED",
+      });
+    }
+
+    const payment = await prisma.payment.findUnique({
+      where: { id },
+      include: { order: { select: { id: true, orderNumber: true, status: true } } },
+    });
+
+    if (!payment) {
+      return reply.code(404).send({ success: false, error: "Payment not found" });
+    }
+
+    if (payment.method !== "STRIPE") {
+      return reply.code(409).send({
+        success: false,
+        error:
+          "Only card payments can be refunded through the gateway. Cash and bank transfer refunds require the manual finance process.",
+        code: "REFUND_NOT_GATEWAY_SUPPORTED",
+      });
+    }
+
+    if (payment.status !== "SUCCEEDED" || !payment.transactionId) {
+      return reply.code(409).send({
+        success: false,
+        error: `This payment cannot be refunded. Current status: ${payment.status}.`,
+        code: "PAYMENT_NOT_REFUNDABLE",
+      });
+    }
+
+    const amount = body.amount ?? payment.amount;
+    if (!Number.isInteger(amount) || amount <= 0 || amount > payment.amount) {
+      return reply.code(400).send({
+        success: false,
+        error: `Refund amount must be a whole number of cents between 1 and ${payment.amount}.`,
+        code: "REFUND_AMOUNT_INVALID",
+      });
+    }
+
+    const refundKey = `admin-refund:${payment.id}:${idempotencyKey}`;
+    const existingEvent = await prisma.paymentEvent.findUnique({
+      where: { eventId: refundKey },
+    });
+    if (existingEvent) {
+      return reply.code(200).send({
+        success: true,
+        message: "This refund request was already processed.",
+        data: existingEvent.payload,
+        idempotent: true,
+      });
+    }
+
+    let refund;
+    try {
+      refund = await createStripeRefund({
+        paymentIntentId: payment.transactionId,
+        amount: amount === payment.amount ? undefined : amount,
+        reason: body.reason,
+        idempotencyKey: refundKey,
+      });
+    } catch (error) {
+      request.log.error({ err: error, paymentId: payment.id }, "Stripe refund failed");
+      return reply.code(502).send({
+        success: false,
+        error: "The payment provider rejected the refund. No funds were moved.",
+        code: "STRIPE_REFUND_FAILED",
+      });
+    }
+
+    const isFullRefund = amount === payment.amount && refund.status === "succeeded";
+    const summary = {
+      refundId: refund.id,
+      paymentId: payment.id,
+      orderId: payment.orderId,
+      amount,
+      currency: payment.currency,
+      status: refund.status,
+      full: isFullRefund,
+    };
+
+    await prisma.$transaction(async (tx) => {
+      await tx.paymentEvent.create({
+        data: {
+          eventId: refundKey,
+          type: "refund.created",
+          provider: "stripe",
+          orderId: payment.orderId,
+          paymentId: payment.id,
+          payload: summary,
+        },
+      });
+
+      const metadata =
+        typeof payment.metadata === "object" && payment.metadata !== null
+          ? (payment.metadata as Record<string, unknown>)
+          : {};
+      const refunds = Array.isArray(metadata.refunds) ? metadata.refunds : [];
+
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: isFullRefund ? "REFUNDED" : payment.status,
+          metadata: {
+            ...metadata,
+            refunds: [...refunds, summary],
+          },
+        },
+      });
+
+      if (isFullRefund) {
+        const transition = await tx.order.updateMany({
+          where: {
+            id: payment.orderId,
+            status: { notIn: ["CANCELLED", "REFUNDED"] },
+          },
+          data: { status: "REFUNDED" },
+        });
+        if (transition.count > 0) {
+          await tx.orderStatusLog.create({
+            data: {
+              orderId: payment.orderId,
+              status: "REFUNDED",
+              note: `Full card refund ${refund.id} processed by ${request.user!.email}`,
+              actorId: request.user!.id,
+              actorRole: request.user!.role,
+            },
+          });
+        }
+      }
+
+      await tx.activityLog.create({
+        data: {
+          userId: request.user!.id,
+          action: "payment.refund",
+          entity: "Payment",
+          entityId: payment.id,
+          details: summary as never,
+          ip: request.ip,
+          userAgent: request.headers["user-agent"] ?? null,
+        },
+      });
+    });
+
+    return reply.code(201).send({
+      success: true,
+      message: isFullRefund
+        ? "Full refund processed."
+        : "Partial refund submitted. The order remains active.",
+      data: summary,
+    });
   });
 };

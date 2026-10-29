@@ -200,6 +200,8 @@ export function ChatWidget() {
             : "bg-primary hover:bg-primary/90"
         )}
         size="icon"
+        aria-label={isOpen ? "Close shopping assistant" : "Open shopping assistant"}
+        aria-expanded={isOpen}
       >
         {isOpen ? (
           <X className="h-6 w-6 text-primary-foreground" />
@@ -294,6 +296,7 @@ export function ChatWidget() {
               onKeyDown={handleKeyDown}
               placeholder="Ask about products, prices, deals..."
               disabled={isStreaming}
+              aria-label="Message the shopping assistant"
               className="flex-1 rounded-full border bg-background px-4 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary disabled:opacity-50"
             />
             <Button
@@ -301,6 +304,7 @@ export function ChatWidget() {
               size="icon"
               disabled={!inputValue.trim() || isStreaming}
               className="h-9 w-9 shrink-0 rounded-full"
+              aria-label="Send message"
             >
               {isStreaming ? (
                 <ShoppingCart className="h-4 w-4 animate-pulse" />

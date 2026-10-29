@@ -27,9 +27,23 @@ async function authenticateToken(token: string): Promise<AuthUser | null> {
       select: {
         id: true, clerkId: true, email: true,
         firstName: true, lastName: true, role: true, isActive: true,
+        passwordChangedAt: true,
       },
     });
     if (user && user.isActive) {
+      // Tokens carry the credential version they were issued under. A password
+      // change rotates it, invalidating every previously issued token. Tokens
+      // predating this claim fall back to an issue-time comparison.
+      if (user.passwordChangedAt) {
+        if (typeof payload.pwdAt === "number") {
+          if (payload.pwdAt !== user.passwordChangedAt.getTime()) return null;
+        } else {
+          const issuedAt = typeof payload.iat === "number" ? payload.iat : 0;
+          if (issuedAt < Math.ceil(user.passwordChangedAt.getTime() / 1000)) {
+            return null;
+          }
+        }
+      }
       return {
         id: user.id,
         clerkId: user.clerkId,

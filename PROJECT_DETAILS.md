@@ -1136,25 +1136,44 @@ Route (app)                                 Size  First Load JS
 | Regression found and fixed | Public visibility used `sellerId: null`, which does not match MongoDB documents where the field is absent; the production catalogue returned 0 products until `isSet: false` was added. Covered by a new integration test |
 | Browser / accessibility | Playwright + axe installed and executed against the production build: **8/18 passed**. Real defects found: colour-contrast failures and icon-only buttons without accessible names. Catalogue smoke test blocked by CORS on the test port |
 
-### Verification
+### Batch 06 - Card payments, password reset, production indexes, accessibility closure
 
-- Workspace type check: **PASS** — `pnpm typecheck`, 3/3 workspaces, 0 diagnostics.
-- Lint: **PASS** — `pnpm lint`, 0 errors (warnings only).
-- API tests: **PASS** — 3 files, 41/41 tests (10 pricing unit + 19 commerce integration + 12 marketplace integration) against an in-memory MongoDB replica set.
-- Storefront production build: **PASS** — 36/36 pages generated.
-- Live order-flow E2E over real HTTP: **PASS** — 106/106 assertions, including checkout, cancellation, fulfilment, tracking, return/refund and restock-once.
-- Marketplace API integration: **PASS** — onboarding/approval, membership denial, cross-tenant denial, moderation visibility, legacy platform-product visibility, product ownership, staff permissions, multi-vendor partitioning and commission, independent fulfilment and parent aggregation, suspension effects, commission audit, scoped metrics.
-- API runtime against an in-memory MongoDB replica set: **PASS** — health `200`, database connected, payment methods `COD`/`BANK_TRANSFER`.
-- Seeded catalog: **PASS** — 8 categories, 10 brands, 46 distinct products.
-- Production MongoDB runtime: **PASS** — Atlas SRV resolved; `prisma db push` created the marketplace collections/indexes; API booted with `database: connected` and served 32 legacy products.
-- Docker Compose: **NOT RUN** — Docker is not installed in this environment.
-- Playwright / axe: **FAIL** — installed and executed (Chromium + Pixel 7 profiles). 8/18 passed; 10 failed on colour contrast and icon-button accessible names. The catalogue smoke test also failed because the API CORS allow-list does not include the Playwright port. These are genuine findings, not harness noise, except for the CORS configuration.
-- Performance benchmarks: **NOT RUN** — only build output observed.
+| Area | Result |
+|---|---|
+| Schema | Added `User.passwordChangedAt`, `PasswordResetToken` (hashed, single-use, 30-minute TTL) and `PaymentEvent` (unique `eventId`). 38 models, 13 enums |
+| Stripe integration | `lib/stripe.ts` (pinned API version, amount/currency validation, idempotency keys), `POST /api/payments/stripe/session` with ownership and order-state checks, order creation returns `checkoutUrl`, order page exposes a retryable "Pay now" action |
+| Webhooks | Raw-body signature verification; every verified event is recorded in `PaymentEvent` inside the same transaction as its effects; duplicate deliveries return `duplicate: true`; amount/currency mismatches never credit an order; expired sessions cancel the order and restock exactly once; `charge.refunded` uses `charge.payment_intent` and only a full refund changes order state |
+| Refunds | `POST /api/admin/payments/:id/refund` (admin-only, mandatory idempotency key, amount capped at the collected amount, Stripe refund, `PaymentEvent` + `ActivityLog`); admin order detail shows a "Refund via Stripe" control only for collected card payments |
+| Password reset | `POST /api/auth/forgot-password` (non-enumerating, rate-limited, invalidates older links), `POST /api/auth/reset-password` (policy, expiry, single use), `/reset-password` page with accessible password toggles |
+| Email | `lib/email.ts` uses SMTP when `SMTP_HOST` is set; otherwise nodemailer's JSON transport captures messages and reports `delivered: false`. Reset email template included. A local `smtp-server` integration test now proves the SMTP path accepts and receives the message |
+| Session invalidation | New tokens carry a `pwdAt` credential version; changing a password invalidates every older token in both middleware and `/api/auth/me` |
+| MongoDB null semantics bug | `usedAt: null` does not match missing fields in MongoDB, so "invalidate other reset links" silently did nothing. Fixed with `OR: [{ usedAt: { isSet: false } }, { usedAt: null }]` and covered by a test |
+| Production database | `prisma db push` added `PasswordResetToken` and `PaymentEvent`, the unique indexes `PasswordResetToken_tokenHash_key` / `PaymentEvent_eventId_key`, and supporting indexes. Existing 32 products preserved; API reports `database: connected` |
+| Web build configuration | The local `apps/web/.env` baked `NEXT_PUBLIC_API_URL=https://ponnaloy-e-com.onrender.com`, a stale host, so browser fetches failed. Local value corrected to `http://localhost:3001`; production builds must supply the deployed API origin |
+| Accessibility | Light `--primary` darkened to `161 92% 26%`, `--destructive` to `0 72% 45%`; accessible names added to mobile menu, sign-in link, chat FAB/send, password toggles and sort select; password toggles enlarged to 24x24. Playwright + axe now **18/18 PASS** on desktop and Pixel 7 |
+| Tests | New `payments-auth.integration.test.ts`: password reset (hash-at-rest, single use, expiry, policy, JWT invalidation, non-enumeration), Stripe webhook (invalid signature, duplicate delivery, amount mismatch, session expiry + restock-once, partial vs full refund), admin refund authorization. Suite total **53/53** |
+
+### Verification (2026-10-29)
+
+- Workspace type check: **PASS** - `pnpm typecheck`, 3/3 workspaces, 0 diagnostics.
+- Lint: **PASS** - `pnpm lint`, 0 errors, 55 pre-existing warnings.
+- API tests: **PASS** - 5 files, 54/54 tests (10 pricing unit + 19 commerce + 12 marketplace + 12 payments/auth + 1 live SMTP transport) against an in-memory MongoDB replica set.
+- Storefront production build: **PASS** - 37/37 pages generated, including `/reset-password`.
+- Playwright + axe (WCAG 2.2 AA tags, Chromium desktop + Pixel 7): **PASS** - 18/18, including catalogue product rendering and the seller directory/application pages.
+- Production MongoDB runtime: **PASS** - Atlas SRV resolved, `database: connected`, 32 public products served, new collections and unique indexes applied without data loss.
+- Stripe webhook processing (local, real signature construction): **PASS** - valid/invalid signatures, idempotent duplicate delivery, amount mismatch rejection, expiry cancellation with single restock, partial vs full refund state.
+- Password reset (capture transport): **PASS** - hashed token at rest, single use, expiry, password policy, non-enumeration, old JWT rejection.
+- Admin refund authorization: **PASS** - customers receive `403`, cash payments receive `409 REFUND_NOT_GATEWAY_SUPPORTED`, missing idempotency key receives `400`.
+- Real card charge against Stripe: **BLOCKED** - no `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`; the hosted session path cannot be exercised without provider credentials.
+- Email SMTP transport (local server): **PASS** - a real `smtp-server` instance received the password reset message; `sendMail` returned `transport: "smtp"`, `delivered: true`.
+- Real email delivery through an external provider: **BLOCKED** - no SMTP provider credentials configured; only loopback delivery and in-process capture were verified.
+- Docker Compose startup: **BLOCKED** - `docker`, `podman`, `nerdctl` absent and WSL is not installed.
+- Production deployment: **BLOCKED** - no hosting credentials and no deployed API origin.
+- Redis caching and Meilisearch search: **NOT TESTED** - both services are unavailable in this runtime; the API degrades to database filtering.
 - Seller payouts, settlement ledger, staff invitations and dispute management: **NOT IMPLEMENTED**.
-- Card payments and transactional email: **BLOCKED** — no gateway keys or SMTP provider configured.
-- Production deployment: **BLOCKED** — no hosting credentials.
-- No production-ready claim is made: deployment, card payments, email delivery and WCAG AA conformance remain unverified or failing.
+- Performance benchmarks: **NOT TESTED** - only build output observed.
+- No production-ready claim is made: live card capture, real email delivery, Docker-based startup, deployment and the unimplemented financial modules remain unverified or absent.
 
 ---
 
-*This document describes the repository as inspected and modified on 2026-10-27. It deliberately separates verified behaviour from partial and planned work, and it contains no credentials or personal data.*
+*This document describes the repository as inspected and modified on 2026-10-29. It deliberately separates verified behaviour from partial and planned work, and it contains no credentials or personal data.*

@@ -6,6 +6,7 @@ import { generateOrderNumber } from "@ponnaloy/shared";
 import { config } from "../config/env";
 import { computeOrderTotals } from "../services/pricing";
 import { allocateAmount, commissionFor } from "../lib/marketplace";
+import { createCheckoutSession, isStripeConfigured } from "../lib/stripe";
 
 type PaymentMethodValue =
   | "STRIPE"
@@ -594,7 +595,41 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
 
       app.log.info({ userId, orderId: order.id, orderNumber: order.orderNumber }, "Order created");
 
-      return reply.code(201).send({ success: true, data: persistedOrder });
+      // Card orders are redirected straight to Stripe's hosted checkout. A
+      // provider failure must not lose the order: it stays PENDING and the
+      // customer can retry from the order page.
+      let checkoutUrl: string | undefined;
+      if (method === "STRIPE" && isStripeConfigured()) {
+        const stripePayment = fullOrder?.payments.find((entry) => entry.method === "STRIPE");
+        if (stripePayment) {
+          try {
+            const session = await createCheckoutSession({
+              orderId: persistedOrder.id,
+              paymentId: stripePayment.id,
+              orderNumber: persistedOrder.orderNumber,
+              amount: stripePayment.amount,
+              currency: stripePayment.currency,
+              customerEmail: request.user!.email,
+            });
+            await prisma.payment.update({
+              where: { id: stripePayment.id },
+              data: { stripeSessionId: session.id },
+            });
+            checkoutUrl = session.url;
+          } catch (error) {
+            app.log.error(
+              { err: error, orderId: order.id },
+              "Order created but Stripe session creation failed"
+            );
+          }
+        }
+      }
+
+      return reply.code(201).send({
+        success: true,
+        data: persistedOrder,
+        ...(checkoutUrl ? { checkoutUrl } : {}),
+      });
     } catch (error) {
       if (!orderCommitted) {
         await releaseReservations(reservations);

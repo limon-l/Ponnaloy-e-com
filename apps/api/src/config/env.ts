@@ -86,6 +86,17 @@ export const config = {
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "",
   },
 
+  email: {
+    // SMTP is the only delivery mechanism. Without it, messages are serialised
+    // by nodemailer's JSON transport and never leave the process.
+    smtpHost: process.env.SMTP_HOST || "",
+    smtpPort: parseInt(process.env.SMTP_PORT || "587", 10),
+    smtpSecure: process.env.SMTP_SECURE === "true",
+    smtpUser: process.env.SMTP_USER || "",
+    smtpPassword: process.env.SMTP_PASSWORD || "",
+    from: process.env.EMAIL_FROM || "Ponnaloy <no-reply@ponnaloy.local>",
+  },
+
   r2: {
     accountId: process.env.R2_ACCOUNT_ID || "",
     accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
@@ -106,5 +117,6 @@ export const config = {
     stripe: Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET),
     clerk: Boolean(process.env.CLERK_SECRET_KEY),
     search: Boolean(process.env.MEILISEARCH_HOST),
+    email: Boolean(process.env.SMTP_HOST),
   },
 } as const;

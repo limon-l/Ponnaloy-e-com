@@ -90,7 +90,7 @@ interface OrderSummary {
     email: string;
   } | null;
   items: OrderItem[];
-  payments: Array<{ status: string; method: string; amount: number }>;
+  payments: Array<{ id: string; status: string; method: string; amount: number }>;
   shipments: Array<{
     carrier: string | null;
     trackingNumber: string | null;
@@ -220,6 +220,8 @@ export default function AdminOrdersPage() {
   const [trackingNumber, setTrackingNumber] = useState("");
   const [carrier, setCarrier] = useState("");
   const [saving, setSaving] = useState(false);
+  const [refundingId, setRefundingId] = useState<string | null>(null);
+  const [refundError, setRefundError] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -297,6 +299,38 @@ export default function AdminOrdersPage() {
     setDetailOpen(true);
     setDetail(null);
     loadDetail(orderId);
+  };
+
+  const handleRefund = async (paymentId: string, amount: number) => {
+    if (!detail) return;
+    const confirmed = window.confirm(
+      `Refund ${formatPrice(amount)} to the customer via Stripe? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setRefundingId(paymentId);
+    setRefundError(null);
+    try {
+      await api.post(`/api/admin/payments/${paymentId}/refund`, {
+        idempotencyKey: crypto.randomUUID(),
+      });
+      toast({
+        title: "Refund submitted",
+        description: "Stripe accepted the refund request.",
+      });
+      await loadDetail(detail.id);
+      await loadOrders();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Refund failed.";
+      setRefundError(message);
+      toast({
+        title: "Refund failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setRefundingId(null);
+    }
   };
 
   const requiresForce =
@@ -730,12 +764,37 @@ export default function AdminOrdersPage() {
                       No payment attempt recorded.
                     </p>
                   ) : (
-                    detail.payments.map((payment, index) => (
-                      <p key={index} className="text-muted-foreground">
-                        {paymentMethodLabels[payment.method] ?? payment.method} ·{" "}
-                        {payment.status} · {formatPrice(payment.amount)}
-                      </p>
+                    detail.payments.map((payment) => (
+                      <div
+                        key={payment.id}
+                        className="mb-1.5 flex flex-wrap items-center gap-2 text-muted-foreground"
+                      >
+                        <span>
+                          {paymentMethodLabels[payment.method] ?? payment.method} ·{" "}
+                          {payment.status} · {formatPrice(payment.amount)}
+                        </span>
+                        {payment.method === "STRIPE" &&
+                          payment.status === "SUCCEEDED" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              disabled={refundingId === payment.id}
+                              onClick={() => handleRefund(payment.id, payment.amount)}
+                            >
+                              {refundingId === payment.id ? (
+                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              ) : null}
+                              Refund via Stripe
+                            </Button>
+                          )}
+                      </div>
                     ))
+                  )}
+                  {refundError && (
+                    <p role="alert" className="mt-1 text-xs text-destructive">
+                      {refundError}
+                    </p>
                   )}
                 </div>
                 <div>

@@ -6,6 +6,7 @@ import Image from "next/image";
 import {
   Package, ChevronDown, ChevronUp, ShoppingBag,
   Clock, CheckCircle2, Truck, MapPin, XCircle, ArrowRight,
+  CreditCard, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,8 @@ interface Order {
   status: OrderStatus;
   total: number;
   items: OrderItem[];
+  paymentMethod?: string;
+  paymentStatus?: string;
   statusHistory?: Array<{ status: string; note?: string; createdAt: string }>;
 }
 
@@ -100,6 +103,28 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
+
+  async function handlePayNow(orderId: string) {
+    setPayingId(orderId);
+    setPayError(null);
+    try {
+      const res = await api.post<{ success: boolean; data?: { url?: string } }>(
+        "/api/payments/stripe/session",
+        { orderId }
+      );
+      if (res.success && res.data?.url) {
+        window.location.href = res.data.url;
+        return;
+      }
+      setPayError("The payment provider did not return a checkout link. Please try again.");
+    } catch (err: unknown) {
+      setPayError(err instanceof Error ? err.message : "Unable to start card payment.");
+    } finally {
+      setPayingId(null);
+    }
+  }
 
   useEffect(() => {
     if (authLoading) return;
@@ -116,6 +141,7 @@ export default function OrdersPage() {
           createdAt: string;
           status: string;
           total: number;
+          payments?: Array<{ method: string; status: string }>;
           items: Array<{
             quantity: number;
             unitPrice: number;
@@ -131,6 +157,8 @@ export default function OrdersPage() {
               date: o.createdAt,
               status: o.status as OrderStatus,
               total: o.total,
+              paymentMethod: o.payments?.[0]?.method,
+              paymentStatus: o.payments?.[0]?.status,
               items: o.items.map((i) => ({
                 name: i.product.name,
                 image: i.product.images?.[0]?.url || "https://picsum.photos/seed/product/600/600",
@@ -279,6 +307,36 @@ export default function OrdersPage() {
                       <span className="text-sm text-muted-foreground">Order Total</span>
                       <span className="font-semibold">{formatPrice(order.total)}</span>
                     </div>
+
+                    {order.status === "PENDING" &&
+                      order.paymentMethod === "STRIPE" &&
+                      order.paymentStatus !== "SUCCEEDED" && (
+                        <div className="space-y-2 pt-2 border-t">
+                          {payError && (
+                            <p role="alert" className="text-xs text-destructive">
+                              {payError}
+                            </p>
+                          )}
+                          <Button
+                            size="sm"
+                            onClick={() => handlePayNow(order.id)}
+                            disabled={payingId === order.id}
+                            className="w-full sm:w-auto"
+                          >
+                            {payingId === order.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Opening secure checkout…
+                              </>
+                            ) : (
+                              <>
+                                <CreditCard className="h-4 w-4 mr-2" />
+                                Pay now
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
                   </div>
                 )}
               </div>

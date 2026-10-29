@@ -166,7 +166,7 @@ function ProductsContent() {
           value={currentSort}
           onValueChange={(value) => updateParam("sort", value)}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px]" aria-label="Sort products">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>

@@ -10,20 +10,22 @@ datasource db {
 // ─── Users & Auth ────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  clerkId       String?   @unique
-  email         String    @unique
-  passwordHash  String?
-  firstName     String?
-  lastName      String?
-  phone         String?
-  avatar        String?
-  role          Role      @default(CUSTOMER)
-  isActive      Boolean   @default(true)
-  emailVerified Boolean   @default(false)
-  lastLoginAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  clerkId           String?   @unique
+  email             String    @unique
+  passwordHash      String?
+  firstName         String?
+  lastName          String?
+  phone             String?
+  avatar            String?
+  role              Role      @default(CUSTOMER)
+  isActive          Boolean   @default(true)
+  emailVerified     Boolean   @default(false)
+  lastLoginAt       DateTime?
+  // Set whenever credentials change so previously issued JWTs can be rejected.
+  passwordChangedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   orders                     Order[]
   reviews                    Review[]
@@ -32,10 +34,26 @@ model User {
   cart                       Cart?
   notifications              Notification[]
   activityLogs               ActivityLog[]
+  passwordResetTokens        PasswordResetToken[]
   sellerMemberships          SellerMembership[]
   sellerApplications         SellerApplication[]  @relation("SellerApplicant")
   reviewedSellerApplications SellerApplication[]  @relation("SellerApplicationReviewer")
   ownedSellers               SellerOrganization[] @relation("SellerOwner")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  // Only the SHA-256 hash is stored; the raw token exists solely in the email.
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 enum Role {
@@ -337,6 +355,23 @@ enum PaymentMethod {
   RAZORPAY
   COD
   BANK_TRANSFER
+}
+
+// Immutable record of every verified gateway event. The unique `eventId` makes
+// webhook processing idempotent: a retried or out-of-order delivery can never
+// apply the same financial effect twice.
+model PaymentEvent {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId     String   @unique
+  type        String
+  provider    String   @default("stripe")
+  orderId     String?  @db.ObjectId
+  paymentId   String?  @db.ObjectId
+  payload     Json?
+  processedAt DateTime @default(now())
+
+  @@index([type])
+  @@index([orderId])
 }
 
 enum PaymentStatus {
