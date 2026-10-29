@@ -5,10 +5,10 @@
 | Field | Value |
 |---|---|
 | Project name | Ponnaloy E-Commerce Platform |
-| Document version | 1.2 |
-| Last updated | 2026-10-27 |
-| Repository version | Root package `2.0.0`, Batches 01–04 (Batch 04: 46-product catalog + live order-flow verification) |
-| Primary status | Active development — functional B2C foundation with real admin UI, tested commerce API and local media storage; production database and payment gateway pending |
+| Document version | 1.3 |
+| Last updated | 2026-10-29 |
+| Repository version | Root package `2.0.0`, Batches 01–05 (Batch 05: multi-vendor marketplace foundation) |
+| Primary status | Active development — functional multi-vendor marketplace with admin, seller and customer portals, tested commerce API, production MongoDB schema applied; deployment, card payments, email and WCAG AA conformance pending |
 | Audience | Engineers, reviewers, DevOps, product stakeholders |
 | Secret handling | This document lists environment variable **names only**. No credentials, keys or customer data are reproduced. |
 
@@ -58,17 +58,17 @@ The platform is a **multi-vendor marketplace** with three server-enforced portal
 | Storefront type safety | **PASS** | `tsc --noEmit` |
 | API type safety | **PASS** | `tsc --noEmit` — 0 diagnostics across all modules |
 | Lint | **PASS** | ESLint flat configs; 0 errors (56 web warnings) |
-| Automated tests | **PASS** | Vitest: 40/40 (10 pricing unit + 30 API integration, including 11 marketplace tests) |
+| Automated tests | **PASS** | Vitest: 41/41 (10 pricing unit + 31 API integration, including 12 marketplace tests) |
 | Live order-flow E2E | **PASS** | 106/106 assertions over real HTTP against a MongoDB replica set (catalog → cart → checkout → fulfilment → return/refund) |
 | Marketplace E2E (API) | **PASS** | Seller onboarding, moderation, tenant isolation, multi-vendor checkout, independent fulfilment, suspension, commission audit |
 | API runtime (in-memory replica set) | **PASS** | Booted with `tsx`; health `200`, database `connected`, payment methods `COD`/`BANK_TRANSFER` |
 | Security headers / CSP | **PASS** | CSP emitted by the built server; verified from the HTTP response |
 | Admin workspace | **PASS** | Dashboard, products, orders, customers, sellers, moderation read/write live API data |
 | Seller portal | **PASS** | Application, dashboard, products, orders, analytics and storefront wired to live API data |
-| Production database | **BLOCKED** | Configured MongoDB SRV host does not resolve |
-| Deployment readiness | **BLOCKED** | No reachable production database; schema changes not yet pushed there |
+| Production database | **PASS** | Atlas cluster reachable; schema pushed; 32 products and 2 orders preserved; API booted with `database: connected` |
+| Deployment readiness | **BLOCKED** | No hosting credentials; production build not deployed |
 | Docker Compose | **NOT RUN** | Docker is not installed in this environment |
-| Playwright / axe | **NOT RUN** | Not installed; installation not yet attempted |
+| Playwright / axe | **FAIL** | Installed and executed: 8/18 passed. 10 failures: WCAG AA colour-contrast and icon-button-name violations on storefront pages; catalogue smoke blocked by CORS on the test port |
 
 ---
 
@@ -934,16 +934,16 @@ Integration tests use `MongoMemoryReplSet` and Fastify `inject`; they do not req
 |---|---|---|
 | `pnpm typecheck` | **PASS** | 3/3 workspaces, 0 diagnostics |
 | `pnpm lint` | **PASS** | 2/2 tasks, 0 errors (56 web warnings) |
-| `pnpm --filter @ponnaloy/api test` | **PASS** | 3 files, 40/40 tests |
+| `pnpm --filter @ponnaloy/api test` | **PASS** | 3 files, 41/41 tests |
 | Live order-flow E2E | **PASS** | 106/106 assertions over real HTTP against a single-node replica set: catalog (46 products), cart maths, coupon discount, checkout, idempotent replay, ownership isolation, cancellation, admin state machine, shipment tracking, return/refund, restock-once, insufficient-stock rejection |
-| Marketplace API integration | **PASS** | 11 tests: onboarding approval, no-membership denial, cross-tenant selection denial, moderation visibility, rejection notes, product ownership, staff delete denial, multi-vendor partitioning/allocation/commission, independent fulfilment and parent aggregation, suspension effects, commission audit and scoped metrics |
+| Marketplace API integration | **PASS** | 12 tests: onboarding approval, no-membership denial, cross-tenant selection denial, moderation visibility, legacy platform-product visibility, rejection notes, product ownership, staff delete denial, multi-vendor partitioning/allocation/commission, independent fulfilment and parent aggregation, suspension effects, commission audit and scoped metrics |
 | `pnpm --filter @ponnaloy/web build` | **PASS** | Compiled; 36/36 pages generated |
 | `pnpm --filter @ponnaloy/api db:generate` | **PASS** | Prisma Client generated from the marketplace schema |
 | API runtime (in-memory replica set) | **PASS** | `tsx src/server.ts`; `/api/health` 200 with `database: connected`; payment methods `["COD","BANK_TRANSFER"]` |
 | Security headers | **PASS** | Built Next.js server returned the full header set and CSP (inspected over HTTP) |
-| API runtime (configured production database) | **BLOCKED** | Mongo SRV host returns NXDOMAIN |
+| API runtime (production database) | **PASS** | Atlas reachable; `db push` applied 7 collections + indexes; `/api/health` 200; `/api/products` returned 32 products; order detail intact |
 | `docker compose up` | **NOT RUN** | Docker is not installed in this environment |
-| Playwright / axe | **NOT RUN** | Not installed; automated browser and accessibility execution not performed |
+| Playwright smoke + axe | **FAIL** | 8/18 passed. Blocking findings: colour contrast (WCAG 1.4.3) and unnamed icon-only buttons; catalogue smoke blocked by CORS on the test port |
 | Performance benchmarks | **NOT RUN** | Only build output observed (`/` = 167 kB first-load JS) |
 
 ### 15.2 Build evidence
@@ -983,9 +983,9 @@ Route (app)                                 Size  First Load JS
 | ID | Risk | Severity | Impact | Mitigation / status |
 |---|---|---|---|---|
 | R1 | Prisma MongoDB transactions require a replica set; a standalone MongoDB cannot complete writes | High | Checkout and admin transitions fail | Docker compose and the test harness use replica sets; production Atlas must be a replica set. A PostgreSQL migration remains an option for heavier financial workloads |
-| R2 | Configured production database host is unreachable | Critical | No runtime verification against real data | Replace with a reachable cluster; local runtime is verified against an in-memory replica set |
+| R2 | Production database had been unreachable | **Resolved** | No runtime verification against real data | Atlas SRV resolves; schema pushed additively; API booted against production data |
 | R3 | API type errors | **Resolved** | Weak CI signal | `pnpm typecheck` now passes 3/3 |
-| R4 | Automated coverage is partial | Medium | Regressions in untested paths | 40 unit/integration tests including 11 marketplace tests plus a 106-assertion live E2E run pass; repeatable Playwright and accessibility suites still missing |
+| R4 | Automated coverage is partial | Medium | Regressions in untested paths | 41 unit/integration tests plus a 106-assertion live E2E run pass; Playwright smoke/axe executed and currently failing on real accessibility defects |
 | R5 | No ESLint configuration | **Resolved** | Inconsistent code quality | Flat configs added for both apps; 0 errors |
 | R6 | Admin UI renders mock data | **Resolved** | Operators may act on false information | Dashboard, products, orders, customers, sellers and moderation now use live API data |
 | R7 | Legacy stored XSS | Critical (legacy only) | Account compromise on legacy deployment | Retire or patch the legacy frontend |
@@ -1130,25 +1130,30 @@ Route (app)                                 Size  First Load JS
 | Public marketplace | Approved-seller directory and storefront pages; seller attribution on product detail |
 | Seller portal | Dashboard, products, orders, analytics and storefront editor wired to tenant-scoped API data with store switcher and status banner |
 | Reliability | Exhausted Mongo write conflicts now return `409 CONCURRENT_UPDATE` instead of `500` |
-| Tests | 11 marketplace integration tests (onboarding, isolation, moderation, staff permissions, multi-vendor allocation, independent fulfilment, suspension, commission audit, scoped metrics); suite total 40/40 |
-| Verification | `pnpm typecheck` 3/3, `pnpm lint` 0 errors, 40/40 tests, 36/36 pages built |
+| Tests | 12 marketplace integration tests (onboarding, isolation, moderation, legacy-product visibility, staff permissions, multi-vendor allocation, independent fulfilment, suspension, commission audit, scoped metrics); suite total 41/41 |
+| Verification | `pnpm typecheck` 3/3, `pnpm lint` 0 errors, 41/41 tests, 36/36 pages built |
+| Production database | DNS now resolves; `prisma db push` created 7 marketplace collections and their indexes on Atlas without data loss (32 products, 2 orders intact); API booted against it and served 32 public products |
+| Regression found and fixed | Public visibility used `sellerId: null`, which does not match MongoDB documents where the field is absent; the production catalogue returned 0 products until `isSet: false` was added. Covered by a new integration test |
+| Browser / accessibility | Playwright + axe installed and executed against the production build: **8/18 passed**. Real defects found: colour-contrast failures and icon-only buttons without accessible names. Catalogue smoke test blocked by CORS on the test port |
 
 ### Verification
 
 - Workspace type check: **PASS** — `pnpm typecheck`, 3/3 workspaces, 0 diagnostics.
 - Lint: **PASS** — `pnpm lint`, 0 errors (warnings only).
-- API tests: **PASS** — 3 files, 40/40 tests (10 pricing unit + 19 commerce integration + 11 marketplace integration) against an in-memory MongoDB replica set.
+- API tests: **PASS** — 3 files, 41/41 tests (10 pricing unit + 19 commerce integration + 12 marketplace integration) against an in-memory MongoDB replica set.
 - Storefront production build: **PASS** — 36/36 pages generated.
 - Live order-flow E2E over real HTTP: **PASS** — 106/106 assertions, including checkout, cancellation, fulfilment, tracking, return/refund and restock-once.
-- Marketplace API integration: **PASS** — onboarding/approval, membership denial, cross-tenant denial, moderation visibility, product ownership, staff permissions, multi-vendor partitioning and commission, independent fulfilment and parent aggregation, suspension effects, commission audit, scoped metrics.
+- Marketplace API integration: **PASS** — onboarding/approval, membership denial, cross-tenant denial, moderation visibility, legacy platform-product visibility, product ownership, staff permissions, multi-vendor partitioning and commission, independent fulfilment and parent aggregation, suspension effects, commission audit, scoped metrics.
 - API runtime against an in-memory MongoDB replica set: **PASS** — health `200`, database connected, payment methods `COD`/`BANK_TRANSFER`.
 - Seeded catalog: **PASS** — 8 categories, 10 brands, 46 distinct products.
-- API runtime against the configured production database: **BLOCKED** by DNS resolution (`NXDOMAIN`).
+- Production MongoDB runtime: **PASS** — Atlas SRV resolved; `prisma db push` created the marketplace collections/indexes; API booted with `database: connected` and served 32 legacy products.
 - Docker Compose: **NOT RUN** — Docker is not installed in this environment.
-- Repeatable Playwright E2E and axe accessibility audits: **NOT RUN** — not installed; installation and browser execution not performed.
+- Playwright / axe: **FAIL** — installed and executed (Chromium + Pixel 7 profiles). 8/18 passed; 10 failed on colour contrast and icon-button accessible names. The catalogue smoke test also failed because the API CORS allow-list does not include the Playwright port. These are genuine findings, not harness noise, except for the CORS configuration.
 - Performance benchmarks: **NOT RUN** — only build output observed.
 - Seller payouts, settlement ledger, staff invitations and dispute management: **NOT IMPLEMENTED**.
-- No production-ready claim is made: production database, deployment, card payments and email delivery remain unverified.
+- Card payments and transactional email: **BLOCKED** — no gateway keys or SMTP provider configured.
+- Production deployment: **BLOCKED** — no hosting credentials.
+- No production-ready claim is made: deployment, card payments, email delivery and WCAG AA conformance remain unverified or failing.
 
 ---
 
