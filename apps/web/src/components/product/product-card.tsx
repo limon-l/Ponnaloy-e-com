@@ -44,14 +44,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
       setCartState("loading");
       addItem(product, 1);
 
-      setTimeout(() => {
-        setCartState("success");
-        toast({
-          title: "Added to cart",
-          description: `${product.name} has been added to your cart.`,
-        });
-        setTimeout(() => setCartState("idle"), 1500);
-      }, 400);
+      // Respond immediately; the cart context reconciles with the server in the
+      // background. Waiting on an artificial timer made every add-to-cart click
+      // feel half a second late.
+      setCartState("success");
+      toast({
+        title: "Added to cart",
+        description: `${product.name} has been added to your cart.`,
+      });
+      setTimeout(() => setCartState("idle"), 1200);
     },
     [cartState, isOutOfStock, addItem, product, toast]
   );

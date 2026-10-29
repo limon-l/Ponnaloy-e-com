@@ -4,6 +4,7 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
+import compress from "@fastify/compress";
 import { register } from "prom-client";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -11,7 +12,7 @@ import { pathToFileURL } from "node:url";
 
 import { config } from "./config/env";
 import prisma from "./lib/prisma";
-import { redis } from "./lib/redis";
+import { disableCache, isCacheAvailable, redis } from "./lib/redis";
 import { ensureIndexes } from "./lib/meili";
 
 import { productRoutes } from "./routes/products";
@@ -80,12 +81,20 @@ async function registerPlugins(server: FastifyInstance) {
       callback(new Error(`Origin ${origin} not allowed by CORS`), false);
     },
     credentials: true,
+    // Cache preflight responses so authenticated requests do not pay an extra
+    // round trip on every click.
+    maxAge: 600,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Idempotency-Key"],
   });
 
   await server.register(helmet, {
     contentSecurityPolicy: config.nodeEnv === "production",
+  });
+
+  await server.register(compress, {
+    global: true,
+    threshold: 1024,
   });
 
   await server.register(rateLimit, {
@@ -126,18 +135,18 @@ async function registerRoutes(server: FastifyInstance) {
 
   // Readiness reports the state of the dependencies this API needs.
   server.get("/api/health", async (_request, reply) => {
+    const cacheOn = isCacheAvailable();
     const [dbCheck, redisCheck] = await Promise.allSettled([
       prisma.$runCommandRaw({ ping: 1 }),
-      config.redis.enabled ? redis.ping() : Promise.resolve("disabled"),
+      cacheOn ? redis.ping() : Promise.resolve("disabled"),
     ]);
 
     const database = dbCheck.status === "fulfilled" ? "connected" : "disconnected";
-    const redisStatus =
-      !config.redis.enabled
-        ? "disabled"
-        : redisCheck.status === "fulfilled"
-          ? "connected"
-          : "disconnected";
+    const redisStatus = !cacheOn
+      ? "disabled"
+      : redisCheck.status === "fulfilled"
+        ? "connected"
+        : "disconnected";
 
     return reply.code(database === "connected" ? 200 : 503).send({
       status: database === "connected" ? "ok" : "degraded",
@@ -245,7 +254,8 @@ async function bootstrap() {
         await redis.connect();
         server.log.info("Redis connected");
       } catch {
-        server.log.warn("Redis unavailable — caching disabled");
+        disableCache();
+        server.log.warn("Redis unavailable - using in-process cache");
       }
     } else {
       server.log.info("Redis disabled by configuration");

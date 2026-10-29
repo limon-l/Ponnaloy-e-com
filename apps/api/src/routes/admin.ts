@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from "fastify";
 import prisma from "../lib/prisma";
 import { requireAdmin } from "../middleware/auth";
+import { invalidateAuthCache } from "../lib/auth-cache";
 import { paginationSchema } from "../validators";
 import { invalidateProductCache } from "../lib/redis";
 import { indexProduct, removeProduct } from "../lib/meili";
@@ -819,6 +820,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       data: { role: role as never },
     });
 
+    invalidateAuthCache(id);
+
     return { success: true, message: "User role updated" };
   });
 
@@ -842,6 +845,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       where: { id },
       data: { isActive: !user.isActive },
     });
+
+    invalidateAuthCache(id);
 
     return {
       success: true,

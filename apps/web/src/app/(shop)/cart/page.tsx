@@ -25,16 +25,15 @@ export default function CartPage() {
   const freeShippingProgress = Math.min(subtotal / FREE_SHIPPING_THRESHOLD, 1);
 
   const handleRemove = (id: string, name: string) => {
+    // Remove optimistically; the context reconciles with the server.
     setRemovingId(id);
-    setTimeout(() => {
-      removeItem(id);
-      setRemovingId(null);
-      toast({
-        title: "Removed from cart",
-        description: `${name} has been removed from your cart.`,
-        variant: "destructive",
-      });
-    }, 300);
+    removeItem(id);
+    setRemovingId(null);
+    toast({
+      title: "Removed from cart",
+      description: `${name} has been removed from your cart.`,
+      variant: "destructive",
+    });
   };
 
   if (items.length === 0) {

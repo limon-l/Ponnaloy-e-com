@@ -6,30 +6,97 @@ const globalForRedis = globalThis as unknown as {
   redis: Redis | undefined;
 };
 
+/**
+ * Cache availability is a runtime concern, not just configuration: a Redis
+ * outage must degrade to the in-process cache immediately instead of making
+ * every request wait for connection retries. Without this, each API call pays
+ * several seconds of retry backoff when Redis is down.
+ */
+let cacheAvailable = config.redis.enabled;
+
+export function disableCache(): void {
+  cacheAvailable = false;
+}
+
+export function isCacheAvailable(): boolean {
+  return cacheAvailable;
+}
+
 export const redis =
   globalForRedis.redis ??
   new Redis(config.redis.url, {
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: 1,
+    connectTimeout: 1_500,
+    // Fail fast instead of queueing commands while the socket is down.
+    enableOfflineQueue: false,
     retryStrategy(times) {
-      if (times > 3) return null;
-      return Math.min(times * 50, 2000);
+      if (times > 1) return null;
+      return 200;
     },
     lazyConnect: true,
   });
 
-redis.on("error", () => {});
+redis.on("error", () => {
+  // Errors are surfaced through getCache/setCache; logging every reconnect
+  // attempt would flood the log without adding information.
+});
 
 if (config.nodeEnv !== "production") {
   globalForRedis.redis = redis;
 }
 
-export async function getCache<T>(key: string): Promise<T | null> {
-  if (!config.redis.enabled) return null;
+/**
+ * Small in-process cache used when Redis is absent. It only runs in production
+ * (or when MEMORY_CACHE=true) so integration tests always observe fresh data,
+ * and entries are capped at 30 seconds to bound staleness.
+ */
+const MEMORY_TTL_CAP_MS = 30_000;
+const memoryEnabled =
+  config.nodeEnv === "production" || process.env.MEMORY_CACHE === "true";
+const memory = new Map<string, { value: string; expiresAt: number }>();
+
+function memoryGet<T>(key: string): T | null {
+  const entry = memory.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    memory.delete(key);
+    return null;
+  }
   try {
-    const data = await redis.get(key);
-    return data ? JSON.parse(data) : null;
+    return JSON.parse(entry.value) as T;
   } catch {
     return null;
+  }
+}
+
+function memorySet(key: string, value: unknown, ttlSeconds: number): void {
+  if (!memoryEnabled) return;
+  if (memory.size > 500) {
+    // Simple bound: drop the oldest entry when the map grows too large.
+    const oldest = memory.keys().next().value;
+    if (oldest) memory.delete(oldest);
+  }
+  memory.set(key, {
+    value: JSON.stringify(value),
+    expiresAt: Date.now() + Math.min(ttlSeconds * 1000, MEMORY_TTL_CAP_MS),
+  });
+}
+
+function memoryDeletePattern(pattern: string): void {
+  const prefix = pattern.replace(/\*$/, "");
+  for (const key of memory.keys()) {
+    if (key.startsWith(prefix)) memory.delete(key);
+  }
+}
+
+export async function getCache<T>(key: string): Promise<T | null> {
+  if (!cacheAvailable) return memoryGet<T>(key);
+  try {
+    const data = await redis.get(key);
+    return data ? (JSON.parse(data) as T) : null;
+  } catch {
+    disableCache();
+    return memoryGet<T>(key);
   }
 }
 
@@ -38,23 +105,28 @@ export async function setCache(
   value: unknown,
   ttl: number = CACHE_TTL.MEDIUM
 ): Promise<void> {
-  if (!config.redis.enabled) return;
+  if (!cacheAvailable) {
+    memorySet(key, value, ttl);
+    return;
+  }
   try {
     await redis.set(key, JSON.stringify(value), "EX", ttl);
   } catch {
-    // cache write failure is non-critical
+    disableCache();
+    memorySet(key, value, ttl);
   }
 }
 
 export async function deleteCache(pattern: string): Promise<void> {
-  if (!config.redis.enabled) return;
+  memoryDeletePattern(pattern);
+  if (!cacheAvailable) return;
   try {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {
       await redis.del(...keys);
     }
   } catch {
-    // ignore
+    disableCache();
   }
 }
 

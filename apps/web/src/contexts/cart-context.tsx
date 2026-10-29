@@ -197,23 +197,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback(
     async (product: Product, quantity = 1, variant?: ProductVariant | null) => {
-      if (serverMode) {
-        try {
-          await api.post("/api/cart/items", {
-            productId: product.id,
-            quantity,
-            variantId: variant?.id || undefined,
-          });
-          await syncCart();
-          return;
-        } catch {
-          // Fall back to local mode
-        }
-      }
-
       const variantId = variant?.id || null;
       const key = `${product.id}-${variantId || "none"}`;
 
+      // Update the UI first. Server mode reconciles below, but the click must
+      // never wait for an Atlas round trip before the cart badge changes.
       setItems((prev) => {
         const existing = prev.find((item) => item.id === key);
         if (existing) {
@@ -239,20 +227,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           },
         ];
       });
+
+      if (!serverMode) return;
+
+      try {
+        await api.post("/api/cart/items", {
+          productId: product.id,
+          quantity,
+          variantId: variant?.id || undefined,
+        });
+        await syncCart();
+      } catch {
+        // Reconcile with server truth (e.g. the item went out of stock).
+        await syncCart();
+      }
     },
     [serverMode, syncCart]
   );
 
   const removeItem = useCallback(
     async (id: string) => {
-      if (serverMode) {
-        try {
-          await api.delete(`/api/cart/items/${id}`);
-          await syncCart();
-          return;
-        } catch {}
-      }
       setItems((prev) => prev.filter((item) => item.id !== id));
+      if (!serverMode) return;
+      try {
+        await api.delete(`/api/cart/items/${id}`);
+        await syncCart();
+      } catch {
+        await syncCart();
+      }
     },
     [serverMode, syncCart]
   );
@@ -260,30 +262,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateQuantity = useCallback(
     async (id: string, quantity: number) => {
       if (quantity < 1) return;
-      if (serverMode) {
-        try {
-          await api.put(`/api/cart/items/${id}`, { quantity });
-          await syncCart();
-          return;
-        } catch {}
-      }
       setItems((prev) =>
         prev.map((item) => (item.id === id ? { ...item, quantity } : item))
       );
+      if (!serverMode) return;
+      try {
+        await api.put(`/api/cart/items/${id}`, { quantity });
+        await syncCart();
+      } catch {
+        await syncCart();
+      }
     },
     [serverMode, syncCart]
   );
 
   const clearCart = useCallback(async () => {
-    if (serverMode) {
-      try {
-        await api.delete("/api/cart");
-      } catch {}
-    }
     setItems([]);
     setDiscount(0);
     setCouponCode(null);
     saveCart([]);
+    if (!serverMode) return;
+    try {
+      await api.delete("/api/cart");
+    } catch {
+      // The next sync restores server state if the request did not land.
+    }
   }, [serverMode]);
 
   const applyCoupon = useCallback(

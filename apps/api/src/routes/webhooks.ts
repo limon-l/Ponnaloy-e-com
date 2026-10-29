@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { config } from "../config/env";
 import { constructWebhookEvent, isStripeConfigured } from "../lib/stripe";
+import { invalidateAuthCache } from "../lib/auth-cache";
 
 interface RawBodyRequest {
   rawBody?: Buffer;
@@ -413,22 +414,39 @@ export const webhookRoutes: FastifyPluginAsync = async (app) => {
         case "user.created": {
           const email =
             (attributes.email_addresses as { email_address: string }[])?.[0]?.email_address || "";
-          await prisma.user.upsert({
-            where: { clerkId: id },
-            create: {
-              clerkId: id,
-              email,
-              firstName: (attributes.first_name as string) || null,
-              lastName: (attributes.last_name as string) || null,
-              avatar: (attributes.image_url as string) || null,
-              emailVerified: true,
+          const existing = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { clerkId: id },
+                ...(email ? [{ email }] : []),
+              ],
             },
-            update: {
-              firstName: (attributes.first_name as string) || undefined,
-              lastName: (attributes.last_name as string) || undefined,
-              avatar: (attributes.image_url as string) || undefined,
-            },
+            select: { id: true },
           });
+
+          if (existing) {
+            await prisma.user.update({
+              where: { id: existing.id },
+              data: {
+                clerkId: id,
+                emailVerified: true,
+                firstName: (attributes.first_name as string) || undefined,
+                lastName: (attributes.last_name as string) || undefined,
+                avatar: (attributes.image_url as string) || undefined,
+              },
+            });
+          } else {
+            await prisma.user.create({
+              data: {
+                clerkId: id,
+                email,
+                firstName: (attributes.first_name as string) || null,
+                lastName: (attributes.last_name as string) || null,
+                avatar: (attributes.image_url as string) || null,
+                emailVerified: true,
+              },
+            });
+          }
           break;
         }
         case "user.updated": {
@@ -440,10 +458,13 @@ export const webhookRoutes: FastifyPluginAsync = async (app) => {
               avatar: (attributes.image_url as string) || undefined,
             },
           });
+          // Clerk changes can alter the identity we cache; drop it wholesale.
+          invalidateAuthCache();
           break;
         }
         case "user.deleted": {
           await prisma.user.deleteMany({ where: { clerkId: id } });
+          invalidateAuthCache();
           break;
         }
       }

@@ -103,13 +103,13 @@ export default function ProductDetailPage() {
     if (addingToCart) return;
     setAddingToCart(true);
     addItem(product, quantity, selectedVariantData || null);
-    setTimeout(() => {
-      toast({
-        title: "Added to cart",
-        description: `${quantity}x ${product.name} has been added to your cart.`,
-      });
-      setAddingToCart(false);
-    }, 500);
+    // Give feedback immediately. The cart context reconciles with the server in
+    // the background, so an artificial delay only made the button feel broken.
+    toast({
+      title: "Added to cart",
+      description: `${quantity}x ${product.name} has been added to your cart.`,
+    });
+    setAddingToCart(false);
   };
 
   const handleBuyNow = () => {

@@ -1,6 +1,10 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import prisma from "../lib/prisma";
 import { config } from "../config/env";
+import {
+  readCachedIdentity,
+  writeCachedIdentity,
+} from "../lib/auth-cache";
 import { verifyJWT } from "../routes/auth";
 
 export interface AuthUser {
@@ -22,6 +26,9 @@ async function authenticateToken(token: string): Promise<AuthUser | null> {
   // Try our custom JWT first
   const payload = verifyJWT(token);
   if (payload && payload.sub) {
+    const cached = readCachedIdentity(token);
+    if (cached) return cached;
+
     const user = await prisma.user.findUnique({
       where: { id: payload.sub as string },
       select: {
@@ -44,7 +51,7 @@ async function authenticateToken(token: string): Promise<AuthUser | null> {
           }
         }
       }
-      return {
+      const authUser: AuthUser = {
         id: user.id,
         clerkId: user.clerkId,
         email: user.email,
@@ -52,6 +59,8 @@ async function authenticateToken(token: string): Promise<AuthUser | null> {
         lastName: user.lastName,
         role: user.role,
       };
+      writeCachedIdentity(token, authUser);
+      return authUser;
     }
     return null;
   }
@@ -65,7 +74,7 @@ async function authenticateToken(token: string): Promise<AuthUser | null> {
     });
     if (!clerkPayload || !clerkPayload.sub) return null;
 
-    let user = await prisma.user.findUnique({
+    let user = await prisma.user.findFirst({
       where: { clerkId: clerkPayload.sub },
       select: {
         id: true, clerkId: true, email: true,

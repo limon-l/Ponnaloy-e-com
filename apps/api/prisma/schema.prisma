@@ -11,7 +11,7 @@ datasource db {
 
 model User {
   id                String    @id @default(auto()) @map("_id") @db.ObjectId
-  clerkId           String?   @unique
+  clerkId           String?
   email             String    @unique
   passwordHash      String?
   firstName         String?
@@ -39,6 +39,11 @@ model User {
   sellerApplications         SellerApplication[]  @relation("SellerApplicant")
   reviewedSellerApplications SellerApplication[]  @relation("SellerApplicationReviewer")
   ownedSellers               SellerOrganization[] @relation("SellerOwner")
+
+  // Clerk is optional. A plain unique index on a nullable field rejects every
+  // local user after the first one in MongoDB, so uniqueness is enforced in
+  // application code and this index only speeds up lookups.
+  @@index([clerkId])
 }
 
 model PasswordResetToken {

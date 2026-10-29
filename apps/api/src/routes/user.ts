@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from "fastify";
 import prisma from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
+import { invalidateAuthCache } from "../lib/auth-cache";
 
 export const userRoutes: FastifyPluginAsync = async (app) => {
   // Get current user profile
@@ -56,6 +57,8 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
         role: true,
       },
     });
+
+    invalidateAuthCache(userId);
 
     return { success: true, data: user };
   });

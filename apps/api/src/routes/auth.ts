@@ -3,6 +3,7 @@ import crypto from "crypto";
 import prisma from "../lib/prisma";
 import { config } from "../config/env";
 import { buildPasswordResetEmail, sendMail } from "../lib/email";
+import { invalidateAuthCache } from "../lib/auth-cache";
 
 // Validated at boot in config/env.ts: production refuses to start without a
 // strong secret, so there is no insecure default to fall back to.
@@ -303,6 +304,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         data: { usedAt: changedAt },
       }),
     ]);
+
+    invalidateAuthCache(record.userId);
 
     return {
       success: true,
