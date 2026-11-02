@@ -3,14 +3,21 @@ services:
     name: ponnaloy-api
     runtime: node
     plan: free
+    healthCheckPath: /api/health
     buildCommand: pnpm install --frozen-lockfile; pnpm --filter @ponnaloy/api build
     startCommand: pnpm --filter @ponnaloy/api start
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
         sync: false
-      - key: SESSION_SECRET
+      - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
         sync: false
       - key: REDIS_URL
         sync: false
+      # Set REDIS_ENABLED=false when no Redis instance is attached; the API then
+      # uses its bounded in-process cache.
+      - key: REDIS_ENABLED
+        value: "false"

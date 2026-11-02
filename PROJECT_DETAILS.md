@@ -338,7 +338,7 @@ Optional external services: Stripe (card payments when both server keys are set)
 
 ### 6.4 Caching and search
 
-- **Cache:** read-through with TTL tiers (short/medium/long/day); invalidated on product mutation. If Redis is unavailable, caching is skipped and requests continue against the database.
+- **Cache:** read-through with TTL tiers (short/medium/long/day); invalidated on product mutation. If Redis is disabled or unavailable, a bounded in-process cache (30 s, 500 entries, pattern invalidation) takes over; set `MEMORY_CACHE=false` to disable it.
 - **Search:** Meilisearch index for query endpoints; catalog list endpoints fall back to Prisma filters.
 - **Failure mode:** Redis and Meilisearch connection failures are logged as warnings at boot and the API continues.
 
@@ -812,12 +812,12 @@ The stored-XSS exposure in the former `frontend/public/js/*.js` code was removed
 | `PORT` | API / web | Listening port |
 | `NODE_ENV` | Both | Environment mode |
 | `FRONTEND_URL` | API | Comma-separated CORS allow-list |
-| `BACKEND_URL` | API / web | API base URL for server-side callers |
+| `BACKEND_URL` | API / web | Read into server config; currently unused |
 | `NEXT_PUBLIC_API_URL` | Web | Public API base URL |
 | `JWT_SECRET` (or `AUTH_SECRET`) | API | JWT signing — required in production, ≥32 chars |
 | `REDIS_URL` | API | Cache connection |
 | `REDIS_ENABLED` | API | Set `false` to disable Redis and use the in-process cache |
-| `MEMORY_CACHE` | API | Enable the in-process cache outside production (tests stay uncached) |
+| `MEMORY_CACHE` | API | Set `false` to disable the in-process cache; the cache is already disabled in tests |
 | `MEILISEARCH_HOST`, `MEILISEARCH_API_KEY` | API | Search |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | API / web | Card payments (activates the Stripe method when both server keys exist) |
 | `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | API / web | Optional identity provider |
