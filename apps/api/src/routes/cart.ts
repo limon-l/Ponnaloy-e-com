@@ -1,6 +1,8 @@
 import { FastifyPluginAsync } from "fastify";
 import prisma from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
+import { evaluateCoupon } from "../services/pricing";
+import { publicProductVisibility } from "../lib/marketplace";
 
 export const cartRoutes: FastifyPluginAsync = async (app) => {
   const mapCart = (cart: any) => ({
@@ -10,6 +12,21 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       product: i.product ? { ...i.product, images: i.product.images.slice(0, 1) } : i.product,
     })),
   });
+
+  async function currentDiscount(cart: any, subtotal: number, shippingFee: number) {
+    if (!cart.coupon) return 0;
+    const coupon = await prisma.coupon.findUnique({ where: { code: cart.coupon.code } });
+    const result = coupon ? evaluateCoupon(coupon, subtotal) : null;
+    if (!result?.ok || cart.items.length === 0) {
+      await prisma.cartCoupon.deleteMany({ where: { cartId: cart.id } });
+      cart.coupon = null;
+      return 0;
+    }
+    const discount = result.freeShipping ? shippingFee : result.discount;
+    cart.coupon.discount = discount;
+    await prisma.cartCoupon.update({ where: { cartId: cart.id }, data: { discount } });
+    return discount;
+  }
 
   // Get cart (requires auth)
   app.get("/", { preHandler: [requireAuth] }, async (request, reply) => {
@@ -57,12 +74,12 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       cart = mapCart(cart!);
 
       const subtotal = cart!.items.reduce((sum: number, item: any) => {
-        const price = item.variant?.price || item.product.price;
+        const price = item.variant?.price ?? item.product.price;
         return sum + price * item.quantity;
       }, 0);
 
-      const shippingFee = subtotal >= 15000 ? 0 : 1500;
-      const discount = cart!.coupon?.discount || 0;
+      const shippingFee = subtotal === 0 || subtotal >= 15000 ? 0 : 1500;
+      const discount = await currentDiscount(cart, subtotal, shippingFee);
       const total = subtotal + shippingFee - discount;
 
       return {
@@ -102,7 +119,7 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
     try {
       // Verify product exists and is active
       const product = await prisma.product.findFirst({
-        where: { id: productId, status: "ACTIVE" },
+        where: { id: productId, status: "ACTIVE", ...publicProductVisibility() },
       });
 
       if (!product) {
@@ -136,6 +153,13 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
           variantId: variantId || null,
         },
       });
+
+      const inventory = variantId
+        ? await prisma.productVariant.findUnique({ where: { id: variantId } })
+        : product;
+      if (!inventory || inventory.stock < (existingItem?.quantity ?? 0) + quantity) {
+        return reply.code(400).send({ success: false, error: "Insufficient stock" });
+      }
 
       if (existingItem) {
         const newQuantity = existingItem.quantity + quantity;
@@ -178,11 +202,11 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
 
       const mapped = mapCart(updatedCart!);
       const subtotal = mapped.items.reduce((sum: number, item: any) => {
-        const price = item.variant?.price || item.product.price;
+        const price = item.variant?.price ?? item.product.price;
         return sum + price * item.quantity;
       }, 0);
-      const shippingFee = subtotal >= 15000 ? 0 : 1500;
-      const discount = mapped.coupon?.discount || 0;
+      const shippingFee = subtotal === 0 || subtotal >= 15000 ? 0 : 1500;
+      const discount = await currentDiscount(mapped, subtotal, shippingFee);
 
       return {
         success: true,
@@ -225,14 +249,11 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(404).send({ success: false, error: "Cart item not found" });
       }
 
-      // Check stock if item has a variant
-      if (item.variantId) {
-        const variant = await prisma.productVariant.findUnique({
-          where: { id: item.variantId },
-        });
-        if (variant && variant.stock < quantity) {
-          return reply.code(400).send({ success: false, error: "Insufficient stock" });
-        }
+      const inventory = item.variantId
+        ? await prisma.productVariant.findUnique({ where: { id: item.variantId } })
+        : await prisma.product.findUnique({ where: { id: item.productId } });
+      if (!inventory || inventory.stock < quantity) {
+        return reply.code(400).send({ success: false, error: "Insufficient stock" });
       }
 
       await prisma.cartItem.update({
@@ -348,7 +369,7 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       const productMap = new Map(products.map((p) => [p.id, p.price]));
 
       const subtotal = cart.items.reduce((sum, item) => {
-        const price = (item.variantId ? variantMap.get(item.variantId) : null) || productMap.get(item.productId) || 0;
+        const price = (item.variantId ? variantMap.get(item.variantId) : null) ?? productMap.get(item.productId) ?? 0;
         return sum + item.quantity * price;
       }, 0);
 
@@ -359,16 +380,13 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      // Calculate discount
-      let discount = 0;
-      if (coupon.discountType === "PERCENTAGE") {
-        discount = Math.round((subtotal * coupon.discountValue) / 100);
-        if (coupon.maxDiscountAmount) {
-          discount = Math.min(discount, coupon.maxDiscountAmount);
-        }
-      } else if (coupon.discountType === "FIXED") {
-        discount = coupon.discountValue;
+      const evaluated = evaluateCoupon(coupon, subtotal);
+      if (!evaluated.ok) {
+        return reply.code(400).send({ success: false, error: evaluated.error });
       }
+      const discount = evaluated.freeShipping
+        ? (subtotal >= 15000 ? 0 : 1500)
+        : evaluated.discount;
 
       // Apply coupon to cart
       await prisma.cartCoupon.upsert({

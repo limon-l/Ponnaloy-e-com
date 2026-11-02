@@ -36,7 +36,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { api, type ApiResponse } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 
-type CustomerRole = "CUSTOMER" | "ADMIN" | "SUPER_ADMIN";
+type CustomerRole = "CUSTOMER" | "SELLER" | "ADMIN" | "SUPER_ADMIN";
 
 interface AdminUser {
   id: string;
@@ -59,6 +59,10 @@ interface Pagination {
 }
 
 const roleConfig: Record<CustomerRole, { label: string; className: string }> = {
+  SELLER: {
+    label: "Seller",
+    className: "bg-blue-100 text-blue-800 border-blue-200",
+  },
   SUPER_ADMIN: {
     label: "Super admin",
     className: "bg-red-100 text-red-800 border-red-200",
@@ -233,6 +237,7 @@ export default function AdminCustomersPage() {
                 <SelectContent>
                   <SelectItem value="ALL">All roles</SelectItem>
                   <SelectItem value="CUSTOMER">Customer</SelectItem>
+                  <SelectItem value="SELLER">Seller</SelectItem>
                   <SelectItem value="ADMIN">Admin</SelectItem>
                   <SelectItem value="SUPER_ADMIN">Super admin</SelectItem>
                 </SelectContent>
@@ -343,6 +348,7 @@ export default function AdminCustomersPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="CUSTOMER">Customer</SelectItem>
+                  <SelectItem value="SELLER">Seller</SelectItem>
                               <SelectItem value="ADMIN">Admin</SelectItem>
                               <SelectItem value="SUPER_ADMIN">
                                 Super admin

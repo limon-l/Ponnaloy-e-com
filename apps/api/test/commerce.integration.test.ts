@@ -277,8 +277,9 @@ describe("checkout integrity", () => {
 
   it("rejects checkout when product-level stock is insufficient", async () => {
     const { token } = await createUser("nostock");
-    const product = await createProduct({ stock: 0 });
+    const product = await createProduct({ stock: 1 });
     await addToCart(token, product.id, 1);
+    await prisma.product.update({ where: { id: product.id }, data: { stock: 0 } });
 
     const response = await placeOrder(token);
     expect(response.statusCode).toBe(409);
@@ -729,3 +730,51 @@ describe("administration", () => {
   });
 });
 
+
+
+describe("cart inventory and totals", () => {
+  it("rejects cumulative additions and quantity updates beyond product stock", async () => {
+    const { token } = await createUser("cart-stock");
+    const product = await createProduct({ stock: 2 });
+    const added = await addToCart(token, product.id, 2);
+    const itemId = added.json().data.items[0].id;
+    for (const request of [
+      { method: "POST" as const, url: "/api/cart/items", payload: { productId: product.id, quantity: 1 } },
+      { method: "PUT" as const, url: `/api/cart/items/${itemId}`, payload: { quantity: 3 } },
+    ]) {
+      const response = await app.inject({ ...request, headers: auth(token) });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe("Insufficient stock");
+    }
+  });
+
+  it("refreshes percentage discounts after quantity changes and clears empty-cart totals", async () => {
+    const { token } = await createUser("cart-discount");
+    const product = await createProduct({ stock: 5, price: 2000 });
+    const added = await addToCart(token, product.id);
+    const itemId = added.json().data.items[0].id;
+    const code = `CART10-${Date.now()}`;
+    await prisma.coupon.create({ data: { code, discountType: "PERCENTAGE", discountValue: 10, isActive: true } });
+    const applied = await app.inject({ method: "POST", url: "/api/cart/coupon", headers: auth(token), payload: { code } });
+    expect(applied.json().data.discount).toBe(200);
+    await app.inject({ method: "PUT", url: `/api/cart/items/${itemId}`, headers: auth(token), payload: { quantity: 2 } });
+    const cart = await app.inject({ method: "GET", url: "/api/cart", headers: auth(token) });
+    expect(cart.json().data).toMatchObject({ subtotal: 4000, discount: 400, total: 5100, itemCount: 2 });
+    await app.inject({ method: "DELETE", url: `/api/cart/items/${itemId}`, headers: auth(token) });
+    const empty = await app.inject({ method: "GET", url: "/api/cart", headers: auth(token) });
+    expect(empty.json().data).toMatchObject({ subtotal: 0, discount: 0, total: 0, itemCount: 0 });
+  });
+});
+
+
+describe("admin seller account compatibility", () => {
+  it("lists and filters seller accounts without changing their membership", async () => {
+    const admin = await createAdmin("seller-list");
+    const seller = await prisma.user.create({ data: { email: `seller-list-${Date.now()}@example.com`, role: "SELLER" } });
+    const response = await app.inject({ method: "GET", url: "/api/admin/users?role=SELLER", headers: auth(admin.token) });
+    expect(response.statusCode).toBe(200);
+    const users = response.json().data;
+    expect(users.some((user: { id: string }) => user.id === seller.id)).toBe(true);
+    expect(users.every((user: { role: string }) => user.role === "SELLER")).toBe(true);
+  });
+});

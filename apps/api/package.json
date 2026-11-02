@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "seed:accounts": "tsx scripts/seed-accounts.ts",
     "seed:seller": "tsx scripts/seed-seller-catalog.ts"
   },
   "dependencies": {

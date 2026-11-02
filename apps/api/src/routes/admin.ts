@@ -22,7 +22,7 @@ const ORDER_STATUSES = [
 
 type OrderStatusValue = (typeof ORDER_STATUSES)[number];
 
-const ROLES = ["CUSTOMER", "ADMIN", "SUPER_ADMIN"] as const;
+const ROLES = ["CUSTOMER", "SELLER", "ADMIN", "SUPER_ADMIN"] as const;
 type RoleValue = (typeof ROLES)[number];
 
 /**

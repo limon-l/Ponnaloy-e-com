@@ -97,7 +97,7 @@ function formatServerItem(item: {
     productId: item.productId,
     name: item.product?.name || "",
     slug: item.product?.slug || "",
-    price: item.variant?.price || item.product?.price || 0,
+    price: item.variant?.price ?? item.product?.price ?? 0,
     image: item.product?.images?.[0]?.url || "",
     quantity: item.quantity,
     variant: item.variant
@@ -216,10 +216,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // Update the UI first. Server mode reconciles below, but the click must
       // never wait for an Atlas round trip before the cart badge changes.
       setItems((prev) => {
-        const existing = prev.find((item) => item.id === key);
+        const existing = prev.find((item) => item.productId === product.id && (item.variant?.id || null) === variantId);
         if (existing) {
           return prev.map((item) =>
-            item.id === key
+            item.id === existing.id
               ? { ...item, quantity: item.quantity + quantity }
               : item
           );
@@ -267,9 +267,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setItems((prev) => prev.filter((item) => item.id !== id));
       if (!serverMode) return;
       try {
-        // The local state is already correct; only reconcile if the request
-        // fails, which avoids a redundant GET after every click.
+        // Refresh coupon eligibility and totals after the item is removed.
         await api.delete(`/api/cart/items/${id}`);
+        await syncCart();
       } catch {
         await syncCart();
       }
@@ -286,6 +286,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (!serverMode) return;
       try {
         await api.put(`/api/cart/items/${id}`, { quantity });
+        await syncCart();
       } catch {
         await syncCart();
       }
@@ -352,9 +353,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   const total = useMemo(() => {
-    const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_FEE;
+    const shippingFee = items.length === 0 || subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_FEE;
     return Math.max(0, subtotal + shippingFee - discount);
-  }, [subtotal, discount]);
+  }, [subtotal, discount, items.length]);
 
   const value = useMemo(
     () => ({

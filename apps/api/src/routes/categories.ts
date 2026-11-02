@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
 import prisma from "../lib/prisma";
-import { getCache, setCache } from "../lib/redis";
+import { getCache, setCache, deleteCache } from "../lib/redis";
 import { slugify, CACHE_TTL } from "@ponnaloy/shared";
 import { createCategorySchema } from "../validators";
 import { requireAuth, requireAdmin } from "../middleware/auth";
@@ -93,6 +93,7 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
       },
     });
 
+    await deleteCache("categories:*");
     return reply.code(201).send({ success: true, data: category });
   });
 
@@ -128,6 +129,7 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
       data: updateData,
     });
 
+    await deleteCache("categories:*");
     return { success: true, data: category };
   });
 
@@ -159,6 +161,7 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
     }
 
     await prisma.category.delete({ where: { id } });
+    await deleteCache("categories:*");
     return { success: true, message: "Category deleted" };
   });
 };

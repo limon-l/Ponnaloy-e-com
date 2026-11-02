@@ -146,11 +146,19 @@ pnpm db:generate
 pnpm db:push
 pnpm db:seed                 # base catalogue and reference data
 pnpm db:seed:seller          # demo seller + in-stock catalogue (idempotent)
+pnpm db:seed:accounts        # accounts configured in the root .env
 ```
 
 `db:seed:seller` creates `Ponnaloy Home Studio` (owner
 `seller@ponnaloy.local` / `PonnaloySeller#2026`) with 13 active products and
 restocks any legacy platform product that has no inventory.
+
+Set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `DEMO_USER_EMAIL`, `DEMO_USER_PASSWORD`,
+`DEMO_SELLER_EMAIL` and `DEMO_SELLER_PASSWORD` in the root `.env` before running
+`db:seed:accounts`. It creates a super administrator, customer and seller login
+only when their emails do not already exist; existing roles and passwords are
+preserved. Run `db:seed:seller` to provision the demo seller's approved store.
+Passwords are hashed in MongoDB. Editing `.env` does not reset existing passwords.
 
 ### Run
 

@@ -15,6 +15,7 @@
     "db:push": "pnpm --filter @ponnaloy/api db:push",
     "db:migrate": "pnpm --filter @ponnaloy/api db:migrate",
     "db:seed": "pnpm --filter @ponnaloy/api db:seed",
+    "db:seed:accounts": "pnpm --filter @ponnaloy/api seed:accounts",
     "db:seed:seller": "pnpm --filter @ponnaloy/api seed:seller",
     "db:studio": "pnpm --filter @ponnaloy/api db:studio",
     "docker:up": "docker compose up -d",
