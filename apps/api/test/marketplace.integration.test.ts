@@ -57,6 +57,18 @@ async function createAdmin(prefix: string) {
   };
 }
 
+async function createSuperAdmin(prefix: string) {
+  const { user, token } = await createUser(prefix);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { role: "SUPER_ADMIN" },
+  });
+  return {
+    user,
+    token: mintToken(user.id, user.email, "SUPER_ADMIN"),
+  };
+}
+
 async function createSeller(
   prefix: string,
   options: {
@@ -714,5 +726,106 @@ describe("multi-vendor checkout and seller fulfilment", () => {
     });
     expect(otherDashboard.statusCode).toBe(200);
     expect(otherDashboard.json().data.grossSales).toBe(0);
+  });
+});
+
+describe("super-admin account administration", () => {
+  it("rejects ordinary admins from changing roles or activation", async () => {
+    const admin = await createAdmin("authz-admin");
+    const target = await createUser("authz-target");
+
+    const roleChange = await app.inject({
+      method: "PUT",
+      url: `/api/admin/users/${target.user.id}/role`,
+      headers: auth(admin.token),
+      payload: { role: "SUPER_ADMIN" },
+    });
+    expect(roleChange.statusCode).toBe(403);
+    expect(roleChange.json().error).toMatch(/Super admin access required/);
+
+    const toggle = await app.inject({
+      method: "PUT",
+      url: `/api/admin/users/${target.user.id}/toggle`,
+      headers: auth(admin.token),
+    });
+    expect(toggle.statusCode).toBe(403);
+    expect(toggle.json().error).toMatch(/Super admin access required/);
+
+    const unchanged = await prisma.user.findUnique({
+      where: { id: target.user.id },
+    });
+    expect(unchanged?.role).toBe("CUSTOMER");
+    expect(unchanged?.isActive).toBe(true);
+  });
+
+  it("allows a super admin to promote a customer", async () => {
+    const owner = await createSuperAdmin("authz-owner");
+    const target = await createUser("authz-promote");
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/admin/users/${target.user.id}/role`,
+      headers: auth(owner.token),
+      payload: { role: "ADMIN" },
+    });
+    expect(response.statusCode).toBe(200);
+
+    const updated = await prisma.user.findUnique({
+      where: { id: target.user.id },
+    });
+    expect(updated?.role).toBe("ADMIN");
+  });
+
+  it("protects the last active super administrator from demotion and deactivation", async () => {
+    const owner = await createSuperAdmin("authz-last-owner");
+
+    // Leave exactly one active owner so both guards are exercised.
+    await prisma.user.updateMany({
+      where: {
+        role: "SUPER_ADMIN",
+        id: { not: owner.user.id },
+      },
+      data: { isActive: false },
+    });
+
+    const demote = await app.inject({
+      method: "PUT",
+      url: `/api/admin/users/${owner.user.id}/role`,
+      headers: auth(owner.token),
+      payload: { role: "ADMIN" },
+    });
+    expect(demote.statusCode).toBe(409);
+    expect(demote.json().code).toBe("LAST_SUPER_ADMIN");
+
+    const deactivate = await app.inject({
+      method: "PUT",
+      url: `/api/admin/users/${owner.user.id}/toggle`,
+      headers: auth(owner.token),
+    });
+    expect(deactivate.statusCode).toBe(409);
+    expect(deactivate.json().code).toBe("LAST_SUPER_ADMIN");
+
+    const stillOwner = await prisma.user.findUnique({
+      where: { id: owner.user.id },
+    });
+    expect(stillOwner?.role).toBe("SUPER_ADMIN");
+    expect(stillOwner?.isActive).toBe(true);
+  });
+
+  it("allows a super admin to deactivate another owner while one remains", async () => {
+    const owner = await createSuperAdmin("authz-owner-two");
+    const other = await createSuperAdmin("authz-other-owner");
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/admin/users/${other.user.id}/toggle`,
+      headers: auth(owner.token),
+    });
+    expect(response.statusCode).toBe(200);
+
+    const updated = await prisma.user.findUnique({
+      where: { id: other.user.id },
+    });
+    expect(updated?.isActive).toBe(false);
   });
 });

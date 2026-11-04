@@ -686,47 +686,62 @@ describe("administration", () => {
 
   it("prevents self-demotion and protects the last super administrator", async () => {
     const admin = await createAdmin("self-role");
+    const superAdmin = await prisma.user.create({
+      data: {
+        email: `super-a-${Date.now()}@example.com`,
+        role: "SUPER_ADMIN",
+      },
+    });
+    const secondOwner = await prisma.user.create({
+      data: {
+        email: `super-b-${Date.now()}@example.com`,
+        role: "SUPER_ADMIN",
+      },
+    });
 
+    const token = mintToken(superAdmin.id, superAdmin.email, "SUPER_ADMIN");
+
+    // With another active owner present, the specific self-service rule wins.
     const selfDemote = await app.inject({
       method: "PUT",
-      url: `/api/admin/users/${admin.user.id}/role`,
-      headers: auth(admin.token),
+      url: `/api/admin/users/${superAdmin.id}/role`,
+      headers: auth(token),
       payload: { role: "CUSTOMER" },
     });
     expect(selfDemote.statusCode).toBe(400);
     expect(selfDemote.json().code).toBe("SELF_ROLE_CHANGE");
 
-    const superAdmin = await prisma.user.create({
-      data: {
-        email: `super-${Date.now()}@example.com`,
-        role: "SUPER_ADMIN",
-      },
+    // An ordinary ADMIN can no longer manage super-admin accounts at all.
+    const demoteByAdmin = await app.inject({
+      method: "PUT",
+      url: `/api/admin/users/${superAdmin.id}/role`,
+      headers: auth(admin.token),
+      payload: { role: "CUSTOMER" },
     });
-    // Deactivate any other super admins so the guard is deterministic.
-    await prisma.user.updateMany({
-      where: { role: "SUPER_ADMIN", id: { not: superAdmin.id } },
+    expect(demoteByAdmin.statusCode).toBe(403);
+
+    // Leave one active owner; both demotion and deactivation must fail.
+    await prisma.user.update({
+      where: { id: secondOwner.id },
       data: { isActive: false },
     });
 
-    const token = mintToken(superAdmin.id, superAdmin.email, "SUPER_ADMIN");
     const demoteLast = await app.inject({
       method: "PUT",
       url: `/api/admin/users/${superAdmin.id}/role`,
       headers: auth(token),
       payload: { role: "ADMIN" },
     });
-    // Self-change is rejected first; verify the last-super-admin guard via a
-    // different admin acting on the only super admin.
-    expect(demoteLast.statusCode).toBe(400);
+    expect(demoteLast.statusCode).toBe(409);
+    expect(demoteLast.json().code).toBe("LAST_SUPER_ADMIN");
 
-    const demoteByOther = await app.inject({
+    const deactivateLast = await app.inject({
       method: "PUT",
-      url: `/api/admin/users/${superAdmin.id}/role`,
-      headers: auth(admin.token),
-      payload: { role: "ADMIN" },
+      url: `/api/admin/users/${superAdmin.id}/toggle`,
+      headers: auth(token),
     });
-    expect(demoteByOther.statusCode).toBe(409);
-    expect(demoteByOther.json().code).toBe("LAST_SUPER_ADMIN");
+    expect(deactivateLast.statusCode).toBe(409);
+    expect(deactivateLast.json().code).toBe("LAST_SUPER_ADMIN");
   });
 });
 

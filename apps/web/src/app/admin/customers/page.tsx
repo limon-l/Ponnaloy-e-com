@@ -91,6 +91,7 @@ function pageWindow(current: number, total: number): number[] {
 export default function AdminCustomersPage() {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const canManageRoles = currentUser?.role === "SUPER_ADMIN";
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -204,8 +205,9 @@ export default function AdminCustomersPage() {
       <div>
         <h1 className="text-3xl font-bold">Customers</h1>
         <p className="text-muted-foreground">
-          Manage customer accounts and staff permissions. Role changes take
-          effect immediately on the API.
+          {canManageRoles
+            ? "Manage customer accounts and staff permissions. Role changes take effect immediately on the API."
+            : "View customer accounts. Only super administrators can change roles or activate and deactivate accounts."}
         </p>
       </div>
 
@@ -334,7 +336,9 @@ export default function AdminCustomersPage() {
                             onValueChange={(value) =>
                               updateRole(account, value as CustomerRole)
                             }
-                            disabled={isSelf || pendingRole === account.id}
+                            disabled={
+                              isSelf || !canManageRoles || pendingRole === account.id
+                            }
                           >
                             <SelectTrigger
                               className="h-8 w-[140px]"
@@ -380,7 +384,7 @@ export default function AdminCustomersPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => setToggleTarget(account)}
-                              disabled={isSelf}
+                              disabled={isSelf || !canManageRoles}
                               aria-label={
                                 account.isActive
                                   ? `Deactivate ${displayName(account)}`

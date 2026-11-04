@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
 import prisma from "../lib/prisma";
-import { requireAdmin } from "../middleware/auth";
+import { requireAdmin, requireSuperAdmin } from "../middleware/auth";
 import { invalidateAuthCache } from "../lib/auth-cache";
 import { paginationSchema } from "../validators";
 import { invalidateProductCache } from "../lib/redis";
@@ -780,7 +780,14 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.put("/users/:id/role", async (request, reply) => {
+  // Role and activation changes can create or remove platform owners, so they
+  // are restricted to super administrators. The plugin-wide requireAdmin hook
+  // is deliberately not sufficient here: an ordinary ADMIN must not be able to
+  // promote a puppet account or deactivate the platform owner.
+  app.put(
+    "/users/:id/role",
+    { preHandler: [requireSuperAdmin] },
+    async (request, reply) => {
     const { id } = request.params as { id: string };
     const { role } = request.body as { role?: string };
 
@@ -793,15 +800,9 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(404).send({ success: false, error: "User not found" });
     }
 
-    if (id === request.user!.id && role !== request.user!.role) {
-      return reply.code(400).send({
-        success: false,
-        error: "Cannot change your own role",
-        code: "SELF_ROLE_CHANGE",
-      });
-    }
-
-    // Never leave the platform without a super administrator.
+    // Never leave the platform without a super administrator. This runs before
+    // the self-change check so a lone super administrator receives the more
+    // specific safety error instead of a generic self-service rejection.
     if (user.role === "SUPER_ADMIN" && role !== "SUPER_ADMIN") {
       const superAdmins = await prisma.user.count({
         where: { role: "SUPER_ADMIN", isActive: true },
@@ -815,6 +816,14 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
+    if (id === request.user!.id && role !== request.user!.role) {
+      return reply.code(400).send({
+        success: false,
+        error: "Cannot change your own role",
+        code: "SELF_ROLE_CHANGE",
+      });
+    }
+
     await prisma.user.update({
       where: { id },
       data: { role: role as never },
@@ -823,14 +832,35 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     invalidateAuthCache(id);
 
     return { success: true, message: "User role updated" };
-  });
+    }
+  );
 
-  app.put("/users/:id/toggle", async (request, reply) => {
+  app.put(
+    "/users/:id/toggle",
+    { preHandler: [requireSuperAdmin] },
+    async (request, reply) => {
     const { id } = request.params as { id: string };
 
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
       return reply.code(404).send({ success: false, error: "User not found" });
+    }
+
+    // Deactivation is the other way to lock the platform out of its owner
+    // account. Only guard when an active super admin is being deactivated;
+    // reactivation is always safe. This runs before the self-check so the last
+    // owner receives the specific safety error.
+    if (user.role === "SUPER_ADMIN" && user.isActive) {
+      const superAdmins = await prisma.user.count({
+        where: { role: "SUPER_ADMIN", isActive: true },
+      });
+      if (superAdmins <= 1) {
+        return reply.code(409).send({
+          success: false,
+          error: "Cannot deactivate the last active super administrator.",
+          code: "LAST_SUPER_ADMIN",
+        });
+      }
     }
 
     if (id === request.user!.id) {
@@ -852,7 +882,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       success: true,
       message: `User ${user.isActive ? "deactivated" : "activated"}`,
     };
-  });
+    }
+  );
 
   // ── Payments: gateway refunds ──────────────────────────────────────────────
   /**
