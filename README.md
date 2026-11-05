@@ -1402,8 +1402,7 @@ MIT © 2026 Limon Roy Apu
 |---|---|
 | GitHub | [@limon-l](https://github.com/limon-l) |
 | Portfolio | [my-profile-green-beta.vercel.app](https://my-profile-green-beta.vercel.app/) |
-| LinkedIn | _Add your LinkedIn profile URL_ |
-| Email | _Add your contact email_ |
+| LinkedIn | [LinkedIn profile URL](https://www.linkedin.com/in/limonroyapu/)
 
 ---
 
