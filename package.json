@@ -25,6 +25,20 @@
     "turbo": "^2.3.0",
     "typescript": "^5.7.0"
   },
+  "pnpm": {
+    "overrides": {
+      "@fastify/busboy": "3.2.4",
+      "brace-expansion@>=4.0.0": "5.0.12",
+      "deepmerge-ts": "8.0.2",
+      "fast-copy": "4.3.1",
+      "fast-uri@<4.0.0": "3.1.9",
+      "fast-uri@>=4.0.0": "4.2.3",
+      "postcss": "8.5.32",
+      "postcss-selector-parser": "6.1.5",
+      "qs": "6.17.1",
+      "sharp": "0.35.5"
+    }
+  },
   "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=20.0.0"

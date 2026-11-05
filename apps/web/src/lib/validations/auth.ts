@@ -43,4 +43,5 @@ export const signUpSchema = z
   });
 
 export type SignInInput = z.infer<typeof signInSchema>;
+export type SignInFormValues = z.input<typeof signInSchema>;
 export type SignUpInput = z.infer<typeof signUpSchema>;

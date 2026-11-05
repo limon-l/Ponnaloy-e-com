@@ -9,7 +9,7 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { signInSchema, type SignInInput } from "@/lib/validations/auth";
+import { signInSchema, type SignInInput, type SignInFormValues } from "@/lib/validations/auth";
 import { useAuth } from "@/contexts/auth-context";
 
 function SignInForm() {
@@ -28,7 +28,7 @@ function SignInForm() {
     watch,
     setValue,
     formState: { errors },
-  } = useForm<SignInInput>({
+  } = useForm<SignInFormValues, unknown, SignInInput>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
       email: "",

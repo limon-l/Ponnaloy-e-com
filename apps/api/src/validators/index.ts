@@ -83,7 +83,7 @@ export const createProductSchema = z.object({
         price: z.number().int().min(0),
         stock: z.number().int().min(0).default(0),
         image: imageUrlSchema.optional(),
-        options: z.record(z.string()).default({}),
+        options: z.record(z.string(), z.string()).default({}),
       })
     )
     .optional(),
@@ -145,7 +145,7 @@ export const storefrontUpdateSchema = z.object({
   banner: imageUrlSchema.optional(),
   supportEmail: z.string().email().optional(),
   supportPhone: z.string().max(40).optional(),
-  policies: z.record(z.string()).optional(),
+  policies: z.record(z.string(), z.string()).optional(),
 });
 
 export const productModerationSchema = z.object({
